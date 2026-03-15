@@ -18,7 +18,7 @@ import anthropic
 
 API_KEY = os.environ.get("ANTHROPIC_API_KEY", "REEMPLAZA_TU_KEY_AQUI")
 MODEL   = "claude-sonnet-4-6"
-OUTPUT  = "resultado_test_laura3.txt"
+OUTPUT  = "laura_test4.txt"
 
 PRECIOS_DUMMY = """
 ---
@@ -56,7 +56,7 @@ Regla de moneda:
 """
 
 def cargar_prompt():
-    with open("LAURA_5_1.md", encoding="utf-8") as f:
+    with open("laura_5.1.claudecode.md", encoding="utf-8") as f:
         content = f.read()
     content = content.replace("{{CURRENT_DATETIME}}", "2026-03-15 20:45")
     content += "\n\n" + PRECIOS_DUMMY

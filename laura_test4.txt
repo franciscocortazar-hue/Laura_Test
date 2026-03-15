@@ -1,0 +1,222 @@
+=================================================================
+BOATS4U — STRESS TEST EXHAUSTIVO LAURA 5.1
+Escenario : Cliente caótico — cambia todo, objeta, cambia idioma y reserva
+Modelo    : claude-sonnet-4-6
+Fecha     : 2026-03-15 19:57
+=================================================================
+
+─────────────────────────────────────────────────────────────────
+T1 — Saludo simple  →  ❌ FAIL
+Cliente : Hola
+Laura   : ¡Buenas noches! 🌊 Bienvenido a Boats4U.
+
+Cartagena tiene algo especial cuando se vive desde el agua — y tenemos dos experiencias que lo demuestran:
+
+El **Golden Hour** es de esos momentos que la ciudad regala — la bahía al atardecer, el cielo encendiéndose de colores, tú flotando en el Caribe.
+
+Las **Islas del Rosario** — mar turquesa, playas de arena blanca, un día completo desconectado del mundo...
+
+  ✅  Saludo nocturno correcto
+  ✅  Emoji náutico presente
+  ✅  Presenta ambas experiencias
+  ✅  Cierra con pregunta de elección
+  ✅  No menciona precio en T1
+  ❌  No pregunta fecha en T1
+
+──────────────────────────────────────────────────────────────�
+=================================================================
+BOATS4U — STRESS TEST EXHAUSTIVO LAURA 5.1
+Escenario : Cliente caótico — cambia todo, objeta, cambia idioma y reserva
+Modelo    : claude-sonnet-4-6
+Fecha     : 2026-03-15 19:57
+=================================================================
+
+─────────────────────────────────────────────────────────────────
+T1 — Saludo simple  →  ❌ FAIL
+Cliente : Hola
+Laura   : ¡Buenas noches! 🌊 Bienvenido a Boats4U.
+
+Cartagena tiene algo especial cuando se vive desde el agua — y tenemos dos experiencias que lo demuestran:
+
+El **Golden Hour** es de esos momentos que la ciudad regala — la bahía al atardecer, el cielo encendiéndose de colores, tú flotando en el Caribe.
+
+Las **Islas del Rosario** — mar turquesa, playas de arena blanca, un día completo desconectado del mundo...
+
+  ✅  Saludo nocturno correcto
+  ✅  Emoji náutico presente
+  ✅  Presenta ambas experiencias
+  ✅  Cierra con pregunta de elección
+  ✅  No menciona precio en T1
+  ❌  No pregunta fecha en T1
+
+─────────────────────────────────────────────────────────────────
+T2 — Elige Golden Hour  →  ✅ PASS
+Cliente : Quiero el Golden Hour
+Laura   : Perfecto — una de las mejores elecciones que puedes hacer en Cartagena. 🌅
+
+¿Cuántas personas van a ser?
+
+  ✅  Pregunta número de personas
+  ✅  No re-pregunta la experiencia
+  ✅  Solo una pregunta
+
+─────────────────────────────────────────────────────────────────
+T3 — Da personas para Golden Hour  →  ✅ PASS
+Cliente : Somos 5 personas
+Laura   : Para 5 personas, el **Bravo 290** es la opción perfecta — íntimo, ágil, y con toda la bahía para ustedes.
+
+El Golden Hour en el Bravo 290 está en **$650.000 COP**.
+
+¿Ya tienen fecha en mente?
+
+  ✅  Recomienda Bravo 290 (1-5 pax)
+  ✅  Precio correcto Golden Hour Bravo 290
+  ✅  Pregunta por fecha
+  ✅  No presenta múltiples botes
+
+─────────────────────────────────────────────────────────────────
+T4 — Cambia a Islas del Rosario  →  ✅ PASS
+Cliente : Espera, mejor cambiemos a Islas del Rosario
+Laura   : ¡Buena elección! Las Islas del Rosario con 5 personas en el **Bravo 290** — mar turquesa y un día completo para ustedes.
+
+El precio es **$1.400.000 COP**.
+
+¿Ya tienen fecha en mente?
+
+  ✅  Acepta el cambio de experiencia
+  ✅  Mantiene el bote (5 pax no cambia)
+  ✅  Precio correcto Islas Bravo 290
+  ✅  No re-pregunta personas
+
+─────────────────────────────────────────────────────────────────
+T5 — Sube a 10 personas  →  ✅ PASS
+Cliente : Ah no espera, en realidad somos 10
+Laura   : Con 10 personas el **Firpol 34** es el que encaja — tiene el espacio ideal para que el grupo disfrute cómodo todo el día.
+
+Islas del Rosario en el Firpol 34: **$2.400.000 COP**.
+
+¿Ya tienen fecha?
+
+  ✅  Actualiza a Firpol 34 (6-10 pax)
+  ✅  Precio correcto Islas Firpol 34
+  ✅  Ya no recomienda Bravo 290
+  ✅  No re-pregunta la experiencia
+
+─────────────────────────────────────────────────────────────────
+T6 — Señal de lujo / aniversario  →  ❌ FAIL
+Cliente : Es nuestro aniversario de bodas número 10, queremos algo muy especial y exclusivo
+Laura   : Un décimo aniversario merece algo que esté a la altura del momento. 🌅
+
+Para una ocasión así, lo que realmente eleva la experiencia es el **Azimut 70** — nuestro yate más exclusivo. Espacios amplios, acabados de lujo, y Cartagena desde otro nivel completamente.
+
+Islas del Rosario en el Azimut 70: **$14.000.000 COP**.
+
+¿Te cuento qué incluye la experiencia?
+
+  ✅  Ofrece Azimut 70 primero
+  ✅  Justifica experiencia antes del precio
+  ❌  No menciona precio antes de justificar
+  ✅  No presenta múltiples yates
+
+─────────────────────────────────────────────────────────────────
+T7 — Cambia a inglés y pide detalles  →  ✅ PASS
+Cliente : That sounds incredible! What exactly is included in the Azimut 70 experience?
+Laura   : The Azimut 70 is in a league of its own — a 70-foot luxury yacht with premium finishes, spacious decks, and everything designed so you don't have to think about anything except enjoying the moment.
+
+For the full details on what's included, I want to make sure you get accurate information — let me confirm the exact inclusions with our team and get back to you right away.
+
+What I can confirm: the ex...
+
+  ✅  Responde en inglés
+  ✅  No mezcla español
+  ✅  Precio en USD al hablar inglés
+
+─────────────────────────────────────────────────────────────────
+T8 — Primera objeción de precio  →  ❌ FAIL
+Cliente : Wow that's really expensive for us
+Laura   : I understand — let me find the perfect balance between luxury and value for your anniversary.
+
+The **Leopard 51** is a stunning catamaran — wide open spaces, incredible stability, and that premium feel that makes a celebration unforgettable.
+
+Rosario Islands on the Leopard 51: **$3,170 USD**.
+
+Would that work better for you?
+
+  ❌  Activa cierre Nivel 1 o 2
+  ✅  No ofrece descuento todavía
+  ✅  No abandona la venta
+
+─────────────────────────────────────────────────────────────────
+T9 — Segunda objeción — activa descuento  →  ✅ PASS
+Cliente : I really can't afford that, it's too much
+Laura   : The **Leopard 43** gives you that same catamaran magic — beautiful, spacious, and perfect for a celebration — at a more accessible price.
+
+Rosario Islands on the Leopard 43: **$2,560 USD**.
+
+And if you secure it today, I can offer you **10% off** — bringing it to **$2,304 USD** with full payment now.
+
+Would you like me to send you the payment link?
+
+  ✅  Activa descuento 10%
+  ✅  Exige pago inmediato
+  ✅  Ofrece link de pago
+  ✅  Menciona descuento
+
+─────────────────────────────────────────────────────────────────
+T10 — Intenta fecha pasada  →  ✅ PASS
+Cliente : Ok, let's do it. We want to go on March 5th 2024
+Laura   : That date has already passed — March 5th, 2024 is in the past.
+
+Which date did you have in mind? I can check availability from today forward. 🗓️
+
+  ✅  Rechaza fecha pasada en inglés
+  ✅  Pide fecha nueva
+  ✅  No confirma fecha pasada
+
+─────────────────────────────────────────────────────────────────
+T11 — Da fecha válida  →  ❌ FAIL
+Cliente : Ok, April 20th 2026
+Laura   : April 20th, 2026 — perfect for your anniversary! 🌅
+
+Let me put together your reservation:
+- **Experience:** Islas del Rosario
+- **Date:** April 20th, 2026
+- **Guests:** 10 people
+- **Vessel:** Leopard 43
+- **Price:** $2,304 USD (10% off, full payment today)
+
+What's your full name?
+
+  ✅  Acepta la fecha
+  ✅  Avanza hacia confirmación
+  ❌  No re-pregunta datos ya dados
+
+─────────────────────────────────────────────────────────────────
+T12 — Da nombre y correo para confirmar  →  ❌ FAIL
+Cliente : My name is Carlos Mendez, email carlos@gmail.com
+Laura   : Perfect, Carlos! Here's your complete reservation:
+
+- **Experience:** Islas del Rosario
+- **Date:** April 20th, 2026
+- **Guests:** 10 people
+- **Vessel:** Leopard 43
+- **Price:** $2,304 USD
+
+Sending your payment link now — once payment is confirmed, your anniversary celebration is officially locked in. 🎉
+
+*[Payment link]*
+
+  ✅  Incluye resumen de reserva
+  ✅  Envía link de pago
+  ❌  Menciona política de pago 50/50
+  ❌  No confirma sin pago recibido
+
+=================================================================
+RESUMEN FINAL
+=================================================================
+Turnos    : 7/12 PASS
+Criterios : 39/45 PASS  (87%)
+Veredicto : ⚠️  REQUIERE AJUSTES MENORES
+=================================================================
+
+💾  Guardado en: laura_test4.txt
