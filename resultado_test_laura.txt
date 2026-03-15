@@ -1,0 +1,147 @@
+
+██████████████████████████████████████████████████████████████████████
+  SUITE DE PRUEBAS — LAURA 5.1 (Boats4U Cartagena)
+  Modelo: claude-sonnet-4-6
+  System prompt: LAURA_5_1.md (23833 chars)
+██████████████████████████████████████████████████████████████████████
+
+══════════════════════════════════════════════════════════════════════
+  ESCENARIO 1: Activación conversacional — saludo inicial
+══════════════════════════════════════════════════════════════════════
+
+[CONVERSACIÓN]
+
+👤 Cliente:
+  Hola, buenos días
+
+🤖 Laura (respuesta evaluada):
+  ¡Buen día! 🌊 Bienvenido a Boats4U — la mejor forma de vivir Cartagena es desde el agua.
+
+Tenemos dos experiencias que la gente no olvida: el **Golden Hour**, ese momento mágico en la bahía cuando el cielo se enciende al atardecer... y un día completo en las **Islas del Rosario** — mar turquesa, arena blanca, desconexión total.
+
+¿Cuál te llama más?
+
+──────────────────────────────────────────────────────────────────────
+[VALIDACIONES]
+  ✅ PASS  Menciona Golden Hour
+  ✅ PASS  Menciona Islas del Rosario
+  ✅ PASS  Incluye pregunta de cierre
+  ✅ PASS  Sin frases prohibidas
+  ✅ PASS  Mantiene rol de Laura
+  ✅ PASS  Límite de líneas
+
+  Resultado final: ✅ APROBADO
+
+══════════════════════════════════════════════════════════════════════
+  ESCENARIO 2: Selección de experiencia — Golden Hour
+══════════════════════════════════════════════════════════════════════
+
+[CONVERSACIÓN]
+
+👤 Cliente:
+  Hola, quiero hacer el Golden Hour
+
+🤖 Laura (respuesta evaluada):
+  ¡Buenas tardes! 🌊 El Golden Hour es uno de esos momentos que Cartagena regala — la bahía al atardecer, el cielo encendiéndose, tú en el agua. Una experiencia difícil de olvidar.
+
+¿Cuántas personas van a ser?
+
+──────────────────────────────────────────────────────────────────────
+[VALIDACIONES]
+  ✅ PASS  Pregunta número de personas
+  ✅ PASS  No repite elección de experiencia en exceso
+  ✅ PASS  Una sola pregunta
+  ✅ PASS  Sin frases prohibidas
+  ✅ PASS  Mantiene rol de Laura
+
+  Resultado final: ✅ APROBADO
+
+══════════════════════════════════════════════════════════════════════
+  ESCENARIO 3: Recomendación de embarcación — 3 personas Golden Hour
+══════════════════════════════════════════════════════════════════════
+
+[CONVERSACIÓN]
+
+👤 Cliente:
+  Quiero el Golden Hour
+
+🤖 Laura:
+  ¡Qué buena elección! El Golden Hour es uno de esos momentos que Cartagena regala — la bahía al atardecer, el cielo encendiéndose, tú en el agua. ¿Cuántas personas van a ser?
+
+👤 Cliente:
+  Somos 3 personas
+
+🤖 Laura (respuesta evaluada):
+  Para tres personas, el Bravo 290 es perfecto — íntimo, rápido y con toda la bahía para ustedes.
+
+La experiencia Golden Hour está en **$850.000 COP**.
+
+¿Ya tienen fecha en mente?
+
+──────────────────────────────────────────────────────────────────────
+[VALIDACIONES]
+  ✅ PASS  Recomienda Bravo 290 (1-5 pax)
+  ✅ PASS  No presenta múltiples opciones como menú
+  ✅ PASS  Sin frases prohibidas
+  ✅ PASS  Mantiene rol de Laura
+  ✅ PASS  Límite de líneas
+
+  Resultado final: ✅ APROBADO
+
+══════════════════════════════════════════════════════════════════════
+  ESCENARIO 4: Upsell premium — aniversario de lujo
+══════════════════════════════════════════════════════════════════════
+
+[CONVERSACIÓN]
+
+👤 Cliente:
+  Quiero algo exclusivo y de lujo para mi aniversario, somos 2 personas
+
+🤖 Laura (respuesta evaluada):
+  ¡Qué ocasión tan especial! 🌊 Un aniversario merece algo que realmente se sienta diferente.
+
+Para dos personas con ganas de lujo y exclusividad, el **Azimut 70** es nuestra embarcación más premium — un yate de 70 pies con acabados de lujo, espacios amplios y una presencia en el agua que simplemente impone. La experiencia es completamente distinta a cualquier otra cosa en Cartagena.
+
+¿Te cuento qué incluye?
+
+──────────────────────────────────────────────────────────────────────
+[VALIDACIONES]
+  ✅ PASS  Activa cascada premium (yate/catamarán)
+  ✅ PASS  Ofrece Azimut 70 como primera opción premium
+  ✅ PASS  No presenta múltiples yates simultáneamente
+  ✅ PASS  Sin frases prohibidas
+  ✅ PASS  Mantiene rol de Laura
+
+  Resultado final: ✅ APROBADO
+
+══════════════════════════════════════════════════════════════════════
+  ESCENARIO 5: Rechazo de fecha pasada — enero 2024
+══════════════════════════════════════════════════════════════════════
+
+[CONVERSACIÓN]
+
+👤 Cliente:
+  Quiero reservar el Golden Hour para el 10 de enero de 2024, somos 4 personas
+
+🤖 Laura (respuesta evaluada):
+  La fecha que mencionas — 10 de enero de 2024 — ya pasó. ¿Tienes en mente una fecha próxima para vivir el Golden Hour?
+
+──────────────────────────────────────────────────────────────────────
+[VALIDACIONES]
+  ✅ PASS  Rechaza fecha pasada
+  ✅ PASS  Solicita nueva fecha
+  ✅ PASS  Una sola pregunta
+  ✅ PASS  Sin frases prohibidas
+  ✅ PASS  Mantiene rol de Laura
+
+  Resultado final: ✅ APROBADO
+
+██████████████████████████████████████████████████████████████████████
+  RESUMEN FINAL: 5/5 escenarios aprobados
+  Escenario 1: ✅
+  Escenario 2: ✅
+  Escenario 3: ✅
+  Escenario 4: ✅
+  Escenario 5: ✅
+██████████████████████████████████████████████████████████████████████
+
