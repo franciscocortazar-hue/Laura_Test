@@ -1,6 +1,249 @@
+=================================================================
+BOATS4U — RESULTADO STRESS TEST LAURA 5.1
+Modelo: claude-sonnet-4-6
+Fecha : 2026-03-15 18:57
+=================================================================
 
-██████████████████████████████████████████████████████████████████████
-  SUITE DE PRUEBAS — LAURA 5.1 (Boats4U Cartagena)
-  Modelo: claude-sonnet-4-6
-  System prompt: LAURA_5_1.md (23833 chars)
-██████████████████████████████████████████████████████████████████████
+─────────────────────────────────────────────────────────────────
+[A1] Saludo nocturno — franja correcta  →  ❌ FAIL
+─────────────────────────────────────────────────────────────────
+  ✅  [T1] Usa 'buenas noches' (horario 20:45)
+  ✅  [T1] Incluye 1 emoji náutico
+  ✅  [T1] Menciona Golden Hour
+  ✅  [T1] Menciona Islas del Rosario
+  ✅  [T1] Cierra con pregunta de elección
+  ✅  [T1] No menciona precios en T1
+  ❌  [T1] No pregunta fecha en T1
+  ✅
+=================================================================
+BOATS4U — RESULTADO STRESS TEST LAURA 5.1
+Modelo: claude-sonnet-4-6
+Fecha : 2026-03-15 18:57
+=================================================================
+
+─────────────────────────────────────────────────────────────────
+[A1] Saludo nocturno — franja correcta  →  ❌ FAIL
+─────────────────────────────────────────────────────────────────
+  ✅  [T1] Usa 'buenas noches' (horario 20:45)
+  ✅  [T1] Incluye 1 emoji náutico
+  ✅  [T1] Menciona Golden Hour
+  ✅  [T1] Menciona Islas del Rosario
+  ✅  [T1] Cierra con pregunta de elección
+  ✅  [T1] No menciona precios en T1
+  ❌  [T1] No pregunta fecha en T1
+  ✅  [T1] No pregunta número de personas en T1
+  ✅  [T1] Sin frases de call center
+  ✅  [T1] Respuesta concisa (max ~600 chars)
+
+  Última respuesta de Laura:
+  ¡Buenas noches! 🌊 Bienvenido a Boats4U — tu puerta al Caribe desde Cartagena.
+
+Tenemos dos experiencias que la gente no olvida: el **Golden Hour**, esos minutos mágicos en que la bahía se enciende al atardecer… y un **día completo en Islas del Rosario**, con mar turquesa y playas de arena blanca que parecen de otra galaxia.
+
+¿Cuál te llama más — el Golden Hour en bahía o un día completo en Islas del Rosario?
+
+─────────────────────────────────────────────────────────────────
+[A2] Cliente bilingüe — responde en inglés  →  ❌ FAIL
+─────────────────────────────────────────────────────────────────
+  ✅  [T1] Responde en inglés
+  ❌  [T1] No mezcla con español
+  ✅  [T1] Menciona Golden Hour en inglés
+  ✅  [T1] Menciona Islas del Rosario en inglés
+  ✅  [T1] Cierra con pregunta
+
+  Última respuesta de Laura:
+  ¡Buenas noches! 🌊 Welcome to Boats4U — you've picked the right place to experience Cartagena from the water.
+
+We have two experiences that people absolutely love:
+
+**Golden Hour** — the bay at sunset, the sky changing colors, you on the water. One of those moments Cartagena just gives you.
+
+**Islas del Rosario** — turquoise sea, white sand beaches, a full day completely disconnected from the world.
+
+Which one calls to you more?
+
+─────────────────────────────────────────────────────────────────
+[B1] Grupo 8 pax — intención clara desde inicio  →  ❌ FAIL
+─────────────────────────────────────────────────────────────────
+  ✅  [T1] Recomienda Firpol 34 (6-10 pax)
+  ❌  [T1] Presenta precio
+  ✅  [T1] Pregunta por fecha
+  ✅  [T1] No re-pregunta la experiencia
+  ✅  [T1] No presenta múltiples botes
+  ✅  [T1] Solo una pregunta en el mensaje
+
+  Última respuesta de Laura:
+  ¡Buenas noches! 🌊
+
+Para 8 personas, el **Firpol 34** es la opción perfecta — tiene el espacio ideal para que el grupo disfrute cómodo todo el día en las islas.
+
+¿Cuándo están pensando en hacer la experiencia?
+
+─────────────────────────────────────────────────────────────────
+[B2] Grupo de 2 personas  →  ✅ PASS
+─────────────────────────────────────────────────────────────────
+  ✅  [T1] Recomienda Bravo 290 (1-5 pax)
+  ✅  [T1] No recomienda Firpol (sobrecapacidad)
+  ✅  [T1] Presenta precio
+  ✅  [T1] No re-pregunta la experiencia
+
+  Última respuesta de Laura:
+  ¡Buenas noches! 🌊
+
+El Golden Hour es de esos momentos que Cartagena regala — la bahía al atardecer, el cielo encendiéndose, ustedes dos en el agua. Para dos personas, el Bravo 290 es perfecto — íntimo, rápido y con toda la bahía para ustedes.
+
+¿Ya tienen fecha en mente?
+
+─────────────────────────────────────────────────────────────────
+[B3] Grupo de 15 personas  →  ✅ PASS
+─────────────────────────────────────────────────────────────────
+  ✅  [T1] Recomienda Bravo 410 (13-19 pax)
+  ✅  [T1] No recomienda Firpol 34 (poca capacidad)
+  ✅  [T1] Presenta precio
+
+  Última respuesta de Laura:
+  ¡Buenas noches! 🌊
+
+Para 15 personas, el **Bravo 410** es la opción ideal — el espacio justo para que el grupo disfrute cómodo y la experiencia en Islas del Rosario se sienta como debe ser.
+
+Déjame consultarte el precio oficial — ¿ya tienen una fecha en mente?
+
+─────────────────────────────────────────────────────────────────
+[C1] Upsell — cumpleaños / señal de lujo  →  ✅ PASS
+─────────────────────────────────────────────────────────────────
+  ✅  [T1] Ofrece Azimut 70 primero
+  ✅  [T1] No baja directo al Azimut 55
+  ✅  [T1] Justifica experiencia antes del precio
+  ✅  [T1] No recomienda Bravo 290 con señal de lujo
+  ✅  [T1] No presenta múltiples yates
+
+  Última respuesta de Laura:
+  ¡Buenas noches! 🌊
+
+Cumpleaños de tu esposa merece algo que ella recuerde siempre — y para eso el Azimut 70 es exactamente lo que necesitas. Nuestra embarcación más exclusiva, diseñada para momentos como este: espacio, lujo, privacidad total y Cartagena entera como escenario.
+
+Es una experiencia completamente diferente a cualquier otra cosa en la bahía.
+
+¿Te cuento qué incluye?
+
+─────────────────────────────────────────────────────────────────
+[C2] Upsell — cliente pide algo más grande (cascada)  →  ✅ PASS
+─────────────────────────────────────────────────────────────────
+  ✅  [T1] Recomienda Firpol 34 como base
+  ✅  [T2] Sube un nivel en la cascada
+  ✅  [T2] No salta directo a yate sin señal premium
+  ✅  [T2] No salta dos niveles
+  ✅  [T2] Presenta una sola embarcación
+
+  Última respuesta de Laura:
+  El **Bravo 380** es el siguiente nivel — más espacio, más comodidad, y la experiencia en Islas del Rosario se siente completamente diferente.
+
+Déjame verificar el precio oficial para ese grupo. *(consultando portafolio...)*
+
+¿Quieres que te lo confirme?
+
+─────────────────────────────────────────────────────────────────
+[D1] Lead desde landing — datos completos  →  ❌ FAIL
+─────────────────────────────────────────────────────────────────
+  ✅  [T1] Ejecuta registrar_lead
+  ✅  [T1] Recomienda Firpol 34 (6 pax)
+  ❌  [T1] Presenta precio
+  ✅  [T1] No re-pregunta experiencia
+  ✅  [T1] No re-pregunta número de personas
+  ✅  [T1] No re-pregunta la fecha
+
+  Última respuesta de Laura:
+  *[Ejecutando `registrar_lead` con los datos recibidos]*
+
+---
+
+¡Buenas noches, Michael! 🌊
+
+Para tu grupo de 6 personas en Islas del Rosario, el **Firpol 34** es la elección perfecta — espacio ideal, cómodo para todos, y con ese mar turquesa como destino, la experiencia es difícil de superar.
+
+El precio oficial para el **10 de abril** te lo confirmo en un momento — ¿tienes alguna preferencia de horario o salimos con el estándar de la experiencia completa?
+
+─────────────────────────────────────────────────────────────────
+[E1] Objeción de precio — niveles de cierre en orden  →  ❌ FAIL
+─────────────────────────────────────────────────────────────────
+  ❌  [T2] Activa Nivel 1 o 2 de cierre
+  ✅  [T2] NO ofrece 10% en primera objeción
+  ❌  [T3] Activa descuento 10% en segunda objeción
+  ❌  [T3] Condiciona a pago 100% inmediato
+  ❌  [T3] Ofrece link de pago
+
+  Última respuesta de Laura:
+  Sin problema, te entiendo perfectamente.
+
+Si en algún momento las fechas se acomodan mejor o quieres explorar algo más accesible, aquí estoy.
+
+¿Hay algo más en lo que pueda ayudarte?
+
+─────────────────────────────────────────────────────────────────
+[F1] Fecha pasada — rechazo correcto  →  ✅ PASS
+─────────────────────────────────────────────────────────────────
+  ✅  [T2] Rechaza fecha pasada
+  ✅  [T2] No confirma fecha pasada
+  ✅  [T2] Solicita fecha nueva
+
+  Última respuesta de Laura:
+  Esa fecha ya pasó — estamos en marzo de 2026, así que no puedo registrarla.
+
+¿Qué fecha tienes en mente dentro de los próximos días o semanas?
+
+─────────────────────────────────────────────────────────────────
+[F2] No usa la palabra 'lancha'  →  ✅ PASS
+─────────────────────────────────────────────────────────────────
+  ✅  [T1] Nunca usa la palabra 'lancha'
+  ✅  [T1] Usa nombre oficial de embarcación
+
+  Última respuesta de Laura:
+  ¡Buenas noches! 🌊
+
+Para un grupo de 8 personas, el **Firpol 34** es la opción ideal — tiene el espacio justo para que todos vayan cómodos y la experiencia se disfrute de verdad.
+
+¿Van a vivir un atardecer en bahía o prefieren un día completo en las Islas del Rosario?
+
+─────────────────────────────────────────────────────────────────
+[F3] Regla Firpol 42 — no se ofrece como opción inicial  →  ✅ PASS
+─────────────────────────────────────────────────────────────────
+  ✅  [T1] Recomienda Bravo 380 (11-12 pax)
+  ✅  [T1] No ofrece Firpol 42 como opción inicial
+
+  Última respuesta de Laura:
+  ¡Buenas noches! 🌊
+
+Para 12 personas, el Bravo 380 es la opción ideal — el espacio justo para que el grupo disfrute cómodo, con toda la experiencia de las islas sin perder esa sensación de exclusividad.
+
+Déjame consultarte el precio oficial para ese plan. ¿Ya tienen una fecha en mente?
+
+─────────────────────────────────────────────────────────────────
+[G1] Stress multi-turno — aniversario con cambio de idioma  →  ❌ FAIL
+─────────────────────────────────────────────────────────────────
+  ✅  [T1] Detecta señal premium y activa upsell
+  ✅  [T1] No recomienda bote estándar
+  ✅  [T2] Cambia al inglés correctamente
+  ✅  [T2] No mezcla idiomas
+  ✅  [T3] Sube en cascada premium
+  ✅  [T3] No baja de nivel sin objeción
+  ❌  [T4] Activa cierre Nivel 1 o 2
+  ✅  [T4] No ofrece descuento en primera objeción
+  ❌  [T5] Activa descuento 10% en segunda objeción
+  ❌  [T5] Exige pago inmediato como condición
+
+  Última respuesta de Laura:
+  Totally understood — let's find something that feels just as special.
+
+For 6 people celebrating an anniversary, the **Azimut 55** is a beautiful option — intimate, elegant, and still a completely different experience from a regular boat.
+
+Would you like me to share the price for that one?
+
+=================================================================
+RESUMEN FINAL
+=================================================================
+Escenarios : 7/13 PASS
+Criterios  : 55/66 PASS  (83%)
+Veredicto  : ⚠️  REQUIERE REVISIÓN
+=================================================================
+
+💾  Resultado guardado en: resultado_test_laura2.txt
