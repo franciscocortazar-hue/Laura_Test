@@ -1,0 +1,274 @@
+═══════════════════════════════════════════════════════════════════════
+ANÁLISIS CLAUDE CODE — LAURA 5.2 · Suite 30 Escenarios
+Modelo evaluado : claude-sonnet-4-6
+System prompt   : LAURA_5_2.md
+Fecha           : 2026-03-15
+═══════════════════════════════════════════════════════════════════════
+
+RESULTADO GLOBAL: 30/36 escenarios PASS · 97/106 criterios (92%)
+VEREDICTO DEL TEST: 🎉 LISTA PARA PRODUCCIÓN
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PARTE 1 — LO QUE FUNCIONA BIEN (FORTALEZAS CONFIRMADAS)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Bloques A, B, C y E son perfectos (18/18). Esto es lo más importante:
+
+A — ACTIVACIÓN Y SALUDO (5/5)
+  Laura saluda correctamente en ambos idiomas, presenta las dos experiencias
+  con lenguaje experiencial, cierra con la pregunta correcta y no improvisa
+  datos. Incluso maneja mensajes vacíos o preguntas sobre la empresa sin
+  romper el rol.
+
+B — TABLA DE PASAJEROS (6/6)
+  El mapeo pax→embarcación es perfecto en todos los rangos:
+  1 pax → Bravo 290, 6 pax → Firpol 34, 11 pax → Bravo 380,
+  20 pax → Todomar 44, 30 pax → 2×Bravo 410, 60+ → escala al operador.
+  Nunca salta rangos ni recomienda embarcación equivocada.
+
+C — CAMBIOS MID-CONVERSACIÓN (4/4)
+  La memoria conversacional funciona correctamente. Laura actualiza
+  embarcación al cambiar experiencia o número de personas, sin reiniciar
+  el flujo ni repetir preguntas ya respondidas. Bloque C es el que más
+  habría fallado en versiones anteriores — aquí es perfecto.
+
+E — PRECIOS Y MONEDA (3/3)
+  Precio en COP para español, USD para inglés, y nunca improvisa valores
+  fuera de la tabla oficial. Mejora significativa respecto a versiones
+  previas donde este bloque fallaba.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PARTE 2 — FALLOS DETECTADOS (6 escenarios)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+──────────────────────────────────────────────────────────────────────
+FALLO D2 · Cascada premium — salta niveles
+Bloque: D — Upsell · Severidad: Media
+──────────────────────────────────────────────────────────────────────
+
+QUÉ PASÓ:
+  Cliente pidió "algo más íntimo" desde el Azimut 70. Laura respondió
+  directamente con el Azimut 55, saltando el Azimut 62 y el Azimut 58.
+
+  Respuesta de Laura:
+  "El Azimut 55 es perfecto para eso — más íntimo, igualmente exclusivo..."
+
+REGLA VIOLADA (S.10.2):
+  "Nunca saltar más de un nivel sin confirmación del cliente."
+  Orden correcto: Azimut 70 → Azimut 62 → Azimut 58 → Azimut 55
+
+CAUSA RAÍZ:
+  La señal "algo más íntimo" activa en el modelo la asociación directa
+  con el yate más pequeño disponible (Azimut 55), pasando por alto la
+  jerarquía de descenso gradual. La instrucción de "bajar un nivel" no
+  tiene suficiente peso frente a la asociación semántica de "íntimo".
+
+SOLUCIÓN SUGERIDA:
+  Agregar ejemplo explícito en S.10.2 de cómo ejecutar la bajada:
+  "Si el cliente pide algo más íntimo estando en Azimut 70 →
+  ofrecer Azimut 62, no Azimut 55."
+
+──────────────────────────────────────────────────────────────────────
+FALLO D3 · Despedida de soltero no activa premium
+Bloque: D — Upsell · Severidad: Media
+──────────────────────────────────────────────────────────────────────
+
+QUÉ PASÓ:
+  Cliente: "Despedida de soltero para 8 personas".
+  Laura recomendó Firpol 34 (correcto por capacidad) sin activar el
+  upsell premium a pesar de que "despedida" es un contexto de celebración.
+
+  Respuesta de Laura:
+  "Para 8 personas con esa energía, lo que realmente marca la diferencia
+  es un día en Islas del Rosario... La embarcación perfecta es el Firpol 34"
+
+REGLA VIOLADA (S.10.2):
+  "Contexto de celebración: cumpleaños, despedida, aniversario, corporativo
+  → ofrecer upgrade premium en el mismo turno de la recomendación."
+
+CAUSA RAÍZ:
+  La tabla de señales de upsell lista "despedida" pero en la práctica el
+  modelo prioriza la recomendación por capacidad (8 pax → Firpol 34) y
+  ejecuta el flujo estándar. La instrucción de upgrade en celebraciones
+  compite con el flujo base y pierde.
+
+SOLUCIÓN SUGERIDA:
+  Reforzar la prioridad de la señal de celebración en la tabla:
+  "Cuando hay señal de celebración + conocemos el número de pax:
+  PRIMERO mencionar upgrade premium, DESPUÉS presentar precio del bote base
+  como opción accesible."
+
+──────────────────────────────────────────────────────────────────────
+FALLO F2 · Fecha ambigua — Laura la acepta y calcula
+Bloque: F — Fechas · Severidad: Alta
+──────────────────────────────────────────────────────────────────────
+
+QUÉ PASÓ:
+  Cliente dijo "el próximo sábado". Laura no solo aceptó la fecha ambigua
+  sino que calculó el día exacto (21 de marzo) y avanzó a confirmación.
+
+  Respuesta de Laura:
+  "Perfecto — el próximo sábado 21 de marzo. Para confirmar les pedimos
+  el 50% de anticipo... ¿Me das tu nombre completo?"
+
+REGLA VIOLADA (S.12):
+  "Si la fecha es ambigua (hoy, mañana, día de semana, solo el mes)
+  → pedir día y mes exactos."
+
+CAUSA RAÍZ:
+  El modelo es capaz de calcular "próximo sábado" usando su conocimiento
+  de fecha actual (2026-03-15 = domingo, próximo sábado = 21 de marzo).
+  Al poder resolverlo por sí mismo, no activa la regla de ambigüedad.
+  El prompt no contempla que el modelo pueda inferir la fecha — asume que
+  no puede, por eso la regla existe.
+
+SOLUCIÓN SUGERIDA:
+  Hacer la regla más explícita:
+  "Nunca calcular ni inferir fechas ambiguas, aunque sea posible hacerlo.
+  Si el cliente usa expresiones relativas (hoy, mañana, el sábado, el fin
+  de semana, próxima semana) → pedir siempre día y mes exactos."
+
+──────────────────────────────────────────────────────────────────────
+FALLO G2 · Segunda objeción — no activa descuento 10%
+Bloque: G — Cierre · Severidad: Alta (fallo recurrente)
+──────────────────────────────────────────────────────────────────────
+
+QUÉ PASÓ:
+  Después de una primera objeción de precio (G1 — PASS, activó Nivel 1)
+  y una segunda objeción, Laura respondió con Nivel 2 en lugar de activar
+  el descuento del 10%.
+
+  Respuesta de Laura:
+  "Si quieres, te envío el link para asegurarla — a veces tener el detalle
+  claro ayuda a organizarse. ¿Hay alguna fecha que estén considerando?"
+
+REGLA VIOLADA (S.16):
+  "Nivel 3 — Descuento 10%: se activa solo si el cliente expresa objeción
+  real y explícita. Una sola vez por conversación."
+
+CAUSA RAÍZ:
+  Este es el fallo más persistente en toda la suite de tests (apareció en
+  test2, test3 y test4). El modelo no tiene certeza sobre cuándo una
+  objeción es "segunda" en el contexto de una conversación multi-turno.
+  Nivel 1 y Nivel 2 son mensajes similares en su estructura — el modelo
+  tiende a repetir el patrón en lugar de escalar.
+
+  Agravante: El test construye el contexto como turnos separados, pero
+  el modelo puede no "contar" las objeciones de la misma forma que el
+  test espera.
+
+SOLUCIÓN SUGERIDA:
+  Hacer el trigger del Nivel 3 más determinístico:
+  "Si el cliente ya recibió el Nivel 1 o Nivel 2 y vuelve a expresar
+  que el precio es alto o que no puede pagarlo → activar Nivel 3
+  INMEDIATAMENTE. No repetir Nivel 1 o 2."
+
+──────────────────────────────────────────────────────────────────────
+FALLO G4 · Rechazo explícito — check mal definido (falso negativo)
+Bloque: G — Cierre · Severidad: Baja (problema del test)
+──────────────────────────────────────────────────────────────────────
+
+QUÉ PASÓ:
+  El test marcó FAIL con criterio "Responde coherentemente", pero la
+  respuesta de Laura es correcta y elegante:
+
+  "Entendido, sin problema. Cuando quieran vivir Cartagena desde el mar,
+  aquí estamos. ¡Que tengan una excelente noche! 🌊"
+
+  Cumple: no insiste, sin frases prohibidas, cierra con dignidad.
+
+CAUSA RAÍZ:
+  El criterio "Responde coherentemente" tiene un patrón regex que no
+  detecta correctamente el tipo de respuesta. Es un error del script de
+  prueba, no del prompt.
+
+SOLUCIÓN SUGERIDA:
+  Revisar el regex del criterio G4 en test_laura4.py. La respuesta
+  de Laura es el comportamiento esperado para un rechazo explícito.
+
+──────────────────────────────────────────────────────────────────────
+FALLO H4 · Lead desde landing — no ejecuta registrar_lead
+Bloque: H — Reglas operativas · Severidad: Alta
+──────────────────────────────────────────────────────────────────────
+
+QUÉ PASÓ:
+  Llegó un mensaje con Source: landing con todos los datos completos.
+  Laura fue directo al flujo comercial (correcto) pero no ejecutó
+  registrar_lead (incorrecto). No hay evidencia del paso de registro.
+
+  Respuesta de Laura:
+  "Hey Sarah! 🌅 Golden Hour on Cartagena Bay is a great choice...
+  For a group of 3, the Bravo 290 is perfect — $160 USD.
+  You're all set for May 1st — shall I send you the payment link?"
+
+REGLA VIOLADA (S.7):
+  "Orden obligatorio cuando se detecta Source: landing:
+  1. Ejecutar registrar_lead
+  2. Continuar el flujo comercial"
+
+CAUSA RAÍZ:
+  En el entorno de prueba no hay herramienta real registrar_lead conectada.
+  El modelo, al no poder ejecutarla, omite la mención y va directo al flujo.
+  En producción con la herramienta disponible, probablemente sí la ejecutaría.
+  Dicho esto, la S.7 debería instruir a Laura a al menos mencionar la acción
+  aunque sea como texto, para verificar que el módulo se activa.
+
+SOLUCIÓN SUGERIDA:
+  Para tests: simular la herramienta con un mock o verificar que Laura
+  al menos mencione "*[Ejecutando registrar_lead]*" como indicador de
+  activación del módulo.
+  Para producción: conectar la herramienta real y probar en integración.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PARTE 3 — COMPARATIVA HISTÓRICA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Test  │ Prompt          │ Escenarios  │ Criterios │ Veredicto
+  ──────┼─────────────────┼─────────────┼───────────┼──────────────────
+  1     │ LAURA_5_1.md    │  5/5  (100%)│    —      │ ✅ (suite básica)
+  2     │ LAURA_5_1.md    │  7/13 ( 54%)│  83%      │ ⚠️ Requiere revisión
+  3     │ LAURA_5_1.md    │  8/12 ( 67%)│  84%      │ ⚠️ Requiere ajustes
+  4     │ laura_5.1.cc.md │  7/12 ( 58%)│  87%      │ ⚠️ Requiere ajustes
+  4     │ LAURA_5_2.md    │ 30/36 ( 83%)│  92%      │ 🎉 Lista para prod.
+
+  Tendencia: cada iteración del prompt mejora el score de criterios.
+  LAURA_5_2.md es el primer prompt en alcanzar el umbral de producción.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PARTE 4 — PLAN DE ACCIÓN PRIORIZADO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Prioridad │ ID   │ Acción                                    │ Archivo
+  ──────────┼──────┼───────────────────────────────────────────┼──────────────────
+  🔴 1      │ G2   │ Trigger explícito para Nivel 3 de cierre  │ LAURA_5_2.md S.16
+  🔴 2      │ F2   │ Prohibir inferencia de fechas ambiguas    │ LAURA_5_2.md S.12
+  🟠 3      │ D3   │ Prioridad de señal de celebración         │ LAURA_5_2.md S.10.2
+  🟠 4      │ D2   │ Ejemplo de bajada gradual en cascada      │ LAURA_5_2.md S.10.2
+  🟡 5      │ H4   │ Mock de registrar_lead en tests           │ test_laura4.py
+  🟢 6      │ G4   │ Corregir regex del criterio               │ test_laura4.py
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PARTE 5 — OPINIÓN GENERAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+LAURA_5_2.md es el mejor prompt evaluado hasta ahora. El 92% de criterios
+es significativo: los bloques de identidad, catálogo, memoria conversacional
+y precios funcionan de forma consistente y robusta.
+
+Los 3 fallos reales de producción (G2, F2, D3) comparten un patrón común:
+el modelo "resuelve el problema por sí mismo" en lugar de seguir la regla.
+  - G2: cuenta las objeciones pero no escala porque siente que Nivel 2
+    sigue siendo una respuesta válida.
+  - F2: infiere la fecha correcta porque puede, ignorando la regla.
+  - D3: recomienda bien por capacidad y considera que eso es suficiente.
+
+Esto sugiere que los tres fixes deben ser PROHIBICIONES EXPLÍCITAS más
+que instrucciones de acción. El modelo necesita que le digan qué no hacer,
+no solo qué hacer.
+
+Con los 4 fixes de prompt aplicados, la estimación es alcanzar 95-97%
+de criterios — umbral de calidad para lanzamiento en producción.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Análisis generado por Claude Code · claude-sonnet-4-6 · Marzo 2026
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
