@@ -65,13 +65,22 @@ def cargar_prompt():
 client = anthropic.Anthropic(api_key=API_KEY)
 
 def llamar(system, messages):
-    r = client.messages.create(
-        model=MODEL,
-        max_tokens=1024,
-        system=system,
-        messages=messages
-    )
-    return r.content[0].text
+    import time
+    delays = [15, 30, 60, 120]
+    for attempt, delay in enumerate(delays + [None]):
+        try:
+            r = client.messages.create(
+                model=MODEL,
+                max_tokens=1024,
+                system=system,
+                messages=messages
+            )
+            return r.content[0].text
+        except anthropic.RateLimitError:
+            if delay is None:
+                raise
+            print(f"   ⏸  Rate limit — reintentando en {delay}s (intento {attempt+1}/4)...")
+            time.sleep(delay)
 
 def check(texto, patron, negativo=False):
     encontrado = bool(re.search(patron, texto, re.IGNORECASE | re.DOTALL))
