@@ -1,121 +1,635 @@
 =================================================================
 BOATS4U — SUITE LAB 45 ESCENARIOS LAURA PROD 1.0
 Modelo : claude-haiku-4-5-20251001
-Fecha  : 2026-03-16 16:32
+Fecha  : 2026-03-16 16:35
 =================================================================
 
-[A1] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75boXwwzMXarkpmL6aq'}
+─────────────────────────────────────────────────────────────────
+[A1] Saludo simple — noche  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Saludo nocturno correcto
+  OK  Emoji nautico
+  OK  Menciona Golden Hour
+  OK  Menciona Islas del Rosario
+  OK  Cierra con pregunta
+  OK  Sin precio en T1
+  OK  Sin pregunta de fecha
+  OK  Sin pregunta de personas
+  OK  Sin frases prohibidas
 
-[A2] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75booKicS1KrQfvbgrB'}
+  Ultima respuesta:
+  ¡Buenas noches! 🌊 Bienvenido a Boats4U. 
 
-[A3] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bp2xYU7k6Vn6wx8xn'}
+Tengo dos experiencias que Cartagena regala de verdad: el **Golden Hour**, esos atardeceres en la bahía que no se olvidan, o un **día completo en las Islas del Rosario** — mar turquesa, playas de arena blanca, desconexión total.
 
-[A4] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bpH6BtK4SSb5b4PoY'}
+¿Cuál te llama más?
 
-[A5] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bpffKnBY5jueQFuTR'}
+─────────────────────────────────────────────────────────────────
+[A2] Saludo en ingles — respuesta 100% ingles  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Saludo en ingles
+  OK  Sin mezcla de espanol
+  OK  Menciona Golden Hour
+  OK  Menciona Islas del Rosario
+  OK  Cierra con pregunta
 
-[B1] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bqKMS6V7B3FhRNT5Z'}
+  Ultima respuesta:
+  Good evening! 🌊 Welcome to Boats4U. 
 
-[B2] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bqci4NwJjSyB28oxv'}
+We have two incredible experiences here — the Golden Hour, where you catch the sunset over the bay with Cartagena fading into the horizon, or a full day at the Rosario Islands with turquoise water and white sand beaches.
 
-[B3] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75br5Vb8Q3mu8Cy8vRn'}
+Which one calls to you more?
 
-[B4] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75brXGyoXNQds9JHTkF'}
+─────────────────────────────────────────────────────────────────
+[A3] Cliente con intencion clara — no reactiva pregunta de eleccion  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Pregunta personas
+  OK  No re-pregunta experiencia
+  OK  Solo una pregunta
 
-[B5] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75brmuZ9qX4ByooLjBe'}
+  Ultima respuesta:
+  ¡Buenas tardes! 🌊 Perfecto — Las Islas del Rosario es una experiencia increíble.
 
-[B6] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bs3XnFTbF2iwhKiwU'}
+Para recomendarte la embarcación ideal, ¿cuántas personas van a ser?
 
-[C1] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bsJQyBEeh419yVJaM'}
+─────────────────────────────────────────────────────────────────
+[A4] Mensaje vacio / ininteligible  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Responde algo coherente
+  OK  No rompe el rol
+  OK  Mantiene identidad Laura
 
-[C2] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bsamyapkRCkDshw4d'}
+  Ultima respuesta:
+  ¡Hola! 👋 
 
-[C3] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bstt8jXmRCkUAoUh2'}
+Bienvenido a Boats4U. Soy Laura.
 
-[C4] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75btDiy3LXhHZ9PVjBA'}
+Para recomendarte la mejor experiencia en Cartagena, ¿ya tienes en mente el Golden Hour en bahía al atardecer, o prefieres un día completo en las Islas del Rosario?
 
-[D1] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75btTNGhJLM8VqxgxEo'}
+─────────────────────────────────────────────────────────────────
+[A5] Cliente pregunta que es Boats4U  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Describe la empresa
+  OK  No usa lancha
+  OK  Orienta hacia la venta
 
-[D2] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bthVxnJnURYA3o3cA'}
+  Ultima respuesta:
+  ¡Buenas noches! 🌊
 
-[D3] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bty7p5ZeSLcc8vsH4'}
+Boats4U es la forma de vivir Cartagena desde el mar. Somos una operación de experiencias náuticas en la bahía y las Islas del Rosario — botes, yates y catamaranes para que descubras esta ciudad de una manera que pocos conocen.
 
-[D4] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75buGEYTakYnrYDUV2e'}
+¿Cuál te llama más — el Golden Hour en bahía o un día completo en Islas del Rosario?
 
-[E1] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75buYbr5HCLd4F1ysFb'}
+─────────────────────────────────────────────────────────────────
+[B1] 1 persona — Bravo 290  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Recomienda Bravo 290
+  OK  Precio correcto
+  OK  No sobrecapacidad
 
-[E2] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75buqxXPahT1Ay6NfHE'}
+  Ultima respuesta:
+  ¡Buenas noches! 🌊 Perfecto — el Golden Hour es de esos momentos que Cartagena regala, la bahía al atardecer solo para ti.
 
-[E3] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bv75hDCrhiJhhoiy9'}
+Para una persona, el Bravo 290 es ideal — íntimo, rápido y toda la magia del atardecer a tu ritmo. La experiencia completa está en **$650.000 COP**.
 
-[F1] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bvLyFzLD6eRheaCQt'}
+¿Cuál es el día y mes exactos que tienes en mente?
 
-[F2] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bveppD6338XUMdb4B'}
+─────────────────────────────────────────────────────────────────
+[B2] 6 personas — Firpol 34  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Recomienda Firpol 34
+  OK  Precio correcto
+  OK  No recomienda menor
 
-[F3] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bw6rjsMxy7DW6xBvs'}
+  Ultima respuesta:
+  ¡Buenas noches! 🌊 Para 6 personas en Islas del Rosario, el Firpol 34 es perfecto — espacio cómodo, velocidad ideal y toda la experiencia de mar turquesa y playas de arena blanca para ustedes.
 
-[F4] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bwWRNtKTE3xTgxr1q'}
+La experiencia completa está en $2.400.000 COP. ¿Ya tienen fecha en mente?
 
-[G1] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bwoHJ759YTJJSw3Hg'}
+─────────────────────────────────────────────────────────────────
+[B3] 11 personas — Bravo 380  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Recomienda Bravo 380
+  OK  Precio correcto
+  OK  No ofrece Firpol 42
 
-[G2] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bxArNbrwvNmqiGA8g'}
+  Ultima respuesta:
+  ¡Buenas noches! 🌊 Perfecto — para 11 personas en Islas del Rosario, te recomiendo el **Bravo 380**.
 
-[G3] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bxXwCLu1hAHtWk8G9'}
+Es el balance ideal: espacio cómodo para todos, velocidad, y la experiencia completa en el agua sin sentirse abarrotado. Para ese grupo, la diferencia es notable.
 
-[G4] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bxqHtZdZLetAUbJm5'}
+**La experiencia completa está en $3.200.000 COP.**
 
-[G5] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75byAdaT4RbxdnyY8cb'}
+¿Ya tienen fecha en mente?
 
-[H1] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75byaBsSsA2frLMRYmF'}
+─────────────────────────────────────────────────────────────────
+[B4] 20 personas — Todomar 44  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Recomienda Todomar 44
+  OK  Precio correcto
 
-[H2] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75byun3xr7aSmELXbS6'}
+  Ultima respuesta:
+  ¡Buenas noches! 🌊 
 
-[H3] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bz9R923edVs8UMCjn'}
+Para un grupo de 20 personas, el **Todomar 44** es perfecto — es nuestra embarcación más espaciosa para grupos grandes, y el atardecer en la bahía se vive mucho mejor con esa amplitud.
 
-[H4] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bzRHnatwTHEZ69vFv'}
+La experiencia completa está en **$2.800.000 COP**. ¿Ya tienen fecha en mente?
 
-[H5] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bzn86sR4WTqTSJJUY'}
+─────────────────────────────────────────────────────────────────
+[B5] 30 personas — 2 Bravo 410  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Dos Bravo 410
+  OK  Explica formato combinado
 
-[I1] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75c1N6WwVesCLmXXwXY'}
+  Ultima respuesta:
+  ¡Buenas noches! 🌊
 
-[I2] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75c1hSHq8Ye2JcL9YtH'}
+Para un grupo de 30 personas, la mejor opción es **dos Bravo 410** — cada uno lleva 15 pasajeros cómodamente, y la experiencia en Islas del Rosario es espectacular así: playas de arena blanca, mar turquesa, y el grupo disfrutando junto.
 
-[I3] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75c1wKg4x6N1T3PbhwL'}
+El costo total es **$8.000.000 COP** (dos embarcaciones).
 
-[I4] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75c2CCPu1BWZwRh5MJT'}
+¿Ya tienen fecha en mente?
 
-[I5] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75c2UKBUv5sdFGHNjec'}
+─────────────────────────────────────────────────────────────────
+[B6] 60 personas — escalar operador  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Escala al operador
+  OK  No intenta cotizar
 
-[I6] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75c2oQtbFQKTFskyHN3'}
+  Ultima respuesta:
+  Buenas tardes! 🌊
 
-[J1] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75c38kaL3rmaAvhsCZK'}
+Un grupo de 60 personas en Islas del Rosario es una experiencia que necesita coordinación especial. Esto requiere múltiples embarcaciones y ajustes operativos que debo validar directamente con nuestro equipo.
 
-[J2] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75c3V69ayYxxqDQqFf9'}
+¿Me das tu nombre y correo para que el operador te contacte hoy con la cotización completa y disponibilidad?
 
-[J3] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75c3vdYaXCBF54kUE5q'}
+─────────────────────────────────────────────────────────────────
+[C1] Cambia de experiencia a mitad  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Acepta cambio de experiencia
+  OK  Mantiene bote (4 pax)
+  OK  Precio correcto Islas Bravo 290
+  OK  No re-pregunta personas
 
-[J4] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75c4EjNE7LiGw5gdBwG'}
+  Ultima respuesta:
+  Excelente elección. Para cuatro personas en Islas del Rosario, el Bravo 290 es perfecto — todo el día en mar turquesa, playas de arena blanca, sin prisas. La experiencia completa está en **$1.400.000 COP**.
 
-[J5] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75c4XbW3orcDFWF1d3c'}
+¿Cuál es el día y mes exactos?
+
+─────────────────────────────────────────────────────────────────
+[C2] Sube de 4 a 12 personas  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Actualiza a Bravo 380
+  OK  Precio correcto
+  OK  Ya no menciona Bravo 290
+
+  Ultima respuesta:
+  Con 12 personas, el **Bravo 380** es ideal — espacio cómodo para todos, y el Golden Hour se disfruta mucho más cuando hay lugar para respirar.
+
+El precio es **$1.800.000 COP** ($440 USD).
+
+¿Cuál es el día y mes exactos?
+
+─────────────────────────────────────────────────────────────────
+[C3] Baja de 15 a 3 personas  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Baja a Bravo 290
+  OK  Precio correcto
+  OK  Ya no menciona Bravo 410
+
+  Ultima respuesta:
+  Perfecto, con 3 personas el Bravo 290 es lo ideal — íntimo, ágil, y tienes toda la bahía de Islas del Rosario para ustedes.
+
+La tarifa es **$1.400.000 COP** para el día completo.
+
+¿Cuál es la fecha que tienen en mente?
+
+─────────────────────────────────────────────────────────────────
+[C4] Pide mas espacio — cascada de botes  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Sube un nivel
+  OK  No salta a yate sin senal premium
+  OK  Una sola opcion
+
+  Ultima respuesta:
+  Claro. El **Bravo 380** es el siguiente nivel — más espacio en cubierta, cabinas más amplias, y la experiencia se siente mucho más exclusiva.
+
+Para Islas del Rosario está en **$3.200.000 COP**. ¿Te late más así?
+
+─────────────────────────────────────────────────────────────────
+[D1] Senal de lujo — Azimut 70 primero  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Ofrece Azimut 70
+  OK  Justifica experiencia
+  OK  Experiencia antes que precio
+  OK  No presenta multiples yates
+
+  Ultima respuesta:
+  ¡Buenas tardes! 🌊 
+
+Para una celebración como esa, lo que realmente marca la diferencia es el **Azimut 70** — nuestra embarcación más exclusiva. Tiene todo lo que necesita una ocasión memorable: amplitud, privacidad absoluta, detalles de lujo en cada rincón.
+
+¿Prefieren vivirlo al atardecer con el Golden Hour, o un día completo explorando las Islas del Rosario?
+
+─────────────────────────────────────────────────────────────────
+[D2] Cascada premium — baja exactamente un nivel desde Azimut 70  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Baja un nivel desde Azimut 70
+  OK  No salta al Azimut 55
+
+  Ultima respuesta:
+  Perfecto — el **Azimut 62** es más íntimo sin perder nada de la exclusividad. Cuatro personas en una embarcación de lujo así es realmente especial.
+
+¿Golden Hour o Islas del Rosario?
+
+─────────────────────────────────────────────────────────────────
+[D3] Celebracion — despedida de soltero activa premium  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Activa opcion premium
+  OK  No queda solo en bote estandar
+
+  Ultima respuesta:
+  ¡Buenas noches! 🚤
+
+Para una despedida como esa, el Azimut 62 es lo que marca la diferencia — cubierta amplia, interior de lujo, y la bahía de Cartagena entera para ustedes. Es difícil de olvidar.
+
+Para 8 personas en Islas del Rosario, la experiencia completa está en **$9.800.000 COP**.
+
+¿Ya tienen fecha en mente?
+
+─────────────────────────────────────────────────────────────────
+[D4] No ofrece yate sin senal — grupo normal  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Recomienda bote base
+  OK  No ofrece yate sin senal
+
+  Ultima respuesta:
+  ¡Buenas noches! 🌊 Para cinco personas en Islas del Rosario, el Bravo 290 es perfecto — ágil, cómodo y con toda la libertad del mar para ustedes.
+
+La experiencia completa está en $1.400.000 COP. ¿Ya tienen fecha en mente?
+
+─────────────────────────────────────────────────────────────────
+[E1] Precio en COP para cliente espanol  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Precio en COP
+  OK  No presenta en USD
+
+  Ultima respuesta:
+  ¡Buenas noches! 🌊 
+
+Para cuatro personas, el Bravo 290 es perfecto — íntimo, ágil y con toda la bahía para ustedes. La experiencia Golden Hour con este bote está en **$650.000 COP**.
+
+¿Ya tienen fecha en mente?
+
+─────────────────────────────────────────────────────────────────
+[E2] Precio en USD para cliente ingles  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Precio en USD
+  OK  No presenta en COP
+
+  Ultima respuesta:
+  Good evening! 🌊 Welcome to Boats4U. 
+
+For your group of 4, the **Bravo 290** is perfect — intimate, nimble, and the whole bay opens up for you at sunset. The experience is around **$160 USD**.
+
+What date did you have in mind?
+
+─────────────────────────────────────────────────────────────────
+[E3] Nunca improvisa precio  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Usa precio oficial
+  OK  No improvisa ni estima
+
+  Ultima respuesta:
+  El Bravo 410 para Islas del Rosario está en **$4.000.000 COP**.
+
+¿Ya tienes el grupo definido, o aún estás evaluando opciones?
+
+─────────────────────────────────────────────────────────────────
+[F1] Fecha pasada — rechaza y pide nueva  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Rechaza fecha pasada
+  OK  Pide fecha nueva
+  OK  No confirma fecha pasada
+
+  Ultima respuesta:
+  Esa fecha es en el pasado. Cartagena está hermosa ahora mismo — ¿cuál sería la fecha que tienes disponible hacia adelante?
+
+─────────────────────────────────────────────────────────────────
+[F2] Fecha ambigua — no infiere, pide exactitud  ->  FAIL
+─────────────────────────────────────────────────────────────────
+  OK  Pide dia y mes exactos
+  OK  No calcula ni infiere la fecha
+  FAIL  No acepta fecha ambigua
+
+  Ultima respuesta:
+  Perfecto. ¿Cuál es el día y mes exactos del sábado?
+
+─────────────────────────────────────────────────────────────────
+[F3] Fecha futura valida — avanza directo  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Acepta la fecha
+  OK  Avanza hacia confirmacion
+
+  Ultima respuesta:
+  Perfecto. Para asegurar esa fecha, aquí va el link de pago — 50% ahora, 50% el día anterior a la experiencia.
+
+Antes de enviar todo, necesito tu nombre completo.
+
+─────────────────────────────────────────────────────────────────
+[F4] Fecha pasada en ingles  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Rechaza en ingles
+  OK  Pide fecha nueva
+
+  Ultima respuesta:
+  January 10th, 2023 is in the past — we can't book that date.
+
+What about an upcoming date? Day and month work best.
+
+─────────────────────────────────────────────────────────────────
+[G1] Primera objecion — Nivel 1 o 2, sin descuento  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Activa Nivel 1 o 2
+  OK  Sin descuento todavia
+  OK  No abandona la venta
+  OK  No baja de bote por precio
+
+  Ultima respuesta:
+  Entiendo. Te cuento — el Firpol 34 para cuatro personas en un día completo en Islas del Rosario es una inversión que realmente vale la pena. Incluye navegación, paradas en playas exclusivas, y toda la experiencia sin compartir espacio con otros grupos.
+
+Te recomiendo asegurarla hoy.
+
+─────────────────────────────────────────────────────────────────
+[G2] Segunda objecion — activa descuento 10%  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Activa 10% de descuento
+  OK  Exige pago inmediato
+  OK  Ofrece link
+
+  Ultima respuesta:
+  Puedo ayudarte con un 10% de descuento si aseguras hoy mismo — quedaría en **$1.260.000 COP**. El pago es 100% ahora para activar la reserva.
+
+¿Te envío el link de pago?
+
+─────────────────────────────────────────────────────────────────
+[G3] Dejame pensarlo — activa Nivel 2 directo  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Activa Nivel 2
+  OK  No cierra sin intentar
+
+  Ultima respuesta:
+  Entiendo. Te envío el link para que lo asegures cuando estés listo — así no pierdes la disponibilidad.
+
+¿Cuál sería tu fecha ideal?
+
+─────────────────────────────────────────────────────────────────
+[G4] Rechazo explicito — cierra con elegancia  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Cierra con elegancia
+  OK  No insiste ante rechazo explicito
+  OK  Sin frases prohibidas
+
+  Ultima respuesta:
+  Sin problema. Si en algún momento cambia de idea o quieren explorar otra opción, aquí estoy. 🌊
+
+¡Que disfrutes Cartagena!
+
+─────────────────────────────────────────────────────────────────
+[G5] Objecion en ingles — niveles en ingles  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Activa cierre en ingles
+  OK  Sin descuento todavia
+  OK  No baja de bote
+
+  Ultima respuesta:
+  I can work with that. Let me send you the payment link to lock it in — 50% secures your date, and you pay the rest the day before. Sound good?
+
+─────────────────────────────────────────────────────────────────
+[H1] Nunca usa lancha  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  No usa lancha
+  OK  Usa nombre oficial
+
+  Ultima respuesta:
+  ¡Buenas tardes! 🌊
+
+Para 8 personas el **Firpol 34** es perfecto — tiene el espacio ideal y la experiencia se siente mucho más cómoda que en un bote más pequeño.
+
+¿Estás pensando en el Golden Hour en bahía o un día completo en Islas del Rosario?
+
+─────────────────────────────────────────────────────────────────
+[H2] Regla Firpol 42 — no se ofrece inicial  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Recomienda Bravo 410
+  OK  No ofrece Firpol 42
+
+  Ultima respuesta:
+  ¡Buenas noches! 🌊 Perfecto — para un grupo de 13 en Islas del Rosario, el Bravo 410 es lo ideal. Tienes toda la comodidad, el espacio y la experiencia es mucho más fluida.
+
+La experiencia completa está en $4.000.000 COP.
+
+¿Ya tienen fecha en mente?
+
+─────────────────────────────────────────────────────────────────
+[H3] No pre-pregunta sin datos  ->  FAIL
+─────────────────────────────────────────────────────────────────
+  OK  Pide personas antes de cotizar
+  FAIL  No da precio sin saber pax
+
+  Ultima respuesta:
+  ¡Buenas noches! 🌊
+
+El Golden Hour tiene un precio que varía según la embarcación — desde $650.000 COP en el Bravo 290 hasta $7.500.000 COP en el Azimut 70, nuestra embarcación más exclusiva.
+
+Para recomendarte la opción perfecta — ¿cuántas personas van a ser?
+
+─────────────────────────────────────────────────────────────────
+[H4] Lead desde landing — datos completos con mock registrar_lead  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Ejecuta registrar_lead
+  OK  Recomienda Bravo 290 (3 pax)
+  OK  Precio en USD
+  OK  No re-pregunta datos ya dados
+
+  Ultima respuesta:
+  [registrar_lead ejecutado]
+
+---
+
+Good afternoon! 🌊 Welcome to Boats4U.
+
+For three of you, the Bravo 290 is perfect — intimate, fast, and the entire bay is yours to explore. The Golden Hour experience at sunset is something you won't forget.
+
+That's $160 USD per person. Ready to lock in May 1st?
+
+─────────────────────────────────────────────────────────────────
+[H5] Confirmacion de reserva — resumen correcto  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Incluye experiencia en resumen
+  OK  Incluye fecha en resumen
+  OK  Envia link de pago
+  OK  Menciona politica 50/50
+  OK  No confirma sin pago
+
+  Ultima respuesta:
+  Perfecto, Ana. Aquí está el link de pago para asegurar tu fecha:
+
+**Resumen:**
+- Experiencia: Islas del Rosario
+- Fecha: 20 de abril de 2026
+- Personas: 6
+- Embarcación: Firpol 34
+- Total: $2.400.000 COP
+- Pago: 50% ahora ($1.200.000), 50% el 19 de abril
+
+[Link de pago: https://boats4u.pay/reservation/ana-gomez-20-04-2026]
+
+Una vez confirmes el pago, te enviamos toda la información operativa. ¿Alg...
+
+─────────────────────────────────────────────────────────────────
+[I1] Stress: cambia personas 4 veces seguidas  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Bote correcto para 5 pax
+  OK  Precio correcto Islas Bravo 290
+  OK  No menciona bote de iteracion anterior
+  OK  No re-pregunta personas
+
+  Ultima respuesta:
+  Con 5 personas, el **Bravo 290** es perfecto — íntimo, ágil y con toda la bahía para ustedes. La experiencia completa en Islas del Rosario está en **$1.400.000 COP**.
+
+¿Cuál es el día y mes exactos?
+
+─────────────────────────────────────────────────────────────────
+[I2] Stress: cambia de experiencia 3 veces  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Confirma Golden Hour
+  OK  Mantiene bote correcto para 6 pax
+  OK  Precio Golden Hour Firpol 34
+  OK  No menciona Islas del Rosario
+
+  Ultima respuesta:
+  Entendido. Entonces volvemos al Golden Hour con el Firpol 34 — **$1.200.000 COP**.
+
+¿Cuál es el día y mes?
+
+─────────────────────────────────────────────────────────────────
+[I3] Stress: sube a premium, baja un nivel, baja otro nivel  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Baja correctamente al tercer nivel
+  OK  No salta niveles incorrectamente
+  OK  Solo una embarcacion por turno
+
+  Ultima respuesta:
+  El **Azimut 58** — sigue siendo completamente exclusivo, pero más íntimo todavía. Para dos personas, es prácticamente privado.
+
+¿Golden Hour o Islas del Rosario?
+
+─────────────────────────────────────────────────────────────────
+[I4] Stress: cambia personas + experiencia + vuelve al inicio  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Bote correcto para 10 pax
+  OK  Experiencia correcta
+  OK  Precio correcto Golden Hour Firpol 34
+  OK  No usa bote de 4 pax
+
+  Ultima respuesta:
+  Sin problema — volvemos al **Firpol 34** para 10 personas en Golden Hour.
+
+**$1.200.000 COP**. ¿Cuál es la fecha exacta?
+
+─────────────────────────────────────────────────────────────────
+[I5] Stress: sube bote, cliente dice caro, no baja bote  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  No baja de embarcacion por precio
+  OK  Activa estrategia de cierre
+  OK  Sin descuento en primera objecion
+
+  Ultima respuesta:
+  Entiendo. Te propongo asegurar la fecha primero — muchas veces cuando ven la experiencia real, el valor cobra sentido.
+
+¿Cuál sería el día y mes que tienen en mente?
+
+─────────────────────────────────────────────────────────────────
+[I6] Stress: conversacion larga — memoria completa  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Activa descuento 10% en segunda objecion
+  OK  Condicion de pago inmediato
+  OK  No regresa al bote base
+
+  Ultima respuesta:
+  Puedo ayudarte con un 10% de descuento si aseguras hoy mismo. Aplica solo con pago 100% ahora. ¿Te envío el link?
+
+─────────────────────────────────────────────────────────────────
+[J1] No infiere fin de semana  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Pide dia y mes exactos
+  OK  No infiere fecha del fin de semana
+
+  Ultima respuesta:
+  ¿Cuál es el día y mes exactos que prefieren?
+
+─────────────────────────────────────────────────────────────────
+[J2] No infiere manana  ->  FAIL
+─────────────────────────────────────────────────────────────────
+  OK  Pide dia y mes exactos
+  FAIL  No calcula manana como fecha
+
+  Ultima respuesta:
+  Mañana es 17 de marzo, ¿correcto? ¿Esa fecha te funciona?
+
+─────────────────────────────────────────────────────────────────
+[J3] Segunda objecion en ingles activa descuento  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Activa descuento 10% en ingles
+  OK  Exige pago inmediato
+  OK  Ofrece link
+
+  Ultima respuesta:
+  I can offer you **10% off** if you confirm right now. Full payment required today. Want me to send the link?
+
+─────────────────────────────────────────────────────────────────
+[J4] Cumpleanos activa premium antes que bote base  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Menciona opcion premium
+  OK  No presenta solo Firpol 34 sin premium
+
+  Ultima respuesta:
+  ¡Buenas tardes! 🌊
+
+Para un cumpleaños como ese, lo que realmente marca la diferencia es vivir la experiencia desde una embarcación que eleve todo el momento. Te tengo dos opciones que son completamente distintas.
+
+El **Azimut 70** — nuestra embarcación más exclusiva — transforma el día en algo que no se olvida. Espacio, privacidad, detalles que solo un yate regala. O si prefieres algo con más agil...
+
+─────────────────────────────────────────────────────────────────
+[J5] Bajada gradual desde Azimut 62  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Baja a Azimut 58 desde 62
+  OK  No salta al Azimut 55
+
+  Ultima respuesta:
+  Entendido — el **Azimut 58** es íntimo sin perder la exclusividad. Dos personas en un yate de lujo es exactamente lo que muchos buscan.
+
+¿Golden Hour o Islas del Rosario?
 
 =================================================================
 RESUMEN POR BLOQUE
 =================================================================
-  A — Activacion y saludo                 0/5
-  B — Tabla de pasajeros                  0/6
-  C — Cambios mid-conversacion            0/4
-  D — Upsell y cascada premium            0/4
-  E — Precios y moneda                    0/3
-  F — Fechas                              0/4
-  G — Estrategia de cierre                0/5
-  H — Reglas operativas                   0/5
-  I — Stress test — cambios multiples     0/6
-  J — Cobertura PROD 1.0                  0/5
+  A — Activacion y saludo                 5/5
+  B — Tabla de pasajeros                  6/6
+  C — Cambios mid-conversacion            4/4
+  D — Upsell y cascada premium            4/4
+  E — Precios y moneda                    3/3
+  F — Fechas                              3/4
+  G — Estrategia de cierre                5/5
+  H — Reglas operativas                   4/5
+  I — Stress test — cambios multiples     6/6
+  J — Cobertura PROD 1.0                  4/5
 
 =================================================================
 RESUMEN FINAL
 =================================================================
-Escenarios : 0/47 PASS
-Criterios  : 0/0 PASS  (0%)
-Veredicto  : FALLA CRITICA — REVISAR PROMPT
+Escenarios : 44/47 PASS
+Criterios  : 136/139 PASS  (98%)
+Veredicto  : LISTA PARA PRODUCCION
 =================================================================
