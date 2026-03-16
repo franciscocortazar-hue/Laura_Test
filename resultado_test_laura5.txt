@@ -2,7 +2,7 @@
 =================================================================
 BOATS4U — Suite 45 Escenarios Laura 5.3
     Modelo : claude-sonnet-4-6
-    Fecha  : 2026-03-16 01:47
+    Fecha  : 2026-03-16 03:41
     Total  : 47 escenarios
 =================================================================
 
@@ -55,3 +55,33 @@ BOATS4U — Suite 45 Escenarios Laura 5.3
       PASS
 
   [D2] Cascada premium — baja exactamente un nivel desde Azimut 70...
+      PASS
+
+  [D3] Celebracion — despedida de soltero activa premium...
+      PASS
+
+  [D4] No ofrece yate sin senal — grupo normal...
+      PASS
+
+  [E1] Precio en COP para cliente espanol...
+      PASS
+
+  [E2] Precio en USD para cliente ingles...
+      PASS
+
+  [E3] Nunca improvisa precio...
+      PASS
+
+  [F1] Fecha pasada — rechaza y pide nueva...
+      PASS
+
+  [F2] Fecha ambigua — no infiere, pide exactitud...
+      PASS
+
+  [F3] Fecha futura valida — avanza directo...
+      PASS
+
+  [F4] Fecha pasada en ingles...
+      PASS
+
+  [G1] Primera objecion — Nivel 1 o 2, sin descuento...
