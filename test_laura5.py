@@ -81,7 +81,7 @@ def cargar_prompt():
     content = content.replace("{{CURRENT_DATETIME}}", "2026-03-15 20:45")
     return content + "\n\n" + PRECIOS_DUMMY + "\n\n" + MOCK_REGISTRAR_LEAD
 
-client = anthropic.Anthropic(api_key=API_KEY)
+client = anthropic.Anthropic(api_key=API_KEY, timeout=90.0)
 
 def llamar(system, messages):
     r = client.messages.create(
