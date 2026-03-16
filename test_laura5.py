@@ -23,7 +23,7 @@ import anthropic
 API_KEY     = os.environ.get("ANTHROPIC_API_KEY", "REEMPLAZA_TU_KEY_AQUI")
 MODEL       = "claude-sonnet-4-6"
 OUTPUT      = "resultado_test_laura5.txt"
-SYSTEM_FILE = "LAURA_5_3.md"
+SYSTEM_FILE = "LAURA_5_3.1.md"
 
 PRECIOS_DUMMY = """
 ---
