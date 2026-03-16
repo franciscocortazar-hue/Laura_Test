@@ -1,0 +1,121 @@
+=================================================================
+BOATS4U — SUITE LAB 45 ESCENARIOS LAURA PROD 1.0
+Modelo : claude-haiku-4-5-20251001
+Fecha  : 2026-03-16 16:32
+=================================================================
+
+[A1] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75boXwwzMXarkpmL6aq'}
+
+[A2] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75booKicS1KrQfvbgrB'}
+
+[A3] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bp2xYU7k6Vn6wx8xn'}
+
+[A4] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bpH6BtK4SSb5b4PoY'}
+
+[A5] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bpffKnBY5jueQFuTR'}
+
+[B1] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bqKMS6V7B3FhRNT5Z'}
+
+[B2] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bqci4NwJjSyB28oxv'}
+
+[B3] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75br5Vb8Q3mu8Cy8vRn'}
+
+[B4] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75brXGyoXNQds9JHTkF'}
+
+[B5] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75brmuZ9qX4ByooLjBe'}
+
+[B6] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bs3XnFTbF2iwhKiwU'}
+
+[C1] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bsJQyBEeh419yVJaM'}
+
+[C2] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bsamyapkRCkDshw4d'}
+
+[C3] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bstt8jXmRCkUAoUh2'}
+
+[C4] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75btDiy3LXhHZ9PVjBA'}
+
+[D1] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75btTNGhJLM8VqxgxEo'}
+
+[D2] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bthVxnJnURYA3o3cA'}
+
+[D3] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bty7p5ZeSLcc8vsH4'}
+
+[D4] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75buGEYTakYnrYDUV2e'}
+
+[E1] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75buYbr5HCLd4F1ysFb'}
+
+[E2] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75buqxXPahT1Ay6NfHE'}
+
+[E3] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bv75hDCrhiJhhoiy9'}
+
+[F1] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bvLyFzLD6eRheaCQt'}
+
+[F2] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bveppD6338XUMdb4B'}
+
+[F3] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bw6rjsMxy7DW6xBvs'}
+
+[F4] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bwWRNtKTE3xTgxr1q'}
+
+[G1] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bwoHJ759YTJJSw3Hg'}
+
+[G2] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bxArNbrwvNmqiGA8g'}
+
+[G3] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bxXwCLu1hAHtWk8G9'}
+
+[G4] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bxqHtZdZLetAUbJm5'}
+
+[G5] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75byAdaT4RbxdnyY8cb'}
+
+[H1] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75byaBsSsA2frLMRYmF'}
+
+[H2] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75byun3xr7aSmELXbS6'}
+
+[H3] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bz9R923edVs8UMCjn'}
+
+[H4] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bzRHnatwTHEZ69vFv'}
+
+[H5] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75bzn86sR4WTqTSJJUY'}
+
+[I1] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75c1N6WwVesCLmXXwXY'}
+
+[I2] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75c1hSHq8Ye2JcL9YtH'}
+
+[I3] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75c1wKg4x6N1T3PbhwL'}
+
+[I4] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75c2CCPu1BWZwRh5MJT'}
+
+[I5] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75c2UKBUv5sdFGHNjec'}
+
+[I6] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75c2oQtbFQKTFskyHN3'}
+
+[J1] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75c38kaL3rmaAvhsCZK'}
+
+[J2] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75c3V69ayYxxqDQqFf9'}
+
+[J3] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75c3vdYaXCBF54kUE5q'}
+
+[J4] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75c4EjNE7LiGw5gdBwG'}
+
+[J5] ERROR: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'invalid x-api-key'}, 'request_id': 'req_011CZ75c4XbW3orcDFWF1d3c'}
+
+=================================================================
+RESUMEN POR BLOQUE
+=================================================================
+  A — Activacion y saludo                 0/5
+  B — Tabla de pasajeros                  0/6
+  C — Cambios mid-conversacion            0/4
+  D — Upsell y cascada premium            0/4
+  E — Precios y moneda                    0/3
+  F — Fechas                              0/4
+  G — Estrategia de cierre                0/5
+  H — Reglas operativas                   0/5
+  I — Stress test — cambios multiples     0/6
+  J — Cobertura PROD 1.0                  0/5
+
+=================================================================
+RESUMEN FINAL
+=================================================================
+Escenarios : 0/47 PASS
+Criterios  : 0/0 PASS  (0%)
+Veredicto  : FALLA CRITICA — REVISAR PROMPT
+=================================================================
