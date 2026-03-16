@@ -17,12 +17,16 @@ Salida: resultado_test_laura5.txt
 
 import os
 import re
+import sys
+import json
+import argparse
 import datetime
 import anthropic
 
 API_KEY     = os.environ.get("ANTHROPIC_API_KEY", "REEMPLAZA_TU_KEY_AQUI")
-MODEL       = "claude-sonnet-4-6"
+MODEL       = "claude-haiku-4-5-20251001"   # ~20x más barato que Sonnet; cambia con --modelo
 OUTPUT      = "resultado_test_laura5.txt"
+CHECKPOINT  = "checkpoint_laura5.json"       # guarda resultados parciales
 SYSTEM_FILE = "LAURA_5_3.1.md"
 
 PRECIOS_DUMMY = """
@@ -83,11 +87,14 @@ def cargar_prompt():
 
 client = anthropic.Anthropic(api_key=API_KEY, timeout=90.0)
 
-def llamar(system, messages):
+def llamar(system_text, messages):
+    # cache_control en el system prompt: tras la 1ª llamada, Anthropic cobra
+    # sólo el 10% del costo normal de input para ese bloque (cache hit).
     r = client.messages.create(
         model=MODEL,
-        max_tokens=1024,
-        system=system,
+        max_tokens=512,
+        system=[{"type": "text", "text": system_text,
+                 "cache_control": {"type": "ephemeral"}}],
         messages=messages
     )
     return r.content[0].text
@@ -749,12 +756,26 @@ def correr_escenario(system_prompt, escenario):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Suite de tests Laura 5.3")
+    parser.add_argument("--desde", metavar="ID", default=None,
+                        help="Reanudar desde este ID de escenario (ej: D3). "
+                             "Los anteriores se cargan del checkpoint.")
+    parser.add_argument("--modelo", metavar="MODELO", default=None,
+                        help="Modelo a usar (default: claude-haiku-4-5-20251001)")
+    args = parser.parse_args()
+
+    global MODEL
+    if args.modelo:
+        MODEL = args.modelo
+
     total_escenarios = len(ESCENARIOS)
     print(f"\n{'='*65}")
     print(f"BOATS4U — Suite 45 Escenarios Laura 5.3")
     print(f"    Modelo : {MODEL}")
     print(f"    Fecha  : {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}")
     print(f"    Total  : {total_escenarios} escenarios")
+    if args.desde:
+        print(f"    Desde  : {args.desde}  (cargando anteriores del checkpoint)")
     print(f"{'='*65}")
 
     try:
@@ -762,6 +783,15 @@ def main():
     except FileNotFoundError:
         print(f"\n  No se encontro {SYSTEM_FILE}")
         return
+
+    # Cargar checkpoint previo
+    checkpoint = {}
+    if os.path.exists(CHECKPOINT):
+        try:
+            with open(CHECKPOINT, encoding="utf-8") as f:
+                checkpoint = json.load(f)
+        except Exception:
+            checkpoint = {}
 
     lineas = []
     lineas.append("=" * 65)
@@ -776,23 +806,55 @@ def main():
     esc_fail   = 0
     bloques    = {}
 
-    for esc in ESCENARIOS:
-        bloque = esc["id"][0]
+    # Determinar índice de inicio
+    ids_escenarios = [e["id"] for e in ESCENARIOS]
+    inicio_idx = 0
+    if args.desde:
+        if args.desde in ids_escenarios:
+            inicio_idx = ids_escenarios.index(args.desde)
+        else:
+            print(f"  ADVERTENCIA: ID '{args.desde}' no encontrado. Corriendo todos.")
+
+    for idx, esc in enumerate(ESCENARIOS):
+        esc_id = esc["id"]
+        bloque = esc_id[0]
         if bloque not in bloques:
             bloques[bloque] = {"pass": 0, "fail": 0}
 
-        print(f"\n  [{esc['id']}] {esc['nombre']}...")
+        # ── Saltar escenarios antes del punto de reanudación ──────────────────
+        if idx < inicio_idx:
+            if esc_id in checkpoint:
+                cached = checkpoint[esc_id]
+                esc_ok = cached["esc_ok"]
+                resultados = cached["resultados"]
+                print(f"\n  [{esc_id}] {esc['nombre']}...  (checkpoint: {'PASS' if esc_ok else 'FAIL'})")
+            else:
+                print(f"\n  [{esc_id}] {esc['nombre']}...  (sin checkpoint, saltado)")
+                esc_fail += 1
+                bloques[bloque]["fail"] += 1
+                continue
+        else:
+            # ── Ejecutar el escenario ──────────────────────────────────────────
+            print(f"\n  [{esc_id}] {esc['nombre']}...")
+            try:
+                resultados = correr_escenario(system_prompt, esc)
+            except Exception as e:
+                print(f"      ERROR: {e}")
+                lineas.append(f"\n[{esc_id}] ERROR: {e}")
+                esc_fail += 1
+                bloques[bloque]["fail"] += 1
+                # Guardar checkpoint parcial antes de continuar
+                with open(CHECKPOINT, "w", encoding="utf-8") as f:
+                    json.dump(checkpoint, f, ensure_ascii=False, indent=2)
+                continue
 
-        try:
-            resultados = correr_escenario(system_prompt, esc)
-        except Exception as e:
-            print(f"      ERROR: {e}")
-            lineas.append(f"\n[{esc['id']}] ERROR: {e}")
-            esc_fail += 1
-            bloques[bloque]["fail"] += 1
-            continue
+            esc_ok = all(r["pass"] for r in resultados)
+            # Guardar en checkpoint
+            checkpoint[esc_id] = {"esc_ok": esc_ok, "resultados": resultados}
+            with open(CHECKPOINT, "w", encoding="utf-8") as f:
+                json.dump(checkpoint, f, ensure_ascii=False, indent=2)
 
-        esc_ok = all(r["pass"] for r in resultados)
+        # ── Contabilizar ──────────────────────────────────────────────────────
         if esc_ok:
             esc_pass += 1
             bloques[bloque]["pass"] += 1
@@ -801,17 +863,18 @@ def main():
             bloques[bloque]["fail"] += 1
 
         status = "PASS" if esc_ok else "FAIL"
-        print(f"      {status}")
+        if idx >= inicio_idx:
+            print(f"      {status}")
 
         lineas.append(f"\n{'─'*65}")
-        lineas.append(f"[{esc['id']}] {esc['nombre']}  ->  {'OK' if esc_ok else 'FAIL'}")
+        lineas.append(f"[{esc_id}] {esc['nombre']}  ->  {'OK' if esc_ok else 'FAIL'}")
         lineas.append(f"{'─'*65}")
 
         ultima_resp = ""
         for r in resultados:
             icon = "OK" if r["pass"] else "FAIL"
             lineas.append(f"  {icon}  {r['descripcion']}")
-            ultima_resp = r["respuesta"]
+            ultima_resp = r.get("respuesta", "")
             if r["pass"]:
                 total_pass += 1
             else:

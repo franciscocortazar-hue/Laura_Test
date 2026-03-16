@@ -1,0 +1,712 @@
+{
+  "A1": {
+    "esc_ok": false,
+    "resultados": []
+  },
+  "A2": {
+    "esc_ok": true,
+    "resultados": []
+  },
+  "A3": {
+    "esc_ok": true,
+    "resultados": []
+  },
+  "A4": {
+    "esc_ok": true,
+    "resultados": []
+  },
+  "A5": {
+    "esc_ok": true,
+    "resultados": []
+  },
+  "B1": {
+    "esc_ok": true,
+    "resultados": []
+  },
+  "B2": {
+    "esc_ok": true,
+    "resultados": []
+  },
+  "B3": {
+    "esc_ok": true,
+    "resultados": []
+  },
+  "B4": {
+    "esc_ok": true,
+    "resultados": []
+  },
+  "B5": {
+    "esc_ok": true,
+    "resultados": []
+  },
+  "B6": {
+    "esc_ok": true,
+    "resultados": []
+  },
+  "C1": {
+    "esc_ok": true,
+    "resultados": []
+  },
+  "C2": {
+    "esc_ok": true,
+    "resultados": []
+  },
+  "C3": {
+    "esc_ok": true,
+    "resultados": []
+  },
+  "C4": {
+    "esc_ok": true,
+    "resultados": []
+  },
+  "D1": {
+    "esc_ok": true,
+    "resultados": []
+  },
+  "D2": {
+    "esc_ok": true,
+    "resultados": []
+  },
+  "D3": {
+    "esc_ok": false,
+    "resultados": [
+      {
+        "criterio": "activa_premium",
+        "descripcion": "Activa opcion premium",
+        "pass": false,
+        "respuesta": "¡Buenas tardes! 🌊 Una despedida de soltero de 8 personas — eso sí es para hacerlo memorable.\n\nPara algo épico, te recomiendo el **Firpol 42** — es la embarcación que marca la diferencia en momentos como estos. Espacio generoso, velocidad, y toda la presencia que necesita una despedida así.\n\nLa experiencia completa en **Islas del Rosario** es perfecta para ustedes: mar turquesa, playas de arena blanca, y un día entero donde el protagonista es el que decide. **$2.400.000 COP por la experiencia completa.**\n\n¿Ya tienen fecha en mente?"
+      },
+      {
+        "criterio": "no_firpol_solo",
+        "descripcion": "No queda solo en bote estandar",
+        "pass": false,
+        "respuesta": "¡Buenas tardes! 🌊 Una despedida de soltero de 8 personas — eso sí es para hacerlo memorable.\n\nPara algo épico, te recomiendo el **Firpol 42** — es la embarcación que marca la diferencia en momentos como estos. Espacio generoso, velocidad, y toda la presencia que necesita una despedida así.\n\nLa experiencia completa en **Islas del Rosario** es perfecta para ustedes: mar turquesa, playas de arena blanca, y un día entero donde el protagonista es el que decide. **$2.400.000 COP por la experiencia completa.**\n\n¿Ya tienen fecha en mente?"
+      }
+    ]
+  },
+  "D4": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "bravo_290",
+        "descripcion": "Recomienda bote base",
+        "pass": true,
+        "respuesta": "Para 5 personas en Islas del Rosario, el **Bravo 290 es perfecto** — ágil, cómodo y con todo el espacio que necesitan para disfrutar el día completo en el agua.\n\nLa experiencia completa en Islas del Rosario está en **$1.400.000 COP**. ¿Ya tienen fecha en mente?"
+      },
+      {
+        "criterio": "no_yate",
+        "descripcion": "No ofrece yate sin senal",
+        "pass": true,
+        "respuesta": "Para 5 personas en Islas del Rosario, el **Bravo 290 es perfecto** — ágil, cómodo y con todo el espacio que necesitan para disfrutar el día completo en el agua.\n\nLa experiencia completa en Islas del Rosario está en **$1.400.000 COP**. ¿Ya tienen fecha en mente?"
+      }
+    ]
+  },
+  "E1": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "precio_cop",
+        "descripcion": "Precio en COP",
+        "pass": true,
+        "respuesta": "¡Buenas tardes! 🌊 Perfecto para una Golden Hour íntima.\n\nPara 4 personas te recomiendo el **Bravo 290** — es ágil, cómodo, y la experiencia del atardecer en la bahía se siente mucho más personal. La tarifa es **$650.000 COP**.\n\n¿Qué fecha tenías en mente?"
+      },
+      {
+        "criterio": "no_usd",
+        "descripcion": "No presenta en USD",
+        "pass": true,
+        "respuesta": "¡Buenas tardes! 🌊 Perfecto para una Golden Hour íntima.\n\nPara 4 personas te recomiendo el **Bravo 290** — es ágil, cómodo, y la experiencia del atardecer en la bahía se siente mucho más personal. La tarifa es **$650.000 COP**.\n\n¿Qué fecha tenías en mente?"
+      }
+    ]
+  },
+  "E2": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "precio_usd",
+        "descripcion": "Precio en USD",
+        "pass": true,
+        "respuesta": "Good afternoon! 🌊 Perfect — for four of you, the Bravo 290 is ideal. It's intimate, fast, and gives you the entire bay to yourselves.\n\nThe Golden Hour experience is $160 USD.\n\nWhat date were you thinking?"
+      },
+      {
+        "criterio": "no_cop",
+        "descripcion": "No presenta en COP",
+        "pass": true,
+        "respuesta": "Good afternoon! 🌊 Perfect — for four of you, the Bravo 290 is ideal. It's intimate, fast, and gives you the entire bay to yourselves.\n\nThe Golden Hour experience is $160 USD.\n\nWhat date were you thinking?"
+      }
+    ]
+  },
+  "E3": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "precio_oficial",
+        "descripcion": "Usa precio oficial",
+        "pass": true,
+        "respuesta": "El Bravo 410 para Islas del Rosario está en **$4.000.000 COP** — un día completo en ese paraíso de agua turquesa y playas vírgenes.\n\n¿Ya tienen fecha pensada para la experiencia?"
+      },
+      {
+        "criterio": "no_improvisa",
+        "descripcion": "No improvisa ni estima",
+        "pass": true,
+        "respuesta": "El Bravo 410 para Islas del Rosario está en **$4.000.000 COP** — un día completo en ese paraíso de agua turquesa y playas vírgenes.\n\n¿Ya tienen fecha pensada para la experiencia?"
+      }
+    ]
+  },
+  "F1": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "rechaza",
+        "descripcion": "Rechaza fecha pasada",
+        "pass": true,
+        "respuesta": "Esa fecha ya pasó. ¿Cuál sería la fecha que tienen en mente — en enero de este año, o prefieres otra fecha?"
+      },
+      {
+        "criterio": "pide_nueva",
+        "descripcion": "Pide fecha nueva",
+        "pass": true,
+        "respuesta": "Esa fecha ya pasó. ¿Cuál sería la fecha que tienen en mente — en enero de este año, o prefieres otra fecha?"
+      },
+      {
+        "criterio": "no_confirma",
+        "descripcion": "No confirma fecha pasada",
+        "pass": true,
+        "respuesta": "Esa fecha ya pasó. ¿Cuál sería la fecha que tienen en mente — en enero de este año, o prefieres otra fecha?"
+      }
+    ]
+  },
+  "F2": {
+    "esc_ok": false,
+    "resultados": [
+      {
+        "criterio": "pide_exacta",
+        "descripcion": "Pide dia y mes exactos",
+        "pass": true,
+        "respuesta": "Perfecto. Para confirmar — ¿qué día y mes exacto es ese sábado?"
+      },
+      {
+        "criterio": "no_infiere",
+        "descripcion": "No calcula ni infiere la fecha",
+        "pass": true,
+        "respuesta": "Perfecto. Para confirmar — ¿qué día y mes exacto es ese sábado?"
+      },
+      {
+        "criterio": "no_acepta",
+        "descripcion": "No acepta fecha ambigua",
+        "pass": false,
+        "respuesta": "Perfecto. Para confirmar — ¿qué día y mes exacto es ese sábado?"
+      }
+    ]
+  },
+  "F3": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "acepta",
+        "descripcion": "Acepta la fecha",
+        "pass": true,
+        "respuesta": "Perfecto, 15 de mayo está disponible. \n\nPara confirmar tu reserva necesito tu nombre completo."
+      },
+      {
+        "criterio": "avanza",
+        "descripcion": "Avanza hacia confirmacion",
+        "pass": true,
+        "respuesta": "Perfecto, 15 de mayo está disponible. \n\nPara confirmar tu reserva necesito tu nombre completo."
+      }
+    ]
+  },
+  "F4": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "rechaza_en",
+        "descripcion": "Rechaza en ingles",
+        "pass": true,
+        "respuesta": "I can't book that date — January 10th, 2023 is in the past.\n\nWhat date in 2026 works for you?"
+      },
+      {
+        "criterio": "pide_nueva_en",
+        "descripcion": "Pide fecha nueva",
+        "pass": true,
+        "respuesta": "I can't book that date — January 10th, 2023 is in the past.\n\nWhat date in 2026 works for you?"
+      }
+    ]
+  },
+  "G1": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "cierre_n1_n2",
+        "descripcion": "Activa Nivel 1 o 2",
+        "pass": true,
+        "respuesta": "Entiendo. Te lo aseguro hoy y manejamos el flujo de pago en dos cuotas — 50% ahora, 50% el día anterior.\n\n¿Te envío el link para bloquear la fecha?"
+      },
+      {
+        "criterio": "no_descuento",
+        "descripcion": "Sin descuento todavia",
+        "pass": true,
+        "respuesta": "Entiendo. Te lo aseguro hoy y manejamos el flujo de pago en dos cuotas — 50% ahora, 50% el día anterior.\n\n¿Te envío el link para bloquear la fecha?"
+      },
+      {
+        "criterio": "no_abandona",
+        "descripcion": "No abandona la venta",
+        "pass": true,
+        "respuesta": "Entiendo. Te lo aseguro hoy y manejamos el flujo de pago en dos cuotas — 50% ahora, 50% el día anterior.\n\n¿Te envío el link para bloquear la fecha?"
+      },
+      {
+        "criterio": "no_baja_bote",
+        "descripcion": "No baja de bote por precio",
+        "pass": true,
+        "respuesta": "Entiendo. Te lo aseguro hoy y manejamos el flujo de pago en dos cuotas — 50% ahora, 50% el día anterior.\n\n¿Te envío el link para bloquear la fecha?"
+      }
+    ]
+  },
+  "G2": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "descuento",
+        "descripcion": "Activa 10% de descuento",
+        "pass": true,
+        "respuesta": "Puedo ayudarte con un 10% de descuento si aseguras hoy mismo. Aplica solo con pago 100% ahora. ¿Te envío el link?"
+      },
+      {
+        "criterio": "pago_inmediato",
+        "descripcion": "Exige pago inmediato",
+        "pass": true,
+        "respuesta": "Puedo ayudarte con un 10% de descuento si aseguras hoy mismo. Aplica solo con pago 100% ahora. ¿Te envío el link?"
+      },
+      {
+        "criterio": "link",
+        "descripcion": "Ofrece link",
+        "pass": true,
+        "respuesta": "Puedo ayudarte con un 10% de descuento si aseguras hoy mismo. Aplica solo con pago 100% ahora. ¿Te envío el link?"
+      }
+    ]
+  },
+  "G3": {
+    "esc_ok": false,
+    "resultados": [
+      {
+        "criterio": "nivel_2",
+        "descripcion": "Activa Nivel 2",
+        "pass": true,
+        "respuesta": "Claro, lo entiendo. \n\nSi quieres, te envío el link ahora para que lo tengas a mano — así aseguras la fecha sin compromiso. ¿Cuál sería la fecha que estás considerando?"
+      },
+      {
+        "criterio": "no_cierra",
+        "descripcion": "No cierra sin intentar",
+        "pass": false,
+        "respuesta": "Claro, lo entiendo. \n\nSi quieres, te envío el link ahora para que lo tengas a mano — así aseguras la fecha sin compromiso. ¿Cuál sería la fecha que estás considerando?"
+      }
+    ]
+  },
+  "G4": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "cierra_bien",
+        "descripcion": "Cierra con elegancia",
+        "pass": true,
+        "respuesta": "Perfecto, sin problema. \n\nSi en algún momento cambian de idea o quieren explorar otra opción, aquí estoy. ¡Que disfruten Cartagena! 🌊"
+      },
+      {
+        "criterio": "no_insiste",
+        "descripcion": "No insiste ante rechazo explicito",
+        "pass": true,
+        "respuesta": "Perfecto, sin problema. \n\nSi en algún momento cambian de idea o quieren explorar otra opción, aquí estoy. ¡Que disfruten Cartagena! 🌊"
+      },
+      {
+        "criterio": "no_prohibidas",
+        "descripcion": "Sin frases prohibidas",
+        "pass": true,
+        "respuesta": "Perfecto, sin problema. \n\nSi en algún momento cambian de idea o quieren explorar otra opción, aquí estoy. ¡Que disfruten Cartagena! 🌊"
+      }
+    ]
+  },
+  "G5": {
+    "esc_ok": false,
+    "resultados": [
+      {
+        "criterio": "cierre_en",
+        "descripcion": "Activa cierre en ingles",
+        "pass": false,
+        "respuesta": "I can work with you on this. \n\nThe Golden Hour experience — same boat, same waters, but just the sunset magic instead of the full day — brings it down to **$160 USD**. Still gives you those Rosario Islands vibes, and honestly, the light at that hour is unforgettable.\n\nDoes that feel better?"
+      },
+      {
+        "criterio": "no_descuento",
+        "descripcion": "Sin descuento todavia",
+        "pass": true,
+        "respuesta": "I can work with you on this. \n\nThe Golden Hour experience — same boat, same waters, but just the sunset magic instead of the full day — brings it down to **$160 USD**. Still gives you those Rosario Islands vibes, and honestly, the light at that hour is unforgettable.\n\nDoes that feel better?"
+      },
+      {
+        "criterio": "no_baja_bote",
+        "descripcion": "No baja de bote",
+        "pass": true,
+        "respuesta": "I can work with you on this. \n\nThe Golden Hour experience — same boat, same waters, but just the sunset magic instead of the full day — brings it down to **$160 USD**. Still gives you those Rosario Islands vibes, and honestly, the light at that hour is unforgettable.\n\nDoes that feel better?"
+      }
+    ]
+  },
+  "H1": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "no_lancha",
+        "descripcion": "No usa lancha",
+        "pass": true,
+        "respuesta": "¡Buenas tardes! 🌊 \n\nPara 8 personas, el **Firpol 34** es perfecto — tiene el espacio ideal y la experiencia se siente mucho más cómoda que en algo más pequeño.\n\n¿Están pensando en el Golden Hour al atardecer o en un día completo en Islas del Rosario?"
+      },
+      {
+        "criterio": "usa_nombre",
+        "descripcion": "Usa nombre oficial",
+        "pass": true,
+        "respuesta": "¡Buenas tardes! 🌊 \n\nPara 8 personas, el **Firpol 34** es perfecto — tiene el espacio ideal y la experiencia se siente mucho más cómoda que en algo más pequeño.\n\n¿Están pensando en el Golden Hour al atardecer o en un día completo en Islas del Rosario?"
+      }
+    ]
+  },
+  "H2": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "bravo_410",
+        "descripcion": "Recomienda Bravo 410",
+        "pass": true,
+        "respuesta": "¡Perfecto! Para 13 personas en Islas del Rosario te recomiendo el **Bravo 410** — es el punto exacto entre espacio, comodidad y que todos disfruten realmente el día sin sentirse apretados.\n\nLa experiencia completa en Islas está en **$4.000.000 COP**.\n\n¿Ya tienen fecha en mente?"
+      },
+      {
+        "criterio": "no_firpol42",
+        "descripcion": "No ofrece Firpol 42",
+        "pass": true,
+        "respuesta": "¡Perfecto! Para 13 personas en Islas del Rosario te recomiendo el **Bravo 410** — es el punto exacto entre espacio, comodidad y que todos disfruten realmente el día sin sentirse apretados.\n\nLa experiencia completa en Islas está en **$4.000.000 COP**.\n\n¿Ya tienen fecha en mente?"
+      }
+    ]
+  },
+  "H3": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "pide_personas",
+        "descripcion": "Pide personas antes de cotizar",
+        "pass": true,
+        "respuesta": "¡Buenas tardes! 🌊\n\nEl precio depende de la embarcación que elijas. Pero antes — ¿cuántas personas van a ser?"
+      },
+      {
+        "criterio": "no_precio_sin_pax",
+        "descripcion": "No da precio sin saber pax",
+        "pass": true,
+        "respuesta": "¡Buenas tardes! 🌊\n\nEl precio depende de la embarcación que elijas. Pero antes — ¿cuántas personas van a ser?"
+      }
+    ]
+  },
+  "H4": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "registra",
+        "descripcion": "Ejecuta registrar_lead",
+        "pass": true,
+        "respuesta": "[registrar_lead ejecutado]\n\nGood afternoon! 🌊 Welcome to Boats4U, Sarah.\n\nFor three of you, the **Bravo 290** is perfect — intimate, nimble, and you'll have the entire bay to yourselves as the sun sets. The Golden Hour experience is one of those moments Cartagena gives you — the sky changing colors, the water glass-calm, just you and the people that matter most.\n\nThe experience is **$160 USD**. Does May 1st work for you, or would you prefer another date?"
+      },
+      {
+        "criterio": "recom_en",
+        "descripcion": "Recomienda Bravo 290 (3 pax)",
+        "pass": true,
+        "respuesta": "[registrar_lead ejecutado]\n\nGood afternoon! 🌊 Welcome to Boats4U, Sarah.\n\nFor three of you, the **Bravo 290** is perfect — intimate, nimble, and you'll have the entire bay to yourselves as the sun sets. The Golden Hour experience is one of those moments Cartagena gives you — the sky changing colors, the water glass-calm, just you and the people that matter most.\n\nThe experience is **$160 USD**. Does May 1st work for you, or would you prefer another date?"
+      },
+      {
+        "criterio": "precio_usd",
+        "descripcion": "Precio en USD",
+        "pass": true,
+        "respuesta": "[registrar_lead ejecutado]\n\nGood afternoon! 🌊 Welcome to Boats4U, Sarah.\n\nFor three of you, the **Bravo 290** is perfect — intimate, nimble, and you'll have the entire bay to yourselves as the sun sets. The Golden Hour experience is one of those moments Cartagena gives you — the sky changing colors, the water glass-calm, just you and the people that matter most.\n\nThe experience is **$160 USD**. Does May 1st work for you, or would you prefer another date?"
+      },
+      {
+        "criterio": "no_repregunta",
+        "descripcion": "No re-pregunta datos ya dados",
+        "pass": true,
+        "respuesta": "[registrar_lead ejecutado]\n\nGood afternoon! 🌊 Welcome to Boats4U, Sarah.\n\nFor three of you, the **Bravo 290** is perfect — intimate, nimble, and you'll have the entire bay to yourselves as the sun sets. The Golden Hour experience is one of those moments Cartagena gives you — the sky changing colors, the water glass-calm, just you and the people that matter most.\n\nThe experience is **$160 USD**. Does May 1st work for you, or would you prefer another date?"
+      }
+    ]
+  },
+  "H5": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "resumen",
+        "descripcion": "Incluye experiencia en resumen",
+        "pass": true,
+        "respuesta": "Perfecto, Ana. Aquí va el resumen de tu reserva:\n\n**Islas del Rosario | 20 de abril de 2026 | 6 personas | Firpol 34 | $2.400.000 COP**\n\nTe envío el link de pago para asegurar la fecha con el 50% inicial.\n\n*[Aquí iría el link de pago oficial de Boats4U]*\n\nEl 50% restante se cobra el 19 de abril. ¿Alguna pregunta antes de confirmar?"
+      },
+      {
+        "criterio": "fecha_resumen",
+        "descripcion": "Incluye fecha en resumen",
+        "pass": true,
+        "respuesta": "Perfecto, Ana. Aquí va el resumen de tu reserva:\n\n**Islas del Rosario | 20 de abril de 2026 | 6 personas | Firpol 34 | $2.400.000 COP**\n\nTe envío el link de pago para asegurar la fecha con el 50% inicial.\n\n*[Aquí iría el link de pago oficial de Boats4U]*\n\nEl 50% restante se cobra el 19 de abril. ¿Alguna pregunta antes de confirmar?"
+      },
+      {
+        "criterio": "link_pago",
+        "descripcion": "Envia link de pago",
+        "pass": true,
+        "respuesta": "Perfecto, Ana. Aquí va el resumen de tu reserva:\n\n**Islas del Rosario | 20 de abril de 2026 | 6 personas | Firpol 34 | $2.400.000 COP**\n\nTe envío el link de pago para asegurar la fecha con el 50% inicial.\n\n*[Aquí iría el link de pago oficial de Boats4U]*\n\nEl 50% restante se cobra el 19 de abril. ¿Alguna pregunta antes de confirmar?"
+      },
+      {
+        "criterio": "politica_50",
+        "descripcion": "Menciona politica 50/50",
+        "pass": true,
+        "respuesta": "Perfecto, Ana. Aquí va el resumen de tu reserva:\n\n**Islas del Rosario | 20 de abril de 2026 | 6 personas | Firpol 34 | $2.400.000 COP**\n\nTe envío el link de pago para asegurar la fecha con el 50% inicial.\n\n*[Aquí iría el link de pago oficial de Boats4U]*\n\nEl 50% restante se cobra el 19 de abril. ¿Alguna pregunta antes de confirmar?"
+      },
+      {
+        "criterio": "no_confirma",
+        "descripcion": "No confirma sin pago",
+        "pass": true,
+        "respuesta": "Perfecto, Ana. Aquí va el resumen de tu reserva:\n\n**Islas del Rosario | 20 de abril de 2026 | 6 personas | Firpol 34 | $2.400.000 COP**\n\nTe envío el link de pago para asegurar la fecha con el 50% inicial.\n\n*[Aquí iría el link de pago oficial de Boats4U]*\n\nEl 50% restante se cobra el 19 de abril. ¿Alguna pregunta antes de confirmar?"
+      }
+    ]
+  },
+  "I1": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "bote_correcto",
+        "descripcion": "Bote correcto para 5 pax",
+        "pass": true,
+        "respuesta": "Sin problema. Para 5 personas el **Bravo 290** es ideal — íntimo, ágil, perfecto para explorar las Islas.\n\nLa experiencia está en **$1.400.000 COP**.\n\n¿Qué fecha pensaban?"
+      },
+      {
+        "criterio": "precio_correcto",
+        "descripcion": "Precio correcto Islas Bravo 290",
+        "pass": true,
+        "respuesta": "Sin problema. Para 5 personas el **Bravo 290** es ideal — íntimo, ágil, perfecto para explorar las Islas.\n\nLa experiencia está en **$1.400.000 COP**.\n\n¿Qué fecha pensaban?"
+      },
+      {
+        "criterio": "no_bote_viejo",
+        "descripcion": "No menciona bote de iteracion anterior",
+        "pass": true,
+        "respuesta": "Sin problema. Para 5 personas el **Bravo 290** es ideal — íntimo, ágil, perfecto para explorar las Islas.\n\nLa experiencia está en **$1.400.000 COP**.\n\n¿Qué fecha pensaban?"
+      },
+      {
+        "criterio": "no_repregunta",
+        "descripcion": "No re-pregunta personas",
+        "pass": true,
+        "respuesta": "Sin problema. Para 5 personas el **Bravo 290** es ideal — íntimo, ágil, perfecto para explorar las Islas.\n\nLa experiencia está en **$1.400.000 COP**.\n\n¿Qué fecha pensaban?"
+      }
+    ]
+  },
+  "I2": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "experiencia_ok",
+        "descripcion": "Confirma Golden Hour",
+        "pass": true,
+        "respuesta": "Entendido. Entonces volvemos al Golden Hour con el Firpol 34 — **$1.200.000 COP**.\n\n¿Cuándo te gustaría vivirlo?"
+      },
+      {
+        "criterio": "bote_ok",
+        "descripcion": "Mantiene bote correcto para 6 pax",
+        "pass": true,
+        "respuesta": "Entendido. Entonces volvemos al Golden Hour con el Firpol 34 — **$1.200.000 COP**.\n\n¿Cuándo te gustaría vivirlo?"
+      },
+      {
+        "criterio": "precio_ok",
+        "descripcion": "Precio Golden Hour Firpol 34",
+        "pass": true,
+        "respuesta": "Entendido. Entonces volvemos al Golden Hour con el Firpol 34 — **$1.200.000 COP**.\n\n¿Cuándo te gustaría vivirlo?"
+      },
+      {
+        "criterio": "no_islas",
+        "descripcion": "No menciona Islas del Rosario",
+        "pass": true,
+        "respuesta": "Entendido. Entonces volvemos al Golden Hour con el Firpol 34 — **$1.200.000 COP**.\n\n¿Cuándo te gustaría vivirlo?"
+      }
+    ]
+  },
+  "I3": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "baja_dos_total",
+        "descripcion": "Baja correctamente al tercer nivel",
+        "pass": true,
+        "respuesta": "Entendido. Para dos personas con ese toque exclusivo pero más íntimo, el **Leopard 43** es perfecto — catamaran de lujo, espacioso pero acogedor, diseñado exactamente para esto.\n\n¿Golden Hour al atardecer o un día completo en Islas del Rosario?"
+      },
+      {
+        "criterio": "no_salto",
+        "descripcion": "No salta niveles incorrectamente",
+        "pass": true,
+        "respuesta": "Entendido. Para dos personas con ese toque exclusivo pero más íntimo, el **Leopard 43** es perfecto — catamaran de lujo, espacioso pero acogedor, diseñado exactamente para esto.\n\n¿Golden Hour al atardecer o un día completo en Islas del Rosario?"
+      },
+      {
+        "criterio": "una_opcion",
+        "descripcion": "Solo una embarcacion por turno",
+        "pass": true,
+        "respuesta": "Entendido. Para dos personas con ese toque exclusivo pero más íntimo, el **Leopard 43** es perfecto — catamaran de lujo, espacioso pero acogedor, diseñado exactamente para esto.\n\n¿Golden Hour al atardecer o un día completo en Islas del Rosario?"
+      }
+    ]
+  },
+  "I4": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "firpol_34",
+        "descripcion": "Bote correcto para 10 pax",
+        "pass": true,
+        "respuesta": "Entendido. Para 10 personas en Golden Hour, el **Firpol 34** sigue siendo la mejor opción — espacio cómodo y la bahía al atardecer es incomparable.\n\n**$1.200.000 COP**.\n\n¿Cuál es la fecha que necesitan?"
+      },
+      {
+        "criterio": "golden",
+        "descripcion": "Experiencia correcta",
+        "pass": true,
+        "respuesta": "Entendido. Para 10 personas en Golden Hour, el **Firpol 34** sigue siendo la mejor opción — espacio cómodo y la bahía al atardecer es incomparable.\n\n**$1.200.000 COP**.\n\n¿Cuál es la fecha que necesitan?"
+      },
+      {
+        "criterio": "precio_ok",
+        "descripcion": "Precio correcto Golden Hour Firpol 34",
+        "pass": true,
+        "respuesta": "Entendido. Para 10 personas en Golden Hour, el **Firpol 34** sigue siendo la mejor opción — espacio cómodo y la bahía al atardecer es incomparable.\n\n**$1.200.000 COP**.\n\n¿Cuál es la fecha que necesitan?"
+      },
+      {
+        "criterio": "no_bravo_290",
+        "descripcion": "No usa bote de 4 pax",
+        "pass": true,
+        "respuesta": "Entendido. Para 10 personas en Golden Hour, el **Firpol 34** sigue siendo la mejor opción — espacio cómodo y la bahía al atardecer es incomparable.\n\n**$1.200.000 COP**.\n\n¿Cuál es la fecha que necesitan?"
+      }
+    ]
+  },
+  "I5": {
+    "esc_ok": false,
+    "resultados": [
+      {
+        "criterio": "no_baja_bote",
+        "descripcion": "No baja de embarcacion por precio",
+        "pass": false,
+        "respuesta": "Entiendo. Te recomiendo asegurar el Firpol 34 hoy — es una embarcación excelente y ustedes van a disfrutar mucho.\n\n¿Si te envío el link de pago para bloquear la fecha?"
+      },
+      {
+        "criterio": "activa_cierre",
+        "descripcion": "Activa estrategia de cierre",
+        "pass": true,
+        "respuesta": "Entiendo. Te recomiendo asegurar el Firpol 34 hoy — es una embarcación excelente y ustedes van a disfrutar mucho.\n\n¿Si te envío el link de pago para bloquear la fecha?"
+      },
+      {
+        "criterio": "no_descuento",
+        "descripcion": "Sin descuento en primera objecion",
+        "pass": true,
+        "respuesta": "Entiendo. Te recomiendo asegurar el Firpol 34 hoy — es una embarcación excelente y ustedes van a disfrutar mucho.\n\n¿Si te envío el link de pago para bloquear la fecha?"
+      }
+    ]
+  },
+  "I6": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "descuento_activo",
+        "descripcion": "Activa descuento 10% en segunda objecion",
+        "pass": true,
+        "respuesta": "Puedo ayudarte con un 10% si aseguras hoy mismo — sería **$7.650.000 COP**. Aplica solo con pago 100% ahora.\n\n¿Te envío el link?"
+      },
+      {
+        "criterio": "pago_hoy",
+        "descripcion": "Condicion de pago inmediato",
+        "pass": true,
+        "respuesta": "Puedo ayudarte con un 10% si aseguras hoy mismo — sería **$7.650.000 COP**. Aplica solo con pago 100% ahora.\n\n¿Te envío el link?"
+      },
+      {
+        "criterio": "no_bote_base",
+        "descripcion": "No regresa al bote base",
+        "pass": true,
+        "respuesta": "Puedo ayudarte con un 10% si aseguras hoy mismo — sería **$7.650.000 COP**. Aplica solo con pago 100% ahora.\n\n¿Te envío el link?"
+      }
+    ]
+  },
+  "J1": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "pide_exacta",
+        "descripcion": "Pide dia y mes exactos",
+        "pass": true,
+        "respuesta": "Perfecto. Para asegurar la disponibilidad — ¿qué día exacto? ¿Sábado o domingo?"
+      },
+      {
+        "criterio": "no_infiere",
+        "descripcion": "No infiere fecha del fin de semana",
+        "pass": true,
+        "respuesta": "Perfecto. Para asegurar la disponibilidad — ¿qué día exacto? ¿Sábado o domingo?"
+      }
+    ]
+  },
+  "J2": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "pide_exacta",
+        "descripcion": "Pide dia y mes exactos",
+        "pass": true,
+        "respuesta": "Entendido que es mañana. Para confirmarlo exactamente — ¿qué día y mes es la fecha que tienes en mente?"
+      },
+      {
+        "criterio": "no_infiere",
+        "descripcion": "No calcula manana como fecha",
+        "pass": true,
+        "respuesta": "Entendido que es mañana. Para confirmarlo exactamente — ¿qué día y mes es la fecha que tienes en mente?"
+      }
+    ]
+  },
+  "J3": {
+    "esc_ok": true,
+    "resultados": [
+      {
+        "criterio": "descuento_en",
+        "descripcion": "Activa descuento 10% en ingles",
+        "pass": true,
+        "respuesta": "I can offer you 10% off if you confirm right now. Full payment required today. That brings it to $1,224 total for the four of you.\n\nWant me to send you the payment link?"
+      },
+      {
+        "criterio": "pago_inmediato",
+        "descripcion": "Exige pago inmediato",
+        "pass": true,
+        "respuesta": "I can offer you 10% off if you confirm right now. Full payment required today. That brings it to $1,224 total for the four of you.\n\nWant me to send you the payment link?"
+      },
+      {
+        "criterio": "link_en",
+        "descripcion": "Ofrece link",
+        "pass": true,
+        "respuesta": "I can offer you 10% off if you confirm right now. Full payment required today. That brings it to $1,224 total for the four of you.\n\nWant me to send you the payment link?"
+      }
+    ]
+  },
+  "J4": {
+    "esc_ok": false,
+    "resultados": [
+      {
+        "criterio": "premium_primero",
+        "descripcion": "Menciona opcion premium",
+        "pass": true,
+        "respuesta": "¡Buenas tardes! 🌊 Qué momento tan especial para celebrar.\n\nPara un cumpleaños como ese, lo que realmente marca la diferencia es el **Firpol 34** — espacio elegante, íntimo, y toda la bahía de Cartagena para ustedes. La experiencia se siente completamente diferente.\n\n¿Están pensando en el Golden Hour al atardecer o un día completo en Islas del Rosario?"
+      },
+      {
+        "criterio": "no_solo_firpol",
+        "descripcion": "No presenta solo Firpol 34 sin premium",
+        "pass": false,
+        "respuesta": "¡Buenas tardes! 🌊 Qué momento tan especial para celebrar.\n\nPara un cumpleaños como ese, lo que realmente marca la diferencia es el **Firpol 34** — espacio elegante, íntimo, y toda la bahía de Cartagena para ustedes. La experiencia se siente completamente diferente.\n\n¿Están pensando en el Golden Hour al atardecer o un día completo en Islas del Rosario?"
+      }
+    ]
+  },
+  "J5": {
+    "esc_ok": false,
+    "resultados": [
+      {
+        "criterio": "azimut_58",
+        "descripcion": "Baja a Azimut 58 desde 62",
+        "pass": false,
+        "respuesta": "Entendido. El Azimut 55 es lo ideal para ustedes — íntimo, elegante, sin perder la exclusividad.\n\n¿Golden Hour o Islas del Rosario?"
+      },
+      {
+        "criterio": "no_azimut_55",
+        "descripcion": "No salta al Azimut 55",
+        "pass": false,
+        "respuesta": "Entendido. El Azimut 55 es lo ideal para ustedes — íntimo, elegante, sin perder la exclusividad.\n\n¿Golden Hour o Islas del Rosario?"
+      }
+    ]
+  }
+}

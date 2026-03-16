@@ -1,60 +1,502 @@
-
 =================================================================
-BOATS4U — Suite 45 Escenarios Laura 5.3
-    Modelo : claude-sonnet-4-6
-    Fecha  : 2026-03-16 11:34
-    Total  : 47 escenarios
+BOATS4U — SUITE COMPLETA 45 ESCENARIOS LAURA 5.3
+Modelo : claude-haiku-4-5-20251001
+Fecha  : 2026-03-16 12:12
 =================================================================
 
-  [A1] Saludo simple — noche...
-      FAIL
+─────────────────────────────────────────────────────────────────
+[A1] Saludo simple — noche  ->  FAIL
+─────────────────────────────────────────────────────────────────
 
-  [A2] Saludo en ingles — respuesta 100% ingles...
-      PASS
+─────────────────────────────────────────────────────────────────
+[A2] Saludo en ingles — respuesta 100% ingles  ->  OK
+─────────────────────────────────────────────────────────────────
 
-  [A3] Cliente con intencion clara — no reactiva pregunta de eleccion...
-      PASS
+─────────────────────────────────────────────────────────────────
+[A3] Cliente con intencion clara — no reactiva pregunta de eleccion  ->  OK
+─────────────────────────────────────────────────────────────────
 
-  [A4] Mensaje vacio / ininteligible...
-      PASS
+─────────────────────────────────────────────────────────────────
+[A4] Mensaje vacio / ininteligible  ->  OK
+─────────────────────────────────────────────────────────────────
 
-  [A5] Cliente pregunta que es Boats4U...
-      PASS
+─────────────────────────────────────────────────────────────────
+[A5] Cliente pregunta que es Boats4U  ->  OK
+─────────────────────────────────────────────────────────────────
 
-  [B1] 1 persona — Bravo 290...
-      PASS
+─────────────────────────────────────────────────────────────────
+[B1] 1 persona — Bravo 290  ->  OK
+─────────────────────────────────────────────────────────────────
 
-  [B2] 6 personas — Firpol 34...
-      PASS
+─────────────────────────────────────────────────────────────────
+[B2] 6 personas — Firpol 34  ->  OK
+─────────────────────────────────────────────────────────────────
 
-  [B3] 11 personas — Bravo 380...
-      PASS
 
-  [B4] 20 personas — Todomar 44...
-      PASS
+=================================================================
+BOATS4U — SUITE COMPLETA 45 ESCENARIOS LAURA 5.3
+Modelo : claude-haiku-4-5-20251001
+Fecha  : 2026-03-16 12:12
+=================================================================
 
-  [B5] 30 personas — 2 Bravo 410...
-      PASS
+─────────────────────────────────────────────────────────────────
+[A1] Saludo simple — noche  ->  FAIL
+─────────────────────────────────────────────────────────────────
 
-  [B6] 60 personas — escalar operador...
-      PASS
+─────────────────────────────────────────────────────────────────
+[A2] Saludo en ingles — respuesta 100% ingles  ->  OK
+─────────────────────────────────────────────────────────────────
 
-  [C1] Cambia de experiencia a mitad...
-      PASS
+─────────────────────────────────────────────────────────────────
+[A3] Cliente con intencion clara — no reactiva pregunta de eleccion  ->  OK
+─────────────────────────────────────────────────────────────────
 
-  [C2] Sube de 4 a 12 personas...
-      PASS
+─────────────────────────────────────────────────────────────────
+[A4] Mensaje vacio / ininteligible  ->  OK
+─────────────────────────────────────────────────────────────────
 
-  [C3] Baja de 15 a 3 personas...
-      PASS
+─────────────────────────────────────────────────────────────────
+[A5] Cliente pregunta que es Boats4U  ->  OK
+─────────────────────────────────────────────────────────────────
 
-  [C4] Pide mas espacio — cascada de botes...
-      PASS
+─────────────────────────────────────────────────────────────────
+[B1] 1 persona — Bravo 290  ->  OK
+─────────────────────────────────────────────────────────────────
 
-  [D1] Senal de lujo — Azimut 70 primero...
-      PASS
+─────────────────────────────────────────────────────────────────
+[B2] 6 personas — Firpol 34  ->  OK
+─────────────────────────────────────────────────────────────────
 
-  [D2] Cascada premium — baja exactamente un nivel desde Azimut 70...
-      PASS
+─────────────────────────────────────────────────────────────────
+[B3] 11 personas — Bravo 380  ->  OK
+─────────────────────────────────────────────────────────────────
 
-  [D3] Celebracion — despedida de soltero activa premium...
+─────────────────────────────────────────────────────────────────
+[B4] 20 personas — Todomar 44  ->  OK
+─────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────
+[B5] 30 personas — 2 Bravo 410  ->  OK
+─────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────
+[B6] 60 personas — escalar operador  ->  OK
+─────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────
+[C1] Cambia de experiencia a mitad  ->  OK
+─────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────
+[C2] Sube de 4 a 12 personas  ->  OK
+─────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────
+[C3] Baja de 15 a 3 personas  ->  OK
+─────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────
+[C4] Pide mas espacio — cascada de botes  ->  OK
+─────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────
+[D1] Senal de lujo — Azimut 70 primero  ->  OK
+─────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────
+[D2] Cascada premium — baja exactamente un nivel desde Azimut 70  ->  OK
+─────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────
+[D3] Celebracion — despedida de soltero activa premium  ->  FAIL
+─────────────────────────────────────────────────────────────────
+  FAIL  Activa opcion premium
+  FAIL  No queda solo en bote estandar
+
+  Ultima respuesta:
+  ¡Buenas tardes! 🌊 Una despedida de soltero de 8 personas — eso sí es para hacerlo memorable.
+
+Para algo épico, te recomiendo el **Firpol 42** — es la embarcación que marca la diferencia en momentos como estos. Espacio generoso, velocidad, y toda la presencia que necesita una despedida así.
+
+La experiencia completa en **Islas del Rosario** es perfecta para ustedes: mar turquesa, playas de arena bla...
+
+─────────────────────────────────────────────────────────────────
+[D4] No ofrece yate sin senal — grupo normal  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Recomienda bote base
+  OK  No ofrece yate sin senal
+
+  Ultima respuesta:
+  Para 5 personas en Islas del Rosario, el **Bravo 290 es perfecto** — ágil, cómodo y con todo el espacio que necesitan para disfrutar el día completo en el agua.
+
+La experiencia completa en Islas del Rosario está en **$1.400.000 COP**. ¿Ya tienen fecha en mente?
+
+─────────────────────────────────────────────────────────────────
+[E1] Precio en COP para cliente espanol  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Precio en COP
+  OK  No presenta en USD
+
+  Ultima respuesta:
+  ¡Buenas tardes! 🌊 Perfecto para una Golden Hour íntima.
+
+Para 4 personas te recomiendo el **Bravo 290** — es ágil, cómodo, y la experiencia del atardecer en la bahía se siente mucho más personal. La tarifa es **$650.000 COP**.
+
+¿Qué fecha tenías en mente?
+
+─────────────────────────────────────────────────────────────────
+[E2] Precio en USD para cliente ingles  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Precio en USD
+  OK  No presenta en COP
+
+  Ultima respuesta:
+  Good afternoon! 🌊 Perfect — for four of you, the Bravo 290 is ideal. It's intimate, fast, and gives you the entire bay to yourselves.
+
+The Golden Hour experience is $160 USD.
+
+What date were you thinking?
+
+─────────────────────────────────────────────────────────────────
+[E3] Nunca improvisa precio  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Usa precio oficial
+  OK  No improvisa ni estima
+
+  Ultima respuesta:
+  El Bravo 410 para Islas del Rosario está en **$4.000.000 COP** — un día completo en ese paraíso de agua turquesa y playas vírgenes.
+
+¿Ya tienen fecha pensada para la experiencia?
+
+─────────────────────────────────────────────────────────────────
+[F1] Fecha pasada — rechaza y pide nueva  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Rechaza fecha pasada
+  OK  Pide fecha nueva
+  OK  No confirma fecha pasada
+
+  Ultima respuesta:
+  Esa fecha ya pasó. ¿Cuál sería la fecha que tienen en mente — en enero de este año, o prefieres otra fecha?
+
+─────────────────────────────────────────────────────────────────
+[F2] Fecha ambigua — no infiere, pide exactitud  ->  FAIL
+─────────────────────────────────────────────────────────────────
+  OK  Pide dia y mes exactos
+  OK  No calcula ni infiere la fecha
+  FAIL  No acepta fecha ambigua
+
+  Ultima respuesta:
+  Perfecto. Para confirmar — ¿qué día y mes exacto es ese sábado?
+
+─────────────────────────────────────────────────────────────────
+[F3] Fecha futura valida — avanza directo  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Acepta la fecha
+  OK  Avanza hacia confirmacion
+
+  Ultima respuesta:
+  Perfecto, 15 de mayo está disponible. 
+
+Para confirmar tu reserva necesito tu nombre completo.
+
+─────────────────────────────────────────────────────────────────
+[F4] Fecha pasada en ingles  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Rechaza en ingles
+  OK  Pide fecha nueva
+
+  Ultima respuesta:
+  I can't book that date — January 10th, 2023 is in the past.
+
+What date in 2026 works for you?
+
+─────────────────────────────────────────────────────────────────
+[G1] Primera objecion — Nivel 1 o 2, sin descuento  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Activa Nivel 1 o 2
+  OK  Sin descuento todavia
+  OK  No abandona la venta
+  OK  No baja de bote por precio
+
+  Ultima respuesta:
+  Entiendo. Te lo aseguro hoy y manejamos el flujo de pago en dos cuotas — 50% ahora, 50% el día anterior.
+
+¿Te envío el link para bloquear la fecha?
+
+─────────────────────────────────────────────────────────────────
+[G2] Segunda objecion — activa descuento 10%  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Activa 10% de descuento
+  OK  Exige pago inmediato
+  OK  Ofrece link
+
+  Ultima respuesta:
+  Puedo ayudarte con un 10% de descuento si aseguras hoy mismo. Aplica solo con pago 100% ahora. ¿Te envío el link?
+
+─────────────────────────────────────────────────────────────────
+[G3] Dejame pensarlo — activa Nivel 2 directo  ->  FAIL
+─────────────────────────────────────────────────────────────────
+  OK  Activa Nivel 2
+  FAIL  No cierra sin intentar
+
+  Ultima respuesta:
+  Claro, lo entiendo. 
+
+Si quieres, te envío el link ahora para que lo tengas a mano — así aseguras la fecha sin compromiso. ¿Cuál sería la fecha que estás considerando?
+
+─────────────────────────────────────────────────────────────────
+[G4] Rechazo explicito — cierra con elegancia  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Cierra con elegancia
+  OK  No insiste ante rechazo explicito
+  OK  Sin frases prohibidas
+
+  Ultima respuesta:
+  Perfecto, sin problema. 
+
+Si en algún momento cambian de idea o quieren explorar otra opción, aquí estoy. ¡Que disfruten Cartagena! 🌊
+
+─────────────────────────────────────────────────────────────────
+[G5] Objecion en ingles — niveles en ingles  ->  FAIL
+─────────────────────────────────────────────────────────────────
+  FAIL  Activa cierre en ingles
+  OK  Sin descuento todavia
+  OK  No baja de bote
+
+  Ultima respuesta:
+  I can work with you on this. 
+
+The Golden Hour experience — same boat, same waters, but just the sunset magic instead of the full day — brings it down to **$160 USD**. Still gives you those Rosario Islands vibes, and honestly, the light at that hour is unforgettable.
+
+Does that feel better?
+
+─────────────────────────────────────────────────────────────────
+[H1] Nunca usa lancha  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  No usa lancha
+  OK  Usa nombre oficial
+
+  Ultima respuesta:
+  ¡Buenas tardes! 🌊 
+
+Para 8 personas, el **Firpol 34** es perfecto — tiene el espacio ideal y la experiencia se siente mucho más cómoda que en algo más pequeño.
+
+¿Están pensando en el Golden Hour al atardecer o en un día completo en Islas del Rosario?
+
+─────────────────────────────────────────────────────────────────
+[H2] Regla Firpol 42 — no se ofrece inicial  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Recomienda Bravo 410
+  OK  No ofrece Firpol 42
+
+  Ultima respuesta:
+  ¡Perfecto! Para 13 personas en Islas del Rosario te recomiendo el **Bravo 410** — es el punto exacto entre espacio, comodidad y que todos disfruten realmente el día sin sentirse apretados.
+
+La experiencia completa en Islas está en **$4.000.000 COP**.
+
+¿Ya tienen fecha en mente?
+
+─────────────────────────────────────────────────────────────────
+[H3] No pre-pregunta sin datos  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Pide personas antes de cotizar
+  OK  No da precio sin saber pax
+
+  Ultima respuesta:
+  ¡Buenas tardes! 🌊
+
+El precio depende de la embarcación que elijas. Pero antes — ¿cuántas personas van a ser?
+
+─────────────────────────────────────────────────────────────────
+[H4] Lead desde landing — datos completos con mock registrar_lead  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Ejecuta registrar_lead
+  OK  Recomienda Bravo 290 (3 pax)
+  OK  Precio en USD
+  OK  No re-pregunta datos ya dados
+
+  Ultima respuesta:
+  [registrar_lead ejecutado]
+
+Good afternoon! 🌊 Welcome to Boats4U, Sarah.
+
+For three of you, the **Bravo 290** is perfect — intimate, nimble, and you'll have the entire bay to yourselves as the sun sets. The Golden Hour experience is one of those moments Cartagena gives you — the sky changing colors, the water glass-calm, just you and the people that matter most.
+
+The experience is **$160 USD**. Do...
+
+─────────────────────────────────────────────────────────────────
+[H5] Confirmacion de reserva — resumen correcto  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Incluye experiencia en resumen
+  OK  Incluye fecha en resumen
+  OK  Envia link de pago
+  OK  Menciona politica 50/50
+  OK  No confirma sin pago
+
+  Ultima respuesta:
+  Perfecto, Ana. Aquí va el resumen de tu reserva:
+
+**Islas del Rosario | 20 de abril de 2026 | 6 personas | Firpol 34 | $2.400.000 COP**
+
+Te envío el link de pago para asegurar la fecha con el 50% inicial.
+
+*[Aquí iría el link de pago oficial de Boats4U]*
+
+El 50% restante se cobra el 19 de abril. ¿Alguna pregunta antes de confirmar?
+
+─────────────────────────────────────────────────────────────────
+[I1] Stress: cambia personas 4 veces seguidas  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Bote correcto para 5 pax
+  OK  Precio correcto Islas Bravo 290
+  OK  No menciona bote de iteracion anterior
+  OK  No re-pregunta personas
+
+  Ultima respuesta:
+  Sin problema. Para 5 personas el **Bravo 290** es ideal — íntimo, ágil, perfecto para explorar las Islas.
+
+La experiencia está en **$1.400.000 COP**.
+
+¿Qué fecha pensaban?
+
+─────────────────────────────────────────────────────────────────
+[I2] Stress: cambia de experiencia 3 veces  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Confirma Golden Hour
+  OK  Mantiene bote correcto para 6 pax
+  OK  Precio Golden Hour Firpol 34
+  OK  No menciona Islas del Rosario
+
+  Ultima respuesta:
+  Entendido. Entonces volvemos al Golden Hour con el Firpol 34 — **$1.200.000 COP**.
+
+¿Cuándo te gustaría vivirlo?
+
+─────────────────────────────────────────────────────────────────
+[I3] Stress: sube a premium, baja un nivel, baja otro nivel  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Baja correctamente al tercer nivel
+  OK  No salta niveles incorrectamente
+  OK  Solo una embarcacion por turno
+
+  Ultima respuesta:
+  Entendido. Para dos personas con ese toque exclusivo pero más íntimo, el **Leopard 43** es perfecto — catamaran de lujo, espacioso pero acogedor, diseñado exactamente para esto.
+
+¿Golden Hour al atardecer o un día completo en Islas del Rosario?
+
+─────────────────────────────────────────────────────────────────
+[I4] Stress: cambia personas + experiencia + vuelve al inicio  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Bote correcto para 10 pax
+  OK  Experiencia correcta
+  OK  Precio correcto Golden Hour Firpol 34
+  OK  No usa bote de 4 pax
+
+  Ultima respuesta:
+  Entendido. Para 10 personas en Golden Hour, el **Firpol 34** sigue siendo la mejor opción — espacio cómodo y la bahía al atardecer es incomparable.
+
+**$1.200.000 COP**.
+
+¿Cuál es la fecha que necesitan?
+
+─────────────────────────────────────────────────────────────────
+[I5] Stress: sube bote, cliente dice caro, no baja bote  ->  FAIL
+─────────────────────────────────────────────────────────────────
+  FAIL  No baja de embarcacion por precio
+  OK  Activa estrategia de cierre
+  OK  Sin descuento en primera objecion
+
+  Ultima respuesta:
+  Entiendo. Te recomiendo asegurar el Firpol 34 hoy — es una embarcación excelente y ustedes van a disfrutar mucho.
+
+¿Si te envío el link de pago para bloquear la fecha?
+
+─────────────────────────────────────────────────────────────────
+[I6] Stress: conversacion larga — memoria completa  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Activa descuento 10% en segunda objecion
+  OK  Condicion de pago inmediato
+  OK  No regresa al bote base
+
+  Ultima respuesta:
+  Puedo ayudarte con un 10% si aseguras hoy mismo — sería **$7.650.000 COP**. Aplica solo con pago 100% ahora.
+
+¿Te envío el link?
+
+─────────────────────────────────────────────────────────────────
+[J1] Fix F2 — no infiere fin de semana  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Pide dia y mes exactos
+  OK  No infiere fecha del fin de semana
+
+  Ultima respuesta:
+  Perfecto. Para asegurar la disponibilidad — ¿qué día exacto? ¿Sábado o domingo?
+
+─────────────────────────────────────────────────────────────────
+[J2] Fix F2 — no infiere manana  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Pide dia y mes exactos
+  OK  No calcula manana como fecha
+
+  Ultima respuesta:
+  Entendido que es mañana. Para confirmarlo exactamente — ¿qué día y mes es la fecha que tienes en mente?
+
+─────────────────────────────────────────────────────────────────
+[J3] Fix G2 — segunda objecion en ingles activa descuento  ->  OK
+─────────────────────────────────────────────────────────────────
+  OK  Activa descuento 10% en ingles
+  OK  Exige pago inmediato
+  OK  Ofrece link
+
+  Ultima respuesta:
+  I can offer you 10% off if you confirm right now. Full payment required today. That brings it to $1,224 total for the four of you.
+
+Want me to send you the payment link?
+
+─────────────────────────────────────────────────────────────────
+[J4] Fix D3 — cumpleanos activa premium antes que bote base  ->  FAIL
+─────────────────────────────────────────────────────────────────
+  OK  Menciona opcion premium
+  FAIL  No presenta solo Firpol 34 sin premium
+
+  Ultima respuesta:
+  ¡Buenas tardes! 🌊 Qué momento tan especial para celebrar.
+
+Para un cumpleaños como ese, lo que realmente marca la diferencia es el **Firpol 34** — espacio elegante, íntimo, y toda la bahía de Cartagena para ustedes. La experiencia se siente completamente diferente.
+
+¿Están pensando en el Golden Hour al atardecer o un día completo en Islas del Rosario?
+
+─────────────────────────────────────────────────────────────────
+[J5] Fix D2 — bajada gradual desde Azimut 62  ->  FAIL
+─────────────────────────────────────────────────────────────────
+  FAIL  Baja a Azimut 58 desde 62
+  FAIL  No salta al Azimut 55
+
+  Ultima respuesta:
+  Entendido. El Azimut 55 es lo ideal para ustedes — íntimo, elegante, sin perder la exclusividad.
+
+¿Golden Hour o Islas del Rosario?
+
+=================================================================
+RESUMEN POR BLOQUE
+=================================================================
+  A — Activacion y saludo                 4/5
+  B — Tabla de pasajeros                  6/6
+  C — Cambios mid-conversacion            4/4
+  D — Upsell y cascada premium            3/4
+  E — Precios y moneda                    3/3
+  F — Fechas                              3/4
+  G — Estrategia de cierre                3/5
+  H — Reglas operativas                   5/5
+  I — Stress test — cambios multiples     5/6
+  J — Cobertura fixes 5.3                 3/5
+
+=================================================================
+RESUMEN FINAL
+=================================================================
+Escenarios : 39/47 PASS
+Criterios  : 73/82 PASS  (89%)
+Veredicto  : REQUIERE AJUSTES MENORES
+=================================================================
+
+  Guardado en: resultado_test_laura5.txt
