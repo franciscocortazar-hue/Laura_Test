@@ -2,7 +2,7 @@
 =================================================================
 BOATS4U — Suite 45 Escenarios Laura 5.3
     Modelo : claude-sonnet-4-6
-    Fecha  : 2026-03-16 03:41
+    Fecha  : 2026-03-16 04:46
     Total  : 47 escenarios
 =================================================================
 
@@ -16,72 +16,3 @@ BOATS4U — Suite 45 Escenarios Laura 5.3
       PASS
 
   [A4] Mensaje vacio / ininteligible...
-      PASS
-
-  [A5] Cliente pregunta que es Boats4U...
-      PASS
-
-  [B1] 1 persona — Bravo 290...
-      PASS
-
-  [B2] 6 personas — Firpol 34...
-      PASS
-
-  [B3] 11 personas — Bravo 380...
-      PASS
-
-  [B4] 20 personas — Todomar 44...
-      PASS
-
-  [B5] 30 personas — 2 Bravo 410...
-      PASS
-
-  [B6] 60 personas — escalar operador...
-      PASS
-
-  [C1] Cambia de experiencia a mitad...
-      PASS
-
-  [C2] Sube de 4 a 12 personas...
-      PASS
-
-  [C3] Baja de 15 a 3 personas...
-      PASS
-
-  [C4] Pide mas espacio — cascada de botes...
-      PASS
-
-  [D1] Senal de lujo — Azimut 70 primero...
-      PASS
-
-  [D2] Cascada premium — baja exactamente un nivel desde Azimut 70...
-      PASS
-
-  [D3] Celebracion — despedida de soltero activa premium...
-      PASS
-
-  [D4] No ofrece yate sin senal — grupo normal...
-      PASS
-
-  [E1] Precio en COP para cliente espanol...
-      PASS
-
-  [E2] Precio en USD para cliente ingles...
-      PASS
-
-  [E3] Nunca improvisa precio...
-      PASS
-
-  [F1] Fecha pasada — rechaza y pide nueva...
-      PASS
-
-  [F2] Fecha ambigua — no infiere, pide exactitud...
-      PASS
-
-  [F3] Fecha futura valida — avanza directo...
-      PASS
-
-  [F4] Fecha pasada en ingles...
-      PASS
-
-  [G1] Primera objecion — Nivel 1 o 2, sin descuento...
