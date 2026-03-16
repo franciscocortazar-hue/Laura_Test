@@ -1,0 +1,547 @@
+=================================================================
+INFORME DE ANÁLISIS — LAURA 5.3
+Generado por: Claude Code (claude-sonnet-4-6)
+Fecha: 2026-03-16
+Prompt analizado: LAURA_5_3.1.md
+Modelo testeado: claude-haiku-4-5-20251001
+Suite de pruebas: test_laura5.py
+=================================================================
+
+
+─────────────────────────────────────────────────────────────────
+1. RESULTADO GLOBAL
+─────────────────────────────────────────────────────────────────
+
+  Escenarios PASS : 38 / 47  (81%)
+  Criterios PASS  : 126 / 139 (91%)
+  Veredicto       : REQUIERE AJUSTES MENORES
+
+
+─────────────────────────────────────────────────────────────────
+2. RESULTADOS POR BLOQUE
+─────────────────────────────────────────────────────────────────
+
+  A — Activación y saludo           4/5   INCOMPLETO
+  B — Tabla de pasajeros            5/6   INCOMPLETO
+  C — Cambios mid-conversación      4/4   COMPLETO
+  D — Upsell y cascada premium      3/4   INCOMPLETO
+  E — Precios y moneda              2/3   INCOMPLETO
+  F — Fechas                        3/4   INCOMPLETO
+  G — Estrategia de cierre          5/5   COMPLETO
+  H — Reglas operativas             4/5   INCOMPLETO
+  I — Stress test                   5/6   INCOMPLETO
+  J — Cobertura fixes 5.3           3/5   INCOMPLETO
+
+
+─────────────────────────────────────────────────────────────────
+3. ANÁLISIS DETALLADO DE FALLOS
+─────────────────────────────────────────────────────────────────
+
+
+[A1] Saludo nocturno incorrecto
+────────────────────────────────
+  Escenario  : Saludo simple a las 20:45 (franja nocturna)
+  Input      : "Hola"
+  Respuesta  : "¡Buenas tardes! 🌊..."
+  Esperado   : "¡Buenas noches!"
+
+  Criterios fallidos:
+    - saludo_noche : Saludo nocturno correcto
+    - pregunta     : Cierra con pregunta (secundario)
+
+  Causa raíz:
+    El test inyecta la hora actual mediante:
+      content.replace("{{CURRENT_DATETIME}}", "2026-03-15 20:45")
+
+    Sin embargo, el prompt LAURA_5_3.1.md contiene en la sección 9:
+      "Saludo según franja horaria basado en CURRENT_DATETIME"
+
+    El placeholder en el prompt NO tiene dobles llaves ({{ }}), por lo
+    que el replace() de Python no encuentra ninguna coincidencia y nunca
+    sustituye el valor. El modelo recibe el texto literal "CURRENT_DATETIME"
+    sin saber que son las 20:45, y por defecto asume horario de tarde.
+
+  Impacto: 1 escenario fallido, 2 criterios.
+
+
+[B1] 1 persona no activa Bravo 290
+────────────────────────────────────
+  Escenario  : Cliente individual solicita Golden Hour
+  Input      : "Soy solo yo, quiero el Golden Hour"
+  Respuesta  : Pregunta por fecha en vez de recomendar Bravo 290 + precio
+  Esperado   : Recomendar Bravo 290 con precio $650.000 COP
+
+  Criterios fallidos:
+    - bravo_290  : Recomienda Bravo 290
+    - precio_cop : Precio correcto
+
+  Causa raíz:
+    La sección 10.1 indica que 1-5 pasajeros → Bravo 290, y la sección 8
+    (Regla Maestra de Estado) indica que al conocer el número de pasajeros
+    se debe recomendar la embarcación de inmediato. Sin embargo, el modelo
+    duda ante el caso de 1 solo pasajero — caso atípico que no tiene un
+    ejemplo explícito en el prompt. El modelo parece interpretar que faltan
+    datos y prefiere avanzar preguntando por la fecha antes de confirmar
+    la recomendación.
+
+  Impacto: 1 escenario fallido, 2 criterios.
+
+
+[D3] Despedida de soltero no activa premium
+─────────────────────────────────────────────
+  Escenario  : Grupo de 8 con señal de celebración y lenguaje aspiracional
+  Input      : "Somos 8, es una despedida de soltero, queremos algo épico"
+  Respuesta  : Recomienda Bravo 410 (bote estándar para 8 pax) con
+               lenguaje entusiasta pero sin mencionar yate ni catamarán
+  Esperado   : Presentar primero opción premium (Azimut o Leopard)
+
+  Criterios fallidos:
+    - activa_premium : Activa opción premium (azimut|leopard|exclusiv|premium|lujo)
+
+  Causa raíz:
+    La sección 10.2 incluye la regla de celebración:
+      "Cuando el cliente menciona una celebración... PRIMERO mencionar el
+       upgrade premium como opción destacada."
+
+    Sin embargo, el modelo prioriza la tabla de pasajeros (8 pax → Bravo 410)
+    sobre la señal de celebración. Las palabras "despedida de soltero" y
+    "algo épico" no están listadas como ejemplos explícitos de triggers
+    premium. El modelo interpreta que Bravo 410 ya ES "algo épico" para
+    8 personas y no considera necesario escalar a yate.
+
+  Impacto: 1 escenario fallido, 1 criterio.
+
+
+[E3] Pide pax en vez de dar precio directo
+────────────────────────────────────────────
+  Escenario  : Cliente pregunta precio de embarcación y experiencia específicas
+  Input      : "¿Cuánto cuesta el Bravo 410 para Islas del Rosario?"
+  Respuesta  : "Antes de darte el precio exacto, necesito saber —
+                ¿cuántas personas van a ser en la experiencia?"
+  Esperado   : Responder directamente $4.000.000 COP / $975 USD
+
+  Criterios fallidos:
+    - precio_oficial : Usa precio oficial (4.000|975)
+
+  Causa raíz:
+    La sección 11 indica: "No recomendar embarcación sin conocer el número
+    de pasajeros." El modelo extiende esta regla también a la acción de
+    dar precios, aunque en este caso el cliente ya especificó tanto la
+    embarcación (Bravo 410) como la experiencia (Islas del Rosario).
+    La tabla de precios contiene ese valor exacto. No hay excepción
+    documentada para cuando el cliente ya conoce y nombra la embarcación.
+
+  Impacto: 1 escenario fallido, 1 criterio.
+
+
+[F2] "Perfecto" interpretado como aceptación de fecha ambigua
+──────────────────────────────────────────────────────────────
+  Escenario  : Cliente da fecha relativa "próximo sábado"
+  Input      : "Queremos ir el próximo sábado"
+  Respuesta  : "Perfecto. ¿Cuál es la fecha exacta — día y mes?"
+  Esperado   : Pedir exactitud sin palabras de afirmación previas
+
+  Criterios fallidos:
+    - no_acepta : No acepta fecha ambigua  (regex: perfecto|anotad|reservad)
+
+  Causa raíz:
+    Funcionalmente Laura actúa bien: NO infiere ni calcula la fecha, y
+    solicita día y mes exactos. Sin embargo, la respuesta inicia con
+    "Perfecto." — el test detecta esa palabra como indicador de que
+    Laura aceptó la fecha ambigua antes de pedir exactitud.
+
+    La sección 12 prohíbe calcular fechas ambiguas, pero no instruye
+    sobre el tono de transición al pedir la aclaración.
+
+  Nota: Este fallo es parcialmente un problema de fraseología, no de
+  lógica. La corrección es mínima pero necesaria para pasar el criterio.
+
+  Impacto: 1 escenario fallido, 1 criterio.
+
+
+[H5] "Confirmada" sin pago recibido
+──────────────────────────────────────
+  Escenario  : Cliente entrega nombre y correo, Laura envía resumen y link
+  Input T3   : "Mi nombre es Ana Gómez, correo ana@gmail.com"
+  Respuesta  : "La reserva queda confirmada cuando recibimos el pago.
+                ¿Alguna pregunta antes de proceder?"
+  Esperado   : Enviar link sin usar la palabra "confirmada"
+
+  Criterios fallidos:
+    - no_confirma : No confirma sin pago  (regex: confirmad|reservad.*list|todo listo)
+
+  Causa raíz:
+    La sección 15 dice: "La reserva queda confirmada solo con pago recibido."
+    El modelo replica casi textualmente esa instrucción en su respuesta,
+    pero la frase "queda confirmada" contiene la raíz "confirmad" que el
+    test detecta como confirmación prematura — aunque gramaticalmente
+    esté condicionada al pago.
+
+    La instrucción debería prohibir explícitamente el uso de esa terminología
+    antes del pago, no solo la acción.
+
+  Impacto: 1 escenario fallido, 1 criterio.
+
+
+[I5] Vuelve al bote anterior ante objeción de precio
+──────────────────────────────────────────────────────
+  Escenario  : Sube bote por pedido del cliente, luego cliente dice que es caro
+  Flujo      :
+    T1: "Somos 6 para Islas del Rosario"  → Laura recomienda Firpol 34
+    T2: "¿Tienen algo más grande?"         → Laura sube (ej. Bravo 380)
+    T3: "Ese precio está muy alto"         → Laura debería activar cierre
+                                              sobre Bravo 380
+  Respuesta  : "Te recomiendo asegurar el Firpol 34 hoy..."
+               (vuelve al bote original)
+  Esperado   : Activar cierre (asegurar/link/hoy) sobre la embarcación subida
+
+  Criterios fallidos:
+    - no_baja_bote : No baja de embarcación por precio  (regex: firpol 34|bravo 290)
+
+  Causa raíz:
+    La sección 10.2 indica que ante objeción de precio se debe activar
+    §16, no bajar de embarcación. Sin embargo, la regla no especifica
+    explícitamente cuál es la "embarcación activa" cuando hubo un upsell.
+    El modelo recuerda el Firpol 34 como la recomendación base de inicio
+    y lo menciona al activar el cierre, interpretándolo como la referencia
+    de precio "razonable".
+
+  Impacto: 1 escenario fallido, 1 criterio.
+
+
+[J3] Segunda objeción en inglés no activa descuento
+──────────────────────────────────────────────────────
+  Escenario  : Flujo de cierre completo en inglés (equivalente a G2 en español)
+  Flujo      :
+    T1: "We are 4 for the Rosario Islands"  → cotización
+    T2: "That's too expensive"               → Nivel 1 de cierre
+    T3: "I really can't afford it"           → debería activar Nivel 3 (10% off)
+  Respuesta  : "I hear you. Let me ask — what's your budget range?"
+  Esperado   : "I can offer you 10% off if you confirm right now.
+                Full payment required today. Want me to send the link?"
+
+  Criterios fallidos:
+    - descuento_en   : Activa descuento 10% en inglés
+    - pago_inmediato : Exige pago inmediato
+    - link_en        : Ofrece link
+
+  Causa raíz:
+    La tabla de triggers de cierre en la sección 16 lista señales en
+    español: "Está caro", "es mucho", "no puedo pagarlo". El mismo flujo
+    pasa perfectamente en español (G2 = PASS). Cuando el cliente habla
+    en inglés, el modelo no conecta "I really can't afford it" con el
+    Nivel 3, y en su lugar adopta una estrategia diferente (preguntar
+    por presupuesto) que no está en el prompt pero parece razonable como
+    comportamiento de ventas genérico.
+
+  Impacto: 1 escenario fallido, 3 criterios.
+
+
+[J5] Salta a Leopard 43 en vez de Azimut 58
+─────────────────────────────────────────────
+  Escenario  : Bajada gradual en cascada premium desde Azimut 62
+  Flujo      :
+    T1: "Somos 2, algo muy exclusivo"      → Azimut 70
+    T2: "¿Algo más íntimo?"                → Azimut 62  (baja 1 nivel correcto)
+    T3: "Sí, pero algo más pequeño todavía"→ debería ofrecer Azimut 58
+  Respuesta  : "El Leopard 43 es ideal para dos..."
+  Esperado   : "El Azimut 58..."
+
+  Criterios fallidos:
+    - azimut_58 : Baja a Azimut 58 desde 62
+
+  Causa raíz:
+    La sección 10.2 contiene la siguiente frase:
+      "Si el cliente prefiere algo más íntimo, evaluar catamarán como
+       alternativa al yate."
+
+    Esta instrucción es ambigua: el modelo la interpreta como una
+    invitación a saltar a catamarán cuando el cliente pide algo más
+    pequeño, antes de agotar la jerarquía de yates (70→62→58→55).
+    El Leopard 43 no está en la jerarquía de yates, es una categoría
+    diferente, y el salto viola la regla de "exactamente un nivel".
+
+  Impacto: 1 escenario fallido, 1 criterio.
+
+
+─────────────────────────────────────────────────────────────────
+4. CAMBIOS PROPUESTOS AL PROMPT LAURA_5_3.1.md → LAURA_5_4.md
+─────────────────────────────────────────────────────────────────
+
+
+CAMBIO #1 — Fix A1: Placeholder de datetime
+─────────────────────────────────────────────
+  Sección   : §9 — Activación Conversacional
+  Tipo      : Corrección técnica de placeholder
+
+  ANTES:
+    "Saludo según franja horaria basado en CURRENT_DATETIME"
+
+  DESPUÉS:
+    "Saludo según franja horaria basado en {{CURRENT_DATETIME}}"
+
+  Justificación:
+    El código en test_laura5.py ejecuta:
+      content.replace("{{CURRENT_DATETIME}}", "2026-03-15 20:45")
+    Si el prompt no contiene "{{CURRENT_DATETIME}}", el replace no tiene
+    efecto y el modelo nunca recibe la hora real del sistema.
+
+  Escenarios impactados: A1
+  Criterios recuperados: 2
+
+
+CAMBIO #2 — Fix B1: 1 pasajero es reserva válida
+──────────────────────────────────────────────────
+  Sección   : §10.1 — Tabla de recomendación por número de pasajeros
+  Tipo      : Adición de nota aclaratoria
+
+  AÑADIR al final de §10.1:
+    "Nota: 1 pasajero es una reserva completamente válida. Recomendar
+     Bravo 290 con el mismo flujo estándar sin dudas ni preguntas
+     adicionales."
+
+  Justificación:
+    El modelo no tiene un ejemplo explícito para el caso de 1 solo
+    pasajero y desvía el flujo hacia preguntas adicionales. La nota
+    elimina la ambigüedad.
+
+  Escenarios impactados: B1
+  Criterios recuperados: 2
+
+
+CAMBIO #3 — Fix D3/J4: Reforzar regla de celebración
+──────────────────────────────────────────────────────
+  Sección   : §10.2 — Estrategia de Upsell / Regla de celebración
+  Tipo      : Refuerzo de regla con ejemplos explícitos
+
+  ANTES (extracto):
+    "Regla de celebración — prioridad sobre el flujo base:
+     Cuando el cliente menciona una celebración (despedida de soltero,
+     cumpleaños, aniversario, evento corporativo) y ya se conoce el
+     número de pasajeros:
+     1. PRIMERO mencionar el upgrade premium como opción destacada.
+     2. DESPUÉS presentar el precio del bote base como alternativa."
+
+  DESPUÉS:
+    "Regla de celebración — prioridad ABSOLUTA sobre el flujo base:
+     Cuando el cliente menciona cualquiera de estas señales:
+       - Celebración explícita: despedida de soltero, bachelorette,
+         cumpleaños, aniversario, evento corporativo
+       - Lenguaje aspiracional: 'algo épico', 'algo increíble',
+         'sorprender', 'que no se olvide', 'especial'
+     → SIEMPRE presentar primero un yate o catamarán de la cascada
+       premium, sin importar el número de pasajeros.
+     → NUNCA recomendar solo el bote base cuando hay señal de
+       celebración activa.
+     → La tabla de pasajeros NO aplica como primera respuesta cuando
+       hay señal de celebración."
+
+  Escenarios impactados: D3, J4 (J4 ya pasaba, refuerzo preventivo)
+  Criterios recuperados: 1
+
+
+CAMBIO #4 — Fix E3: Precio directo cuando bote+experiencia ya están dados
+──────────────────────────────────────────────────────────────────────────
+  Sección   : §11 — Flujo Comercial
+  Tipo      : Adición de excepción explícita
+
+  AÑADIR al final de §11:
+    "Excepción de precio directo: Si el cliente pregunta por el precio
+     de una embarcación específica y una experiencia específica (ej:
+     '¿cuánto cuesta el Bravo 410 para Islas del Rosario?'), entregar
+     el precio oficial directamente desde la tabla sin solicitar el
+     número de pasajeros. El cliente ya identificó la embarcación;
+     no es necesario recomendar ni validar."
+
+  Justificación:
+    La regla "no dar precio sin conocer pax" aplica cuando Laura debe
+    recomendar. Cuando el cliente ya seleccionó el bote, la regla no
+    aplica y pedir pax es innecesario y genera fricción.
+
+  Escenarios impactados: E3
+  Criterios recuperados: 1
+
+
+CAMBIO #5 — Fix F2/J1/J2: Prohibir afirmaciones ante fecha ambigua
+────────────────────────────────────────────────────────────────────
+  Sección   : §12 — Validación de Fecha
+  Tipo      : Adición de instrucción de tono
+
+  AÑADIR en §12, después de la regla de fechas ambiguas:
+    "Cuando la fecha sea ambigua, NO usar palabras de afirmación como
+     'Perfecto', 'Entendido', 'Genial' o 'Claro' antes de pedir la
+     fecha exacta. Estas palabras implican aceptación.
+     Ir directo a la solicitud:
+       INCORRECTO: 'Perfecto. ¿Cuál es la fecha exacta?'
+       CORRECTO: '¿Cuál es el día y mes exactos?'"
+
+  Justificación:
+    La lógica es correcta (no infiere, pide exactitud) pero la fraseología
+    con "Perfecto" hace fallar el criterio de no-aceptación.
+
+  Escenarios impactados: F2, J1, J2 (J1 y J2 ya pasaban, refuerzo preventivo)
+  Criterios recuperados: 1
+
+
+CAMBIO #6 — Fix H5: Prohibir "confirmada" antes del pago
+──────────────────────────────────────────────────────────
+  Sección   : §14 — Política de Pago y §15 — Confirmación de Reserva
+  Tipo      : Restricción de vocabulario
+
+  AÑADIR en §14:
+    "NUNCA usar las palabras 'confirmada', 'confirmado', 'reservada' ni
+     'reservado' antes de recibir el pago. Usar en su lugar:
+       INCORRECTO: 'La reserva queda confirmada cuando recibimos el pago.'
+       CORRECTO: 'Para asegurar tu fecha, aquí el link de pago —
+                  50% ahora, 50% el día anterior.'"
+
+  Justificación:
+    El modelo replica textualmente la instrucción del prompt ("queda
+    confirmada solo con pago recibido"), que contiene la raíz prohibida.
+    La instrucción debe cambiar para que el modelo no pueda replicarla.
+
+  Escenarios impactados: H5
+  Criterios recuperados: 1
+
+
+CAMBIO #7 — Fix I5: La embarcación activa es siempre la última presentada
+──────────────────────────────────────────────────────────────────────────
+  Sección   : §10.2 — Cascada de botes
+  Tipo      : Aclaración de estado conversacional
+
+  AÑADIR en §10.2, después de la regla de cascada:
+    "Regla de embarcación activa: Una vez que el cliente solicitó
+     subir de embarcación y Laura presentó la nueva opción, esa es
+     la embarcación activa de la conversación. Si el cliente objeta
+     el precio de la embarcación mayor, activar §16 sobre esa
+     embarcación. Nunca volver a mencionar la embarcación anterior
+     como referencia ni como alternativa de precio."
+
+  Justificación:
+    Sin esta regla, el modelo trata la primera recomendación como
+    "base" y la menciona al activar el cierre, lo que se interpreta
+    como bajar de bote.
+
+  Escenarios impactados: I5
+  Criterios recuperados: 1
+
+
+CAMBIO #8 — Fix J3: Triggers de cierre en inglés
+──────────────────────────────────────────────────
+  Sección   : §16 — Estrategia de Cierre
+  Tipo      : Adición de triggers bilingües
+
+  ANTES (tabla de triggers, extracto):
+    | "Está caro", "es mucho", "no tengo presupuesto", "expensive",
+      "too much" | Nivel 1. Si persiste, Nivel 2 |
+    | Segunda objeción de precio tras Nivel 1 o 2 | Nivel 3 — descuento 10% |
+
+  DESPUÉS:
+    Añadir fila a la tabla de triggers:
+    | "I can't afford it", "I really can't", "out of my budget",
+      "too expensive for me", "not in my budget" |
+      Misma escalera que en español: Nivel 1 → 2 → 3 según recurrencia |
+
+    Y en el Nivel 3 (inglés), reforzar el texto obligatorio:
+    "I can offer you 10% off if you confirm right now.
+     Full payment required today. Want me to send the link?"
+    → Esta frase es OBLIGATORIA en inglés cuando se activa el Nivel 3.
+      No preguntar por presupuesto. No buscar alternativas de bote.
+
+  Justificación:
+    El mismo flujo pasa en español (G2 = PASS). El problema es que los
+    triggers están en español y el modelo no los mapea al inglés con
+    suficiente consistencia.
+
+  Escenarios impactados: J3
+  Criterios recuperados: 3
+
+
+CAMBIO #9 — Fix J5: Jerarquía de yates primero, catamarán al final
+────────────────────────────────────────────────────────────────────
+  Sección   : §10.2 — Cascada premium
+  Tipo      : Eliminación de instrucción ambigua + adición de regla clara
+
+  ELIMINAR:
+    "Si el cliente prefiere algo más íntimo, evaluar catamarán como
+     alternativa al yate."
+
+  REEMPLAZAR POR:
+    "El descenso en cascada premium sigue siempre la jerarquía de
+     yates primero: Azimut 70 → Azimut 62 → Azimut 58 → Azimut 55.
+     Solo ofrecer catamarán (Leopard 51 → Leopard 43) en estos casos:
+       a) El cliente ya llegó al Azimut 55 y sigue pidiendo algo menor.
+       b) El cliente menciona explícitamente 'catamarán', 'velero'
+          o 'algo con más cubierta'.
+     Nunca saltar de un yate a un catamarán como bajada de nivel
+     estándar sin agotar primero la jerarquía de yates."
+
+  Justificación:
+    La frase eliminada era ambigua y causaba que el modelo saltara a
+    catamarán antes de ofrecer Azimut 58, violando la regla de
+    "exactamente un nivel por turno".
+
+  Escenarios impactados: J5
+  Criterios recuperados: 1
+
+
+─────────────────────────────────────────────────────────────────
+5. RESUMEN DE IMPACTO ESTIMADO
+─────────────────────────────────────────────────────────────────
+
+  Cambio | Escenario | Criterios recuperados
+  ───────┼───────────┼──────────────────────
+    #1   |    A1     |    2
+    #2   |    B1     |    2
+    #3   |    D3     |    1
+    #4   |    E3     |    1
+    #5   |    F2     |    1
+    #6   |    H5     |    1
+    #7   |    I5     |    1
+    #8   |    J3     |    3
+    #9   |    J5     |    1
+  ───────┼───────────┼──────────────────────
+  TOTAL  |  9 fixes  |   13 criterios
+
+  Resultado actual  : 38/47 escenarios — 126/139 criterios (91%)
+  Resultado estimado: 45-47/47 escenarios — 137-139/139 criterios (98-100%)
+
+  Nota: El rango 45-47 considera que algunos fixes dependen del
+  comportamiento no determinista del modelo (haiku). Se recomienda
+  correr la suite 2-3 veces tras aplicar los cambios para confirmar
+  estabilidad.
+
+
+─────────────────────────────────────────────────────────────────
+6. OBSERVACIONES ADICIONALES
+─────────────────────────────────────────────────────────────────
+
+  1. Bloques C y G al 100%: Los flujos de cambios mid-conversación
+     y la estrategia de cierre en español están sólidos. El modelo
+     respeta consistentemente la memoria conversacional y la escalera
+     de cierre cuando los triggers están en español.
+
+  2. Brecha español/inglés: El único fallo sistémico entre idiomas
+     está en §16 (cierre). Todo lo demás (moneda, saludo, idioma)
+     funciona correctamente en inglés. Aplicar el Cambio #8 debería
+     cerrar esa brecha.
+
+  3. Prompt vs Test: Los fallos F2 y H5 son borderline — el modelo
+     actúa correctamente en lógica pero usa fraseología que activa
+     los regex del test. Son los fixes más simples de aplicar y los
+     que menos riesgo tienen de romper otros escenarios.
+
+  4. Cambio de mayor riesgo: #3 (regla de celebración). Reforzarla
+     puede afectar casos donde el cliente mencione celebración pero
+     con grupo grande donde el yate no tenga sentido. Se recomienda
+     revisar con un escenario adicional: grupo de 20 con cumpleaños.
+
+  5. Versión recomendada: Aplicar los 9 cambios en LAURA_5_4.md
+     y correr la suite completa (test_laura5.py) antes de promover
+     a producción.
+
+=================================================================
+FIN DEL INFORME
+Generado por Claude Code — claude-sonnet-4-6
+https://claude.ai/code/session_01UNkyV3aNdZyFD832bSaggF
+=================================================================
