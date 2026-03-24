@@ -4,7 +4,7 @@
 # Generado por LEO — CTO Proyecto Caribe Digital
 # 24 Marzo 2026
 #
-# CÓMO USAR:
+# COMO USAR:
 #   chmod +x b4u_test_make.sh
 #   ./b4u_test_make.sh
 #
@@ -26,7 +26,7 @@ echo "============================================================"
 # Mismo lead, 3 cotizaciones seguidas
 # Resultado esperado:
 #   - 3 cotizaciones en BD
-#   - Solo la última en estado "sent"
+#   - Solo la ultima en estado "sent"
 #   - Las 2 anteriores en estado "superseded"
 # ============================================================
 
@@ -119,7 +119,7 @@ echo "FROM cotizaciones"
 echo "WHERE lead_id = '$LEAD_ID'"
 echo "ORDER BY created_at ASC;"
 echo ""
-echo "Esperado: 2 filas 'superseded', 1 fila 'sent' (la última)"
+echo "Esperado: 2 filas 'superseded', 1 fila 'sent' (la ultima)"
 
 
 # ============================================================
@@ -184,11 +184,11 @@ echo "Esperado: status_lead='Cotizacion_Enviada', temporada_aplicada='alta', tot
 
 
 # ============================================================
-# GRUPO 3 — CLIENTES: variantes de identificación
+# GRUPO 3 — CLIENTES: variantes de identificacion
 # 3a: mismo WID, diferente email
 # 3b: diferente WID, mismo email
 # 3c: cliente completamente nuevo
-# 3d: cliente en inglés
+# 3d: cliente en ingles
 # ============================================================
 
 echo ""
@@ -251,7 +251,7 @@ echo ""
 sleep 3
 
 echo ""
-echo "[3.4] Cliente en inglés — idioma EN..."
+echo "[3.4] Cliente en ingles — idioma EN..."
 RESP4=$(curl -s -X POST "$WEBHOOK_LEAD" \
   -H "Content-Type: application/json" \
   -d '{
@@ -290,7 +290,7 @@ sleep 3
 
 
 # ============================================================
-# GRUPO 4 — STRESS: grupo grande (15 pax → bravo_410)
+# GRUPO 4 — STRESS: grupo grande (15 pax -> bravo_410)
 # ============================================================
 
 echo ""
