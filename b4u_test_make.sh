@@ -68,10 +68,11 @@ curl -s -X POST "$WEBHOOK_COT" \
     \"email\": \"francisco.cortazar@boats4u.co\",
     \"bote_id\": \"bravo_290\",
     \"lead_id\": \"$LEAD_ID\",
-    \"tipo_plan\": \"atardecer_bahia\",
+    \"plan_id\": \"atardecer_bahia\",
     \"num_pax\": 2,
     \"fecha_salida\": \"2026-04-15\",
     \"idioma\": \"es\",
+    \"hora_salida_real\": \"17:00:00\",
     \"horas_extra\": 0
   }"
 echo ""
@@ -86,10 +87,11 @@ curl -s -X POST "$WEBHOOK_COT" \
     \"email\": \"francisco.cortazar@boats4u.co\",
     \"bote_id\": \"bravo_290\",
     \"lead_id\": \"$LEAD_ID\",
-    \"tipo_plan\": \"atardecer_bahia\",
+    \"plan_id\": \"atardecer_bahia\",
     \"num_pax\": 2,
     \"fecha_salida\": \"2026-04-15\",
     \"idioma\": \"es\",
+    \"hora_salida_real\": \"17:00:00\",
     \"horas_extra\": 0
   }"
 echo ""
@@ -104,10 +106,11 @@ curl -s -X POST "$WEBHOOK_COT" \
     \"email\": \"francisco.cortazar@boats4u.co\",
     \"bote_id\": \"bravo_290\",
     \"lead_id\": \"$LEAD_ID\",
-    \"tipo_plan\": \"atardecer_bahia\",
+    \"plan_id\": \"atardecer_bahia\",
     \"num_pax\": 2,
     \"fecha_salida\": \"2026-04-15\",
     \"idioma\": \"es\",
+    \"hora_salida_real\": \"17:00:00\",
     \"horas_extra\": 1
   }"
 echo ""
@@ -163,10 +166,11 @@ curl -s -X POST "$WEBHOOK_COT" \
     \"email\": \"test.alta@boats4u.co\",
     \"bote_id\": \"bravo_290\",
     \"lead_id\": \"$LEAD_ID2\",
-    \"tipo_plan\": \"atardecer_bahia\",
+    \"plan_id\": \"atardecer_bahia\",
     \"num_pax\": 2,
     \"fecha_salida\": \"2026-04-02\",
     \"idioma\": \"es\",
+    \"hora_salida_real\": \"17:00:00\",
     \"horas_extra\": 0
   }"
 echo ""
@@ -278,10 +282,11 @@ curl -s -X POST "$WEBHOOK_COT" \
     \"email\": \"john.test@gmail.com\",
     \"bote_id\": \"bravo_290\",
     \"lead_id\": \"$LEAD_ID4\",
-    \"tipo_plan\": \"atardecer_bahia\",
+    \"plan_id\": \"atardecer_bahia\",
     \"num_pax\": 2,
     \"fecha_salida\": \"2026-04-15\",
     \"idioma\": \"en\",
+    \"hora_salida_real\": \"17:00:00\",
     \"horas_extra\": 0
   }"
 echo ""
@@ -325,10 +330,11 @@ curl -s -X POST "$WEBHOOK_COT" \
     \"email\": \"grupo.grande@test.com\",
     \"bote_id\": \"bravo_410\",
     \"lead_id\": \"$LEAD_ID5\",
-    \"tipo_plan\": \"atardecer_bahia\",
+    \"plan_id\": \"atardecer_bahia\",
     \"num_pax\": 15,
     \"fecha_salida\": \"2026-03-31\",
     \"idioma\": \"es\",
+    \"hora_salida_real\": \"17:00:00\",
     \"horas_extra\": 0
   }"
 echo ""
