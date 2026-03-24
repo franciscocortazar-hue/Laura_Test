@@ -50,7 +50,7 @@ RESP=$(curl -s -X POST "$WEBHOOK_LEAD" \
     "hora_salida_real": "17:00:00"
   }')
 echo "Response: $RESP"
-LEAD_ID=$(echo $RESP | grep -o '"lead_id":"[^"]*"' | cut -d'"' -f4)
+LEAD_ID=$(echo $RESP | grep -o '"lead_id": *"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"')
 echo "Lead ID capturado: $LEAD_ID"
 sleep 3
 
@@ -147,7 +147,7 @@ RESP2=$(curl -s -X POST "$WEBHOOK_LEAD" \
     "hora_salida_real": "17:00:00"
   }')
 echo "Response: $RESP2"
-LEAD_ID2=$(echo $RESP2 | grep -o '"lead_id":"[^"]*"' | cut -d'"' -f4)
+LEAD_ID2=$(echo $RESP2 | grep -o '"lead_id": *"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"')
 echo "Lead ID: $LEAD_ID2"
 sleep 3
 
@@ -260,7 +260,7 @@ RESP4=$(curl -s -X POST "$WEBHOOK_LEAD" \
     "hora_salida_real": "17:00:00"
   }')
 echo "Response: $RESP4"
-LEAD_ID4=$(echo $RESP4 | grep -o '"lead_id":"[^"]*"' | cut -d'"' -f4)
+LEAD_ID4=$(echo $RESP4 | grep -o '"lead_id": *"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"')
 sleep 3
 
 echo ""
@@ -307,7 +307,7 @@ RESP5=$(curl -s -X POST "$WEBHOOK_LEAD" \
     "hora_salida_real": "17:00:00"
   }')
 echo "Response: $RESP5"
-LEAD_ID5=$(echo $RESP5 | grep -o '"lead_id":"[^"]*"' | cut -d'"' -f4)
+LEAD_ID5=$(echo $RESP5 | grep -o '"lead_id": *"[^"]*"' | grep -o '"[^"]*"$' | tr -d '"')
 sleep 3
 
 echo ""
