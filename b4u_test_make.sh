@@ -44,11 +44,13 @@ RESP=$(curl -s -X POST "$WEBHOOK_LEAD" \
     "email": "francisco.cortazar@boats4u.co",
     "nombre_full": "Francisco Cortazar",
     "source": "landing",
-    "plan_id": "atardecer_bahia",
+    "tipo_plan": "atardecer_bahia",
     "num_pax": 2,
     "fecha_salida": "2026-04-15",
     "idioma": "es",
-    "hora_salida_real": "17:00:00"
+    "pais": "",
+    "adicionales": "",
+    "payload": ""
   }')
 echo "Response: $RESP"
 LEAD_ID=$(echo "$RESP" | tr -d '[:space:]' | sed 's/.*"lead_id":"\([^"]*\)".*/\1/')
@@ -142,11 +144,13 @@ RESP2=$(curl -s -X POST "$WEBHOOK_LEAD" \
     "email": "test.alta@boats4u.co",
     "nombre_full": "Test Temporada Alta",
     "source": "landing",
-    "plan_id": "atardecer_bahia",
+    "tipo_plan": "atardecer_bahia",
     "num_pax": 2,
     "fecha_salida": "2026-04-02",
     "idioma": "es",
-    "hora_salida_real": "17:00:00"
+    "pais": "",
+    "adicionales": "",
+    "payload": ""
   }')
 echo "Response: $RESP2"
 LEAD_ID2=$(echo "$RESP2" | tr -d '[:space:]' | sed 's/.*"lead_id":"\([^"]*\)".*/\1/')
@@ -205,11 +209,13 @@ curl -s -X POST "$WEBHOOK_LEAD" \
     "email": "otro.email@gmail.com",
     "nombre_full": "Francisco Cortazar",
     "source": "landing",
-    "plan_id": "atardecer_bahia",
+    "tipo_plan": "atardecer_bahia",
     "num_pax": 4,
     "fecha_salida": "2026-04-20",
     "idioma": "es",
-    "hora_salida_real": "17:00:00"
+    "pais": "",
+    "adicionales": "",
+    "payload": ""
   }'
 echo ""
 sleep 3
@@ -223,11 +229,13 @@ curl -s -X POST "$WEBHOOK_LEAD" \
     "email": "francisco.cortazar@boats4u.co",
     "nombre_full": "Francisco Cortazar Alt",
     "source": "landing",
-    "plan_id": "atardecer_bahia",
+    "tipo_plan": "atardecer_bahia",
     "num_pax": 2,
     "fecha_salida": "2026-04-22",
     "idioma": "es",
-    "hora_salida_real": "17:00:00"
+    "pais": "",
+    "adicionales": "",
+    "payload": ""
   }'
 echo ""
 sleep 3
@@ -241,11 +249,13 @@ curl -s -X POST "$WEBHOOK_LEAD" \
     "email": "nuevo.cliente@test.com",
     "nombre_full": "Cliente Nuevo Test",
     "source": "landing",
-    "plan_id": "atardecer_bahia",
+    "tipo_plan": "atardecer_bahia",
     "num_pax": 3,
     "fecha_salida": "2026-04-25",
     "idioma": "es",
-    "hora_salida_real": "17:00:00"
+    "pais": "",
+    "adicionales": "",
+    "payload": ""
   }'
 echo ""
 sleep 3
@@ -259,11 +269,13 @@ RESP4=$(curl -s -X POST "$WEBHOOK_LEAD" \
     "email": "john.test@gmail.com",
     "nombre_full": "John Test",
     "source": "landing",
-    "plan_id": "atardecer_bahia",
+    "tipo_plan": "atardecer_bahia",
     "num_pax": 2,
     "fecha_salida": "2026-04-15",
     "idioma": "en",
-    "hora_salida_real": "17:00:00"
+    "pais": "US",
+    "adicionales": "",
+    "payload": ""
   }')
 echo "Response: $RESP4"
 LEAD_ID4=$(echo "$RESP4" | tr -d '[:space:]' | sed 's/.*"lead_id":"\([^"]*\)".*/\1/')
@@ -307,11 +319,13 @@ RESP5=$(curl -s -X POST "$WEBHOOK_LEAD" \
     "email": "grupo.grande@test.com",
     "nombre_full": "Grupo Grande Test",
     "source": "landing",
-    "plan_id": "atardecer_bahia",
+    "tipo_plan": "atardecer_bahia",
     "num_pax": 15,
     "fecha_salida": "2026-03-31",
     "idioma": "es",
-    "hora_salida_real": "17:00:00"
+    "pais": "",
+    "adicionales": "",
+    "payload": ""
   }')
 echo "Response: $RESP5"
 LEAD_ID5=$(echo "$RESP5" | tr -d '[:space:]' | sed 's/.*"lead_id":"\([^"]*\)".*/\1/')
