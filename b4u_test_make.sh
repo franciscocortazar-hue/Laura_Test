@@ -10,6 +10,10 @@
 #
 # Cada grupo tiene pausa de 3s entre llamadas para no
 # saturar los escenarios de Make.
+#
+# CAMPOS: Replica exacta de lo que Dapta envia a Make
+#   email, fecha_salida, idioma, nombre_full, num_pax,
+#   payload, source, tipo_plan, whatsapp_id
 # ============================================================
 
 WEBHOOK_LEAD="https://hook.us2.make.com/svepg2mtc1qwqe3fw5l9jvm26amdsxvx"
@@ -48,9 +52,7 @@ RESP=$(curl -s -X POST "$WEBHOOK_LEAD" \
     "num_pax": 2,
     "fecha_salida": "2026-04-15",
     "idioma": "es",
-    "pais": "",
-    "adicionales": "",
-    "payload": ""
+    "payload": "{\"full_name\":\"Francisco Cortazar\",\"plan\":\"atardecer_bahia\",\"preferred_date\":\"2026-04-15\",\"passengers\":2,\"email\":\"francisco.cortazar@boats4u.co\",\"phone\":\"+573132488737\",\"language\":\"es\",\"source\":\"landing\"}"
   }')
 echo "Response: $RESP"
 LEAD_ID=$(echo "$RESP" | tr -d '[:space:]' | sed 's/.*"lead_id":"\([^"]*\)".*/\1/')
@@ -66,11 +68,10 @@ curl -s -X POST "$WEBHOOK_COT" \
     \"email\": \"francisco.cortazar@boats4u.co\",
     \"bote_id\": \"bravo_290\",
     \"lead_id\": \"$LEAD_ID\",
-    \"plan_id\": \"atardecer_bahia\",
+    \"tipo_plan\": \"atardecer_bahia\",
     \"num_pax\": 2,
     \"fecha_salida\": \"2026-04-15\",
     \"idioma\": \"es\",
-    \"hora_salida_real\": \"17:00:00\",
     \"horas_extra\": 0
   }"
 echo ""
@@ -85,11 +86,10 @@ curl -s -X POST "$WEBHOOK_COT" \
     \"email\": \"francisco.cortazar@boats4u.co\",
     \"bote_id\": \"bravo_290\",
     \"lead_id\": \"$LEAD_ID\",
-    \"plan_id\": \"atardecer_bahia\",
+    \"tipo_plan\": \"atardecer_bahia\",
     \"num_pax\": 2,
     \"fecha_salida\": \"2026-04-15\",
     \"idioma\": \"es\",
-    \"hora_salida_real\": \"17:00:00\",
     \"horas_extra\": 0
   }"
 echo ""
@@ -104,11 +104,10 @@ curl -s -X POST "$WEBHOOK_COT" \
     \"email\": \"francisco.cortazar@boats4u.co\",
     \"bote_id\": \"bravo_290\",
     \"lead_id\": \"$LEAD_ID\",
-    \"plan_id\": \"atardecer_bahia\",
+    \"tipo_plan\": \"atardecer_bahia\",
     \"num_pax\": 2,
     \"fecha_salida\": \"2026-04-15\",
     \"idioma\": \"es\",
-    \"hora_salida_real\": \"17:00:00\",
     \"horas_extra\": 1
   }"
 echo ""
@@ -148,9 +147,7 @@ RESP2=$(curl -s -X POST "$WEBHOOK_LEAD" \
     "num_pax": 2,
     "fecha_salida": "2026-04-02",
     "idioma": "es",
-    "pais": "",
-    "adicionales": "",
-    "payload": ""
+    "payload": "{\"full_name\":\"Test Temporada Alta\",\"plan\":\"atardecer_bahia\",\"preferred_date\":\"2026-04-02\",\"passengers\":2,\"email\":\"test.alta@boats4u.co\",\"phone\":\"+573999000001\",\"language\":\"es\",\"source\":\"landing\"}"
   }')
 echo "Response: $RESP2"
 LEAD_ID2=$(echo "$RESP2" | tr -d '[:space:]' | sed 's/.*"lead_id":"\([^"]*\)".*/\1/')
@@ -166,11 +163,10 @@ curl -s -X POST "$WEBHOOK_COT" \
     \"email\": \"test.alta@boats4u.co\",
     \"bote_id\": \"bravo_290\",
     \"lead_id\": \"$LEAD_ID2\",
-    \"plan_id\": \"atardecer_bahia\",
+    \"tipo_plan\": \"atardecer_bahia\",
     \"num_pax\": 2,
     \"fecha_salida\": \"2026-04-02\",
     \"idioma\": \"es\",
-    \"hora_salida_real\": \"17:00:00\",
     \"horas_extra\": 0
   }"
 echo ""
@@ -213,9 +209,7 @@ curl -s -X POST "$WEBHOOK_LEAD" \
     "num_pax": 4,
     "fecha_salida": "2026-04-20",
     "idioma": "es",
-    "pais": "",
-    "adicionales": "",
-    "payload": ""
+    "payload": "{\"full_name\":\"Francisco Cortazar\",\"plan\":\"atardecer_bahia\",\"preferred_date\":\"2026-04-20\",\"passengers\":4,\"email\":\"otro.email@gmail.com\",\"phone\":\"+573132488737\",\"language\":\"es\",\"source\":\"landing\"}"
   }'
 echo ""
 sleep 3
@@ -233,9 +227,7 @@ curl -s -X POST "$WEBHOOK_LEAD" \
     "num_pax": 2,
     "fecha_salida": "2026-04-22",
     "idioma": "es",
-    "pais": "",
-    "adicionales": "",
-    "payload": ""
+    "payload": "{\"full_name\":\"Francisco Cortazar Alt\",\"plan\":\"atardecer_bahia\",\"preferred_date\":\"2026-04-22\",\"passengers\":2,\"email\":\"francisco.cortazar@boats4u.co\",\"phone\":\"+573999000002\",\"language\":\"es\",\"source\":\"landing\"}"
   }'
 echo ""
 sleep 3
@@ -253,9 +245,7 @@ curl -s -X POST "$WEBHOOK_LEAD" \
     "num_pax": 3,
     "fecha_salida": "2026-04-25",
     "idioma": "es",
-    "pais": "",
-    "adicionales": "",
-    "payload": ""
+    "payload": "{\"full_name\":\"Cliente Nuevo Test\",\"plan\":\"atardecer_bahia\",\"preferred_date\":\"2026-04-25\",\"passengers\":3,\"email\":\"nuevo.cliente@test.com\",\"phone\":\"+573999000003\",\"language\":\"es\",\"source\":\"landing\"}"
   }'
 echo ""
 sleep 3
@@ -273,9 +263,7 @@ RESP4=$(curl -s -X POST "$WEBHOOK_LEAD" \
     "num_pax": 2,
     "fecha_salida": "2026-04-15",
     "idioma": "en",
-    "pais": "US",
-    "adicionales": "",
-    "payload": ""
+    "payload": "{\"full_name\":\"John Test\",\"plan\":\"atardecer_bahia\",\"preferred_date\":\"2026-04-15\",\"passengers\":2,\"email\":\"john.test@gmail.com\",\"phone\":\"+13055550001\",\"language\":\"en\",\"source\":\"landing\"}"
   }')
 echo "Response: $RESP4"
 LEAD_ID4=$(echo "$RESP4" | tr -d '[:space:]' | sed 's/.*"lead_id":"\([^"]*\)".*/\1/')
@@ -290,11 +278,10 @@ curl -s -X POST "$WEBHOOK_COT" \
     \"email\": \"john.test@gmail.com\",
     \"bote_id\": \"bravo_290\",
     \"lead_id\": \"$LEAD_ID4\",
-    \"plan_id\": \"atardecer_bahia\",
+    \"tipo_plan\": \"atardecer_bahia\",
     \"num_pax\": 2,
     \"fecha_salida\": \"2026-04-15\",
     \"idioma\": \"en\",
-    \"hora_salida_real\": \"17:00:00\",
     \"horas_extra\": 0
   }"
 echo ""
@@ -323,9 +310,7 @@ RESP5=$(curl -s -X POST "$WEBHOOK_LEAD" \
     "num_pax": 15,
     "fecha_salida": "2026-03-31",
     "idioma": "es",
-    "pais": "",
-    "adicionales": "",
-    "payload": ""
+    "payload": "{\"full_name\":\"Grupo Grande Test\",\"plan\":\"atardecer_bahia\",\"preferred_date\":\"2026-03-31\",\"passengers\":15,\"email\":\"grupo.grande@test.com\",\"phone\":\"+573999000010\",\"language\":\"es\",\"source\":\"landing\"}"
   }')
 echo "Response: $RESP5"
 LEAD_ID5=$(echo "$RESP5" | tr -d '[:space:]' | sed 's/.*"lead_id":"\([^"]*\)".*/\1/')
@@ -340,11 +325,10 @@ curl -s -X POST "$WEBHOOK_COT" \
     \"email\": \"grupo.grande@test.com\",
     \"bote_id\": \"bravo_410\",
     \"lead_id\": \"$LEAD_ID5\",
-    \"plan_id\": \"atardecer_bahia\",
+    \"tipo_plan\": \"atardecer_bahia\",
     \"num_pax\": 15,
     \"fecha_salida\": \"2026-03-31\",
     \"idioma\": \"es\",
-    \"hora_salida_real\": \"17:00:00\",
     \"horas_extra\": 0
   }"
 echo ""
