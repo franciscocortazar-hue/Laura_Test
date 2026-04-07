@@ -1,1 +1,12 @@
-{"id":"T10_COWORK","nombre":"Mensaje resumen post-cotizacion con link — GAP CRITICO esperado","mensaje":"Hi Boats4U, I came from the landing page.\n\nFull name: Link Test User\nPlan: atardecer_bahia\nPreferred date: 2026-05-15\nPassengers: 4\nEmail: linktest@test.com\nPhone: +17809990010\nLanguage: en\nSource: landing","nota":"Este escenario probablemente FALLARA. El prompt v1.1 no tiene instruccion de mensaje resumen con link. Eso es lo que queremos documentar.","assertions":[{"tipo":"contiene","texto":"boats4u.lovable.app/cotizacion/","descripcion":"Laura debe incluir el link — GAP si falla"},{"tipo":"contiene","texto":"B4U-","descripcion":"Laura debe incluir numero de cotizacion"},{"tipo":"contiene_alguno","opciones":["USD","COP"],"descripcion":"Laura debe incluir el precio"}],"gap_esperado":"Prompt v1.1 no tiene instruccion de mensaje resumen. Confirma Gap P1 Fase 3A."}
+{
+  "id": "T10_COWORK", "nombre": "Mensaje resumen con link — GAP CRITICO esperado",
+  "mensaje": "Hi Boats4U, I came from the landing page.\n\nFull name: Link Test User\nPlan: atardecer_bahia\nPreferred date: 2026-05-15\nPassengers: 4\nEmail: linktest@test.com\nPhone: +17809990010\nLanguage: en\nSource: landing",
+  "nota": "Este escenario probablemente FALLA. El prompt v1.1 no tiene instruccion de mensaje resumen con link. Eso es lo que queremos documentar.",
+  "assertions": [
+    {"tipo":"contiene","texto":"boats4u.lovable.app/cotizacion/","descripcion":"Link de cotizacion en la respuesta — GAP si falla"},
+    {"tipo":"contiene","texto":"B4U-","descripcion":"Numero de cotizacion en el mensaje"},
+    {"tipo":"contiene_alguno","opciones":["USD","COP"],"descripcion":"Precio incluido en el resumen"},
+    {"tipo":"contiene","texto":"vigencia","descripcion":"Menciona la vigencia"}
+  ],
+  "gap_esperado": "Prompt v1.1 no tiene instruccion de mensaje resumen. Laura terminara sin el link. Confirma Gap P1 de Fase 3A — se corrige en v1.2."
+}
