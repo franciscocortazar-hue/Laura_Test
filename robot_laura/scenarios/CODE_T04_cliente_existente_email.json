@@ -1,1 +1,12 @@
-{"id":"T04","nombre":"Cliente existente por email — WID diferente — Ruta 3","webhook":"REGISTRAR_LEAD","cleanup":{"borrar_wid":"+17809990004"},"nota":"El email t01@robot.test ya existe (T01). Este WID debe reutilizar ese cliente.","payload":{"whatsapp_id":"+17809990004","nombre_full":"Test Code T04","email":"t01@robot.test","tipo_plan":"atardecer_bahia","fecha_salida":"2026-05-25","num_pax":2,"idioma":"en","source":"landing","pais":"","adicionales":""},"espera_segundos":5,"assertions":[{"tabla":"clients","filtro":"email_principal=eq.t01@robot.test","campo":"COUNT","esperado":1,"descripcion":"No debe crear cliente duplicado por email"},{"tabla":"leads","filtro":"whatsapp_id=eq.+17809990004&order=created_at.desc&limit=1","campo":"status_lead","esperado":"Calificando"}]}
+{
+  "id": "T04", "nombre": "Cliente existente por email — WID diferente — Ruta 3",
+  "webhook": "REGISTRAR_LEAD",
+  "cleanup": {"borrar_wid": "+17809990004"},
+  "nota": "El email t01@robot.test ya existe (T01). Nuevo WID debe reutilizar ese cliente.",
+  "payload": {"whatsapp_id":"+17809990004","nombre_full":"Test Code T04","email":"t01@robot.test","tipo_plan":"atardecer_bahia","fecha_salida":"2026-05-25","num_pax":2,"idioma":"en","source":"landing","pais":"","adicionales":""},
+  "espera_segundos": 5,
+  "assertions": [
+    {"tabla":"clients","filtro":"email_principal=eq.t01@robot.test","campo":"COUNT","esperado":1,"descripcion":"No duplica cliente por email"},
+    {"tabla":"leads","filtro":"whatsapp_id=eq.+17809990004&order=created_at.desc&limit=1","campo":"status_lead","esperado":"Calificando","descripcion":"Lead creado para nuevo WID"}
+  ]
+}
