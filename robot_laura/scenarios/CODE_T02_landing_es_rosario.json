@@ -1,1 +1,12 @@
-{"id":"T02","nombre":"Landing ES — tour_islas, 8 pax, cliente nuevo","webhook":"REGISTRAR_LEAD","cleanup":{"borrar_wid":"+17809990002"},"payload":{"whatsapp_id":"+17809990002","nombre_full":"Test Code T02","email":"t02@robot.test","tipo_plan":"tour_islas","fecha_salida":"2026-05-20","num_pax":8,"idioma":"es","source":"landing","pais":"","adicionales":""},"espera_segundos":5,"assertions":[{"tabla":"clients","filtro":"whatsapp_id=eq.+17809990002","campo":"nombre_full","esperado":"Test Code T02"},{"tabla":"leads","filtro":"whatsapp_id=eq.+17809990002&order=created_at.desc&limit=1","campo":"status_lead","esperado":"Calificando"},{"tabla":"leads","filtro":"whatsapp_id=eq.+17809990002&order=created_at.desc&limit=1","campo":"idioma","esperado":"es"}]}
+{
+  "id": "T02", "nombre": "Landing ES — tour_islas, 8 pax, cliente nuevo",
+  "webhook": "REGISTRAR_LEAD",
+  "cleanup": {"borrar_wid": "+17809990002"},
+  "payload": {"whatsapp_id":"+17809990002","nombre_full":"Test Code T02","email":"t02@robot.test","tipo_plan":"tour_islas","fecha_salida":"2026-05-20","num_pax":8,"idioma":"es","source":"landing","pais":"","adicionales":""},
+  "espera_segundos": 5,
+  "assertions": [
+    {"tabla":"clients","filtro":"whatsapp_id=eq.+17809990002","campo":"nombre_full","esperado":"Test Code T02","descripcion":"cliente creado"},
+    {"tabla":"leads","filtro":"whatsapp_id=eq.+17809990002&order=created_at.desc&limit=1","campo":"status_lead","esperado":"Calificando","descripcion":"status_lead = Calificando"},
+    {"tabla":"leads","filtro":"whatsapp_id=eq.+17809990002&order=created_at.desc&limit=1","campo":"num_pax","esperado":8,"descripcion":"num_pax = 8"}
+  ]
+}
