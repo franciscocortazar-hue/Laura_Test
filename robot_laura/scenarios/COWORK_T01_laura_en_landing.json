@@ -1,1 +1,13 @@
-{"id":"T01_COWORK","nombre":"Laura EN — landing completa — saluda, registra, no pregunta","mensaje":"Hi Boats4U, I came from the landing page.\n\nFull name: Sarah Johnson\nPlan: atardecer_bahia\nPreferred date: 2026-05-15\nPassengers: 4\nEmail: sarah@test.com\nPhone: +17809990011\nLanguage: en\nSource: landing","assertions":[{"tipo":"idioma","esperado":"en"},{"tipo":"tool_call","herramienta":"registrar_lead"},{"tipo":"no_contiene","texto":"[registrar_lead ejecutado]","descripcion":"FAIL critico si aparece — Make fallo"},{"tipo":"no_contiene","texto":"How many","descripcion":"No debe preguntar pasajeros"},{"tipo":"no_contiene","texto":"What experience","descripcion":"No debe preguntar experiencia"},{"tipo":"contiene_alguno","opciones":["Bravo 290","bravo 290"],"descripcion":"4 pax debe recomendar Bravo 290"}]}
+{
+  "id": "T01_COWORK", "nombre": "Laura EN — landing completa — saluda, registra, no pregunta",
+  "mensaje": "Hi Boats4U, I came from the landing page.\n\nFull name: Sarah Johnson\nPlan: atardecer_bahia\nPreferred date: 2026-05-15\nPassengers: 4\nEmail: sarah@test.com\nPhone: +17809990011\nLanguage: en\nSource: landing",
+  "assertions": [
+    {"tipo":"idioma","esperado":"en","descripcion":"Laura responde en ingles"},
+    {"tipo":"tool_call","herramienta":"registrar_lead","descripcion":"Ejecuta registrar_lead antes de responder"},
+    {"tipo":"no_contiene","texto":"[registrar_lead ejecutado]","descripcion":"FAIL critico si aparece esto — Make fallo"},
+    {"tipo":"no_contiene","texto":"How many","descripcion":"No pregunta pasajeros — ya vienen en el mensaje"},
+    {"tipo":"no_contiene","texto":"What experience","descripcion":"No pregunta experiencia — ya viene atardecer_bahia"},
+    {"tipo":"contiene_alguno","opciones":["Bravo 290","bravo 290"],"descripcion":"Para 4 pax recomienda Bravo 290"},
+    {"tipo":"frase_prohibida","frases":["Procedemos","Le informo","Sin problema","No worries","Claro que si"]}
+  ]
+}
