@@ -150,11 +150,26 @@ SI existen N remisiones (N >= 2):
 - Si `valor_factura` extraído del PDF **difiere** de `VALORTRA` del Excel fuente → loggear como inconsistencia en la hoja `Log` del archivo de control. No detiene el flujo.
 
 ### Paso 6 — Escribir archivo de control
-Ver sección siguiente para la estructura. Cowork:
-- Crea el archivo si no existe.
-- Si ya existe, actualiza la fila correspondiente por `NUMDOCTRA` (no duplica).
-- Recalcula la hoja `Resumen` con los totales actualizados.
-- Agrega una entrada nueva a la hoja `Log` por cada corrida.
+
+El archivo de control siempre refleja el **universo completo** (las 114 facturas del Excel fuente), no solo las que se procesaron en la corrida actual. Esto da una vista única, siempre comparable, donde se ve de inmediato qué está pendiente.
+
+**Si el archivo NO existe (primera corrida):**
+1. Crear `Control_Conciliacion_Combustibles.xlsx` en `G:\...\Gasolina\Control\`.
+2. **Bootstrap**: leer las 114 filas del Excel fuente (`DETALLE FACTURAS COMBUSTIBLES ENERO A ABRIL 24-2026.xlsx`, hoja `Hoja1`, filas 3-116) y volcar en la hoja `Conciliación` las columnas A-F (NUMDOCTRA, Fecha, Razón social, NIT, Tipo doc, Valor factura).
+3. Las columnas G-O quedan vacías en este momento (se mostrarán como "pendiente" en el Resumen).
+4. Aplicar formato (cabeceras, filtros, formato condicional, moneda COP).
+
+**Para cada factura procesada en la corrida (sea la 1ª o la N-ésima):**
+1. Buscar la fila por `NUMDOCTRA` en la hoja `Conciliación`.
+2. Llenar las columnas G-O con los datos extraídos / calculados.
+3. Si el `NUMDOCTRA` no existe en la hoja (factura no esperada) → loggear y NO crear fila nueva.
+
+**Al final de cada corrida:**
+- Recalcular la hoja `Resumen` con los totales actualizados (procesadas vs pendientes, etc.).
+- Agregar una entrada nueva a la hoja `Log`.
+
+**Consecuencia para el modo prueba (LIMITE_CORREOS = 2):**
+La primera corrida crea el archivo con las **114 filas listadas**, pero solo **2** tendrán las columnas G-O llenas. Las otras 112 filas mostrarán cols G-O vacías → en `Resumen` aparecen como "Facturas pendientes (sin correo) = 112". Es así como debe quedar.
 
 ---
 
@@ -163,6 +178,8 @@ Ver sección siguiente para la estructura. Cowork:
 **Archivo**: `Control_Conciliacion_Combustibles.xlsx`
 
 ### Hoja 1 — `Conciliación` (detalle por factura)
+
+> **114 filas siempre presentes** — una por factura del alcance, copiadas del Excel fuente al crear el archivo. Las columnas A-F se llenan en el bootstrap inicial; las columnas G-O se van completando a medida que Cowork procesa correos. Una factura "pendiente" se ve como la fila con A-F llenas y G-O vacías.
 
 | Col | Cabecera | Origen | Notas |
 |---|---|---|---|
