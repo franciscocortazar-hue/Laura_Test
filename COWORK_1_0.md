@@ -19,6 +19,7 @@ Procesar de forma autónoma los correos de facturación electrónica recibidos e
 |---|---|
 | Carpeta de facturas (una subcarpeta por factura) | `G:\Mi unidad\Inteligencia Artificial\Productividad\Gasolina\Facturas\` |
 | Carpeta del archivo de control (lo crea Cowork) | `G:\Mi unidad\Inteligencia Artificial\Productividad\Gasolina\Control\` |
+| Carpeta de excepciones (auditoría — emisor distinto) | `G:\Mi unidad\Inteligencia Artificial\Productividad\Gasolina\No_Aplica\` |
 | Excel fuente (referencia de qué facturas esperar) | `G:\Mi unidad\Inteligencia Artificial\Productividad\Gasolina\DETALLE FACTURAS COMBUSTIBLES ENERO A ABRIL 24-2026.xlsx` |
 
 ---
@@ -39,7 +40,7 @@ Procesar de forma autónoma los correos de facturación electrónica recibidos e
   Filtrar por correos cuyo asunto contenga `TODOMAR CHL S.A.S.` y un segmento `FC<digits>`.
 - **Rango de fechas**: configurable. Para esta corrida: **2026-01-01 a 2026-04-30**.
 - **Adjuntos**: cada correo trae un ZIP con uno o más PDFs (factura + remisión(es)).
-- **Aviso**: Facture envía facturas de varios proveedores. Hay que **validar que el emisor del PDF sea Nautiturismo SAS (NIT 901459048)** antes de procesar. Si es otro proveedor → saltar y loggear.
+- **Aviso**: la cuenta de Todomar solo recibe por Facture facturas de Nautiturismo (confirmado por el usuario). De todas formas Cowork hace una verificación silenciosa del NIT del emisor en `factura.pdf` como auditoría defensiva: si alguna vez aparece un emisor distinto, lo loggea y lo aparta a la carpeta de excepciones (ver Paso 2).
 
 ### B) Excel fuente (solo lectura — referencia)
 - Hoja: `Hoja1`
@@ -53,6 +54,23 @@ Procesar de forma autónoma los correos de facturación electrónica recibidos e
 - Ruta: `G:\Mi unidad\Inteligencia Artificial\Productividad\Gasolina\Control\Control_Conciliacion_Combustibles.xlsx`
 - Si ya existe → sobreescribir actualizando filas existentes y agregando nuevas.
 - Estructura: ver sección **Estructura del archivo de control** más abajo.
+
+---
+
+---
+
+## Modos de ejecución
+
+Cowork acepta el parámetro `LIMITE_CORREOS`:
+
+| Valor | Comportamiento |
+|---|---|
+| `LIMITE_CORREOS = 2` | **Modo prueba** — procesa solo los **2 correos más antiguos** del filtro Gmail (los primeros 2 de enero 2026). Útil para validar el pipeline antes del lote completo. |
+| `LIMITE_CORREOS = 0` o sin definir | **Modo lote completo** — procesa todos los correos que pasen el filtro en el rango de fechas. |
+
+**Plan recomendado:**
+1. Primera corrida: `LIMITE_CORREOS = 2`. Revisar manualmente la carpeta `FC<num>\` y la fila correspondiente del archivo de control.
+2. Si todo cuadra: correr de nuevo con `LIMITE_CORREOS = 0` para procesar el resto. La idempotencia garantiza que las 2 carpetas ya creadas no se reprocesan.
 
 ---
 
@@ -81,7 +99,7 @@ Para cada correo que pase el filtro Gmail:
 4. Identificar y renombrar los PDFs:
    - El PDF firmado por la DIAN (con CUFE / código QR de validación) → **`factura.pdf`**
    - El/los PDF(s) de despacho (encabezado "REMISIÓN" o similar, traen nombre del bote) → **`remision.pdf`** si hay una sola, o **`remision_1.pdf`, `remision_2.pdf`, ...** si hay varias.
-5. **Validar emisor**: abrir `factura.pdf` y confirmar que el emisor es `NAUTITURISMO SAS` (NIT `901459048`). Si no lo es → mover la carpeta a `G:\...\Facturas\_no_aplica\` y loggear "emisor distinto, saltado".
+5. **Validar emisor (auditoría)**: abrir `factura.pdf` y confirmar que el emisor es `NAUTITURISMO SAS` (NIT `901459048`). Si no lo es → mover la carpeta completa a `G:\Mi unidad\Inteligencia Artificial\Productividad\Gasolina\No_Aplica\FC<NUMDOCTRA>\` y loggear "emisor distinto, apartado". (Caso esperado: nunca debería ocurrir; se deja como red de seguridad).
 
 ### Paso 3 — Extraer datos de los PDFs
 - De **`factura.pdf`**:
