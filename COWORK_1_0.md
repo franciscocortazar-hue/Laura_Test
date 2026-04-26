@@ -1,7 +1,9 @@
 # COWORK 1.0 — Conciliación facturas combustible Nautiturismo → Todomar
 
+> **Ejecutor**: Claude Cowork (este prompt está escrito como instrucciones operativas para que Claude Cowork las ejecute).
+
 ## Objetivo
-Procesar de forma autónoma los correos de **Nautiturismo SAS** (NIT 901459048) que contienen facturas de combustible para los botes de **Todomar**:
+Procesar de forma autónoma los correos de facturación electrónica recibidos en la bandeja de **Todomar CHL S.A.S.** (NIT 806003144) que contienen facturas de combustible emitidas por **Nautiturismo SAS** (NIT 901459048) a través de Facture:
 
 1. Descargar adjuntos (ZIPs) desde Gmail.
 2. Organizarlos en disco por número de factura.
@@ -24,10 +26,20 @@ Procesar de forma autónoma los correos de **Nautiturismo SAS** (NIT 901459048) 
 ## Entradas
 
 ### A) Cuenta Gmail
-- Cuenta corporativa que recibe los correos de Nautiturismo.
-- **Filtro remitente**: `from:` del correo conocido del proveedor (NIT 901459048).
+- Cuenta corporativa de **Todomar CHL S.A.S.** (NIT 806003144).
+- **Filtro remitente**: `from:no-responder@facture.co` (plataforma de facturación electrónica usada por Nautiturismo).
+- **Filtro asunto**: el formato estándar es
+  ```
+  <NIT_receptor>;<RAZON_receptor>;FC<NUMDOCTRA>;<seq>;<RAZON_receptor>
+  ```
+  Ejemplo real:
+  ```
+  806003144;TODOMAR CHL S.A.S.;FC80230;01;TODOMAR CHL S.A.S
+  ```
+  Filtrar por correos cuyo asunto contenga `TODOMAR CHL S.A.S.` y un segmento `FC<digits>`.
 - **Rango de fechas**: configurable. Para esta corrida: **2026-01-01 a 2026-04-30**.
 - **Adjuntos**: cada correo trae un ZIP con uno o más PDFs (factura + remisión(es)).
+- **Aviso**: Facture envía facturas de varios proveedores. Hay que **validar que el emisor del PDF sea Nautiturismo SAS (NIT 901459048)** antes de procesar. Si es otro proveedor → saltar y loggear.
 
 ### B) Excel fuente (solo lectura — referencia)
 - Hoja: `Hoja1`
@@ -47,24 +59,29 @@ Procesar de forma autónoma los correos de **Nautiturismo SAS** (NIT 901459048) 
 ## Flujo
 
 ### Paso 1 — Descarga de correos
-Para cada correo de Nautiturismo en el rango configurado:
-1. Descargar **cada ZIP adjunto** a una carpeta temporal de staging.
-2. Conservar el `Message-ID` y asunto para trazabilidad.
-3. (Recomendado) aplicar etiqueta Gmail `Procesado/Nautiturismo` para idempotencia entre corridas.
+Para cada correo que pase el filtro Gmail:
+1. Parsear el asunto para extraer `NUMDOCTRA`:
+   ```
+   asunto.split(';')[2]   →   "FC80230"
+   strip prefijo "FC"      →   NUMDOCTRA = 80230
+   ```
+   (alternativamente regex `FC(\d+)` sobre el asunto).
+2. Si el `NUMDOCTRA` **no está** en la lista de las 114 facturas del Excel fuente → loggear como "factura no esperada" y saltar (no procesar).
+3. Descargar **cada ZIP adjunto** a una carpeta temporal de staging.
+4. Conservar el `Message-ID` y asunto completo para trazabilidad.
+5. (Recomendado) aplicar etiqueta Gmail `Procesado/Nautiturismo` al correo para idempotencia entre corridas.
 
 ### Paso 2 — Por cada ZIP descargado
-1. Identificar el **número de factura** (`NUMDOCTRA`):
-   - Primero del nombre del archivo si lo trae (ej. `FE74783.zip`, `FC74783.zip`).
-   - Si no, abrir un PDF, leerlo y buscar el número en el cuerpo de la factura electrónica.
-2. Crear carpeta destino:
+1. Crear carpeta destino:
    ```
    G:\Mi unidad\Inteligencia Artificial\Productividad\Gasolina\Facturas\FC<NUMDOCTRA>\
    ```
-3. **Idempotencia**: si la carpeta ya existe Y contiene `factura.pdf`, saltar este ZIP (ya procesado en una corrida anterior). Loggear como duplicado.
-4. Descomprimir el ZIP dentro de la carpeta.
-5. Renombrar los PDFs:
+2. **Idempotencia**: si la carpeta ya existe Y contiene `factura.pdf`, saltar este ZIP (ya procesado en una corrida anterior). Loggear como duplicado.
+3. Descomprimir el ZIP dentro de la carpeta.
+4. Identificar y renombrar los PDFs:
    - El PDF firmado por la DIAN (con CUFE / código QR de validación) → **`factura.pdf`**
    - El/los PDF(s) de despacho (encabezado "REMISIÓN" o similar, traen nombre del bote) → **`remision.pdf`** si hay una sola, o **`remision_1.pdf`, `remision_2.pdf`, ...** si hay varias.
+5. **Validar emisor**: abrir `factura.pdf` y confirmar que el emisor es `NAUTITURISMO SAS` (NIT `901459048`). Si no lo es → mover la carpeta a `G:\...\Facturas\_no_aplica\` y loggear "emisor distinto, saltado".
 
 ### Paso 3 — Extraer datos de los PDFs
 - De **`factura.pdf`**:
