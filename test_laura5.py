@@ -90,6 +90,14 @@ client = anthropic.Anthropic(api_key=API_KEY, timeout=90.0)
 def llamar(system_text, messages):
     # cache_control en el system prompt: tras la 1ª llamada, Anthropic cobra
     # sólo el 10% del costo normal de input para ese bloque (cache hit).
+    # Guarda: la API rechaza cache_control sobre bloques de texto vacíos
+    # ("cache_control cannot be set for empty text blocks").
+    system_text = (system_text or "").strip()
+    if not system_text:
+        raise ValueError(
+            "system_text vacío: Anthropic rechaza cache_control sobre bloques "
+            f"de texto vacíos. Verifica {SYSTEM_FILE}."
+        )
     r = client.messages.create(
         model=MODEL,
         max_tokens=512,

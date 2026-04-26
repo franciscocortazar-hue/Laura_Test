@@ -89,6 +89,14 @@ def cargar_prompt():
 client = anthropic.Anthropic(api_key=API_KEY, timeout=90.0)
 
 def llamar(system_text, messages):
+    # Guarda: la API rechaza cache_control sobre bloques de texto vacíos
+    # ("cache_control cannot be set for empty text blocks").
+    system_text = (system_text or "").strip()
+    if not system_text:
+        raise ValueError(
+            "system_text vacío: Anthropic rechaza cache_control sobre bloques "
+            f"de texto vacíos. Verifica {SYSTEM_FILE}."
+        )
     r = client.messages.create(
         model=MODEL,
         max_tokens=512,
