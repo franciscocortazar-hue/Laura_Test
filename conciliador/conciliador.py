@@ -463,16 +463,41 @@ def _find_fecha_hora(text: str) -> str | None:
 # Logica de conciliacion
 # ============================================================
 
-def conciliate(valor_factura: float, valores_remision: list[float], tol: float) -> tuple[str, float]:
-    if not valores_remision:
-        return ("No hay remisión", 0.0)
-    suma = sum(valores_remision)
+def conciliate(valor_factura: float, remisiones_data: list[dict], tol: float) -> tuple[str, float | None]:
+    """Aplica las reglas de conciliación del spec COWORK_1_0.md.
+
+    Retorna (estado, diferencia). diferencia=None cuando no aplica (sin remision
+    o pendiente revision manual). diferencia=0.0 cuando OK. Numero con signo
+    cuando hay diferencia real.
+    """
+    n = len(remisiones_data)
+
+    # Caso 1: No hay archivos de remision en disco
+    if n == 0:
+        return ("No hay remisión", None)
+
+    valores_extraidos = [r.get("valor") for r in remisiones_data if r.get("valor") is not None]
+
+    # Caso 2: Hay remisiones pero ninguna se pudo leer
+    if not valores_extraidos:
+        return ("Pendiente revisión manual (OCR no concluyente)", None)
+
+    # Caso 3: N>=2 remisiones y al menos una no legible
+    if len(valores_extraidos) < n:
+        no_leidas = n - len(valores_extraidos)
+        return (
+            f"Pendiente revisión manual ({no_leidas} de {n} remisiones no legible)",
+            None,
+        )
+
+    # Caso 4 y 5: Todas legibles, comparar
+    suma = sum(valores_extraidos)
     diff = round(valor_factura - suma, 2)
     if abs(diff) <= tol:
         return ("OK", 0.0)
-    if len(valores_remision) >= 2:
+    if n >= 2:
         return (
-            f"Remisión con valor diferente ({len(valores_remision)} remisiones, no coincide con el valor facturado)",
+            f"Remisión con valor diferente ({n} remisiones, no coincide con el valor facturado)",
             diff,
         )
     return ("Remisión con valor diferente", diff)
@@ -786,7 +811,7 @@ def update_control_row(
     factura_data: dict,
     remisiones_data: list[dict],
     conciliacion: str,
-    valor_diff: float,
+    valor_diff: float | None,
     factura_link: Path | None,
     remision_links: list[Path],
     log: RunLog,
@@ -800,17 +825,19 @@ def update_control_row(
         return False
     bote = ", ".join(filter(None, [r.get("bote") for r in remisiones_data])) or None
     fecha_h = next((r.get("fecha_hora") for r in remisiones_data if r.get("fecha_hora")), None)
-    suma_rem = sum(r.get("valor", 0) or 0 for r in remisiones_data)
+    valores_extraidos = [r.get("valor") for r in remisiones_data if r.get("valor") is not None]
+    suma_rem = sum(valores_extraidos) if valores_extraidos else None
 
     ws.cell(row=row, column=COL["Nombre de Bote"], value=bote)
     ws.cell(row=row, column=COL["Fecha y hora de tanqueo"], value=fecha_h)
-    c_vr = ws.cell(row=row, column=COL["Valor remisión"], value=suma_rem if remisiones_data else None)
-    if remisiones_data:
+    c_vr = ws.cell(row=row, column=COL["Valor remisión"], value=suma_rem)
+    if suma_rem is not None:
         c_vr.number_format = MONEY_FMT
     ws.cell(row=row, column=COL["# Remisiones"], value=len(remisiones_data))
     ws.cell(row=row, column=COL["Conciliación"], value=format_status_with_icon(conciliacion))
     c_diff = ws.cell(row=row, column=COL["Valor (diferencia)"], value=valor_diff)
-    c_diff.number_format = MONEY_FMT
+    if valor_diff is not None:
+        c_diff.number_format = MONEY_FMT
     c_m = ws.cell(row=row, column=COL["Link factura"])
     set_hyperlink_cell(c_m, factura_link, factura_link.name if factura_link else "")
 
@@ -932,8 +959,8 @@ def process_one_email(
         summary["errors"] += 1
         return
 
+    conc, diff = conciliate(factura_data["valor"], remisiones_data, cfg["tolerance_pesos"])
     valores_rem = [r["valor"] for r in remisiones_data if r.get("valor") is not None]
-    conc, diff = conciliate(factura_data["valor"], valores_rem, cfg["tolerance_pesos"])
 
     ok = update_control_row(
         cfg["control_dir"] / cfg["control_filename"],
