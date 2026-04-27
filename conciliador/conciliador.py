@@ -466,7 +466,12 @@ def extract_remision_data(pdf_path: Path, api_key: str | None = None, log: "RunL
 
 VISION_PROMPT = """Esta es una remisión (recibo POS) de una estación de servicio de combustible para un bote.
 
-Extrae los siguientes datos. Responde SOLO con JSON valido, sin markdown, sin explicacion:
+Extrae los siguientes datos. **REVISA CON CUIDADO los dígitos del TOTAL** — algunos
+recibos tienen tinta clara o resolución baja, así que verifica cada cifra antes de
+responder. Si no estás 100% seguro de un campo, devuelve null para ese campo (es
+preferible null a un valor inventado o leído mal).
+
+Responde SOLO con JSON válido, sin markdown, sin explicación:
 
 {
   "valor": <numero entero, el TOTAL del despacho en pesos colombianos, sin signo $ ni puntos de miles. Ejemplo: 685948>,
@@ -474,10 +479,10 @@ Extrae los siguientes datos. Responde SOLO con JSON valido, sin markdown, sin ex
   "fecha_hora": <string formato YYYY-MM-DD HH:MM:SS. Ejemplo: "2026-01-02 08:05:30">
 }
 
-Si no encuentras un campo, usa null. NO inventes datos."""
+Si un campo no es legible o no estás seguro, usa null."""
 
 
-def render_pdf_first_page_to_png(pdf_path: Path, scale: float = 2.0) -> bytes:
+def render_pdf_first_page_to_png(pdf_path: Path, scale: float = 3.0) -> bytes:
     """Renderiza la primera pagina del PDF como PNG bytes."""
     pdf = pdfium.PdfDocument(str(pdf_path))
     try:
@@ -510,8 +515,9 @@ def vision_extract_remision(pdf_path: Path, api_key: str, log: "RunLog | None" =
     img_b64 = base64.b64encode(png_bytes).decode()
     try:
         client = anthropic.Anthropic(api_key=api_key)
+        model = os.environ.get("ANTHROPIC_VISION_MODEL", "claude-sonnet-4-6")
         msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=model,
             max_tokens=512,
             messages=[{
                 "role": "user",
