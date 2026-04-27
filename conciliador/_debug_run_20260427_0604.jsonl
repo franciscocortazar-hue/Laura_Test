@@ -1,0 +1,354 @@
+{"ts": "2026-04-27T05:44:03.266116+00:00", "level": "info", "event": "start", "limit": 0, "since": "2026-01-01", "until": "2026-04-30", "dry_run": false}
+{"ts": "2026-04-27T05:44:03.266750+00:00", "level": "info", "event": "control_exists", "path": "C:\\Users\\franc\\Mi unidad\\Inteligencia Artificial\\Productividad\\Gasolina\\Control\\Control_Conciliacion_Combustibles.xlsx"}
+{"ts": "2026-04-27T05:44:03.286426+00:00", "level": "info", "event": "expected_loaded", "count": 114}
+{"ts": "2026-04-27T05:44:03.288658+00:00", "level": "info", "event": "gmail_service_ready", "user": "francisco.cortazar@boats4u.co"}
+{"ts": "2026-04-27T05:44:03.291759+00:00", "level": "info", "event": "gmail_search", "query": "from:no-responder@facture.co subject:\"TODOMAR CHL\" after:2026/01/01 before:2026/04/30"}
+{"ts": "2026-04-27T05:44:03.918935+00:00", "level": "info", "event": "gmail_search_result", "count": 157}
+{"ts": "2026-04-27T05:45:07.921913+00:00", "level": "info", "event": "non_invoices_filtered", "count": 39}
+{"ts": "2026-04-27T05:45:07.922774+00:00", "level": "info", "event": "to_process", "count": 118}
+{"ts": "2026-04-27T05:45:07.923668+00:00", "level": "info", "event": "email", "msg_id": "19b9a50039b6fee2", "subject": "806003144;TODOMAR CHL S.A.S.;FC74783;01;TODOMAR CHL S.A.S.", "numdoctra": "74783"}
+{"ts": "2026-04-27T05:45:07.924620+00:00", "level": "info", "event": "already_processed_skip", "numdoctra": "74783"}
+{"ts": "2026-04-27T05:45:08.696664+00:00", "level": "info", "event": "email", "msg_id": "19b9eb052c105f81", "subject": "806003144;TODOMAR CHL S.A.S.;FC74820;01;TODOMAR CHL S.A.S.", "numdoctra": "74820"}
+{"ts": "2026-04-27T05:45:08.698049+00:00", "level": "info", "event": "already_processed_skip", "numdoctra": "74820"}
+{"ts": "2026-04-27T05:45:09.226759+00:00", "level": "info", "event": "email", "msg_id": "19b9f3422e07d9ad", "subject": "806003144;TODOMAR CHL S.A.S.;FC74864;01;TODOMAR CHL S.A.S.", "numdoctra": "74864"}
+{"ts": "2026-04-27T05:45:09.228008+00:00", "level": "info", "event": "already_processed_skip", "numdoctra": "74864"}
+{"ts": "2026-04-27T05:45:09.753240+00:00", "level": "info", "event": "email", "msg_id": "19b9f6981e559c5b", "subject": "806003144;TODOMAR CHL S.A.S.;FC74886;01;TODOMAR CHL S.A.S.", "numdoctra": "74886"}
+{"ts": "2026-04-27T05:45:09.754749+00:00", "level": "info", "event": "already_processed_skip", "numdoctra": "74886"}
+{"ts": "2026-04-27T05:45:10.269738+00:00", "level": "info", "event": "email", "msg_id": "19ba020d219d30cc", "subject": "806003144;TODOMAR CHL S.A.S.;FC74925;01;TODOMAR CHL S.A.S.", "numdoctra": "74925"}
+{"ts": "2026-04-27T05:45:10.270902+00:00", "level": "info", "event": "already_processed_skip", "numdoctra": "74925"}
+{"ts": "2026-04-27T05:45:10.820203+00:00", "level": "info", "event": "email", "msg_id": "19ba2dea21c4e454", "subject": "806003144;TODOMAR CHL S.A.S.;FC74982;01;TODOMAR CHL S.A.S.", "numdoctra": "74982"}
+{"ts": "2026-04-27T05:45:10.821698+00:00", "level": "info", "event": "already_processed_skip", "numdoctra": "74982"}
+{"ts": "2026-04-27T05:45:11.348897+00:00", "level": "info", "event": "email", "msg_id": "19ba31ce35f25839", "subject": "806003144;TODOMAR CHL S.A.S.;FC75010;01;TODOMAR CHL S.A.S.", "numdoctra": "75010"}
+{"ts": "2026-04-27T05:45:11.350208+00:00", "level": "info", "event": "already_processed_skip", "numdoctra": "75010"}
+{"ts": "2026-04-27T05:45:11.873900+00:00", "level": "info", "event": "email", "msg_id": "19ba37ec3db2cdd6", "subject": "806003144;TODOMAR CHL S.A.S.;FC75016;01;TODOMAR CHL S.A.S.", "numdoctra": "75016"}
+{"ts": "2026-04-27T05:45:11.875222+00:00", "level": "info", "event": "already_processed_skip", "numdoctra": "75016"}
+{"ts": "2026-04-27T05:45:12.397560+00:00", "level": "info", "event": "email", "msg_id": "19ba51e0876756b0", "subject": "806003144;TODOMAR CHL S.A.S.;FC75180;01;TODOMAR CHL S.A.S.", "numdoctra": "75180"}
+{"ts": "2026-04-27T05:45:13.168624+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC75180.pdf"}
+{"ts": "2026-04-27T05:45:16.732481+00:00", "level": "info", "event": "conciliated", "numdoctra": "75180", "valor_factura": 529920.0, "valor_remision": 529920.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:45:16.733681+00:00", "level": "info", "event": "email", "msg_id": "19baa1eb99011163", "subject": "806003144;TODOMAR CHL S.A.S.;FC75384;01;TODOMAR CHL S.A.S.", "numdoctra": "75384"}
+{"ts": "2026-04-27T05:45:16.735637+00:00", "level": "info", "event": "already_processed_skip", "numdoctra": "75384"}
+{"ts": "2026-04-27T05:45:17.242073+00:00", "level": "info", "event": "email", "msg_id": "19baa1f67f2bceef", "subject": "806003144;TODOMAR CHL S.A.S.;FC75385;01;TODOMAR CHL S.A.S.", "numdoctra": "75385"}
+{"ts": "2026-04-27T05:45:17.990139+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC75385.pdf"}
+{"ts": "2026-04-27T05:45:21.046570+00:00", "level": "info", "event": "conciliated", "numdoctra": "75385", "valor_factura": 579600.0, "valor_remision": 579600.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:45:21.048133+00:00", "level": "info", "event": "email", "msg_id": "19baa7ef967cc3bb", "subject": "806003144;TODOMAR CHL S.A.S.;FC75445;01;TODOMAR CHL S.A.S.", "numdoctra": "75445"}
+{"ts": "2026-04-27T05:45:21.954397+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC75445.pdf"}
+{"ts": "2026-04-27T05:45:25.356314+00:00", "level": "info", "event": "conciliated", "numdoctra": "75445", "valor_factura": 529920.0, "valor_remision": 529920.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:45:25.357521+00:00", "level": "info", "event": "email", "msg_id": "19baa9c174a05225", "subject": "806003144;TODOMAR CHL S.A.S.;FC75475;01;TODOMAR CHL S.A.S.", "numdoctra": "75475"}
+{"ts": "2026-04-27T05:45:26.129428+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC75475.pdf"}
+{"ts": "2026-04-27T05:45:29.706322+00:00", "level": "info", "event": "conciliated", "numdoctra": "75475", "valor_factura": 579252.24, "valor_remision": 579252.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:45:29.707823+00:00", "level": "info", "event": "email", "msg_id": "19baa9d41378de23", "subject": "806003144;TODOMAR CHL S.A.S.;FC75477;01;TODOMAR CHL S.A.S.", "numdoctra": "75477"}
+{"ts": "2026-04-27T05:45:30.711566+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC75477.pdf"}
+{"ts": "2026-04-27T05:45:34.428918+00:00", "level": "info", "event": "conciliated", "numdoctra": "75477", "valor_factura": 745448.4, "valor_remision": 745448.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:45:34.430035+00:00", "level": "info", "event": "email", "msg_id": "19baaa55d70032ce", "subject": "806003144;TODOMAR CHL S.A.S.;FC75490;01;TODOMAR CHL S.A.S.", "numdoctra": "75490"}
+{"ts": "2026-04-27T05:45:35.355528+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC75490.pdf"}
+{"ts": "2026-04-27T05:45:38.553076+00:00", "level": "info", "event": "conciliated", "numdoctra": "75490", "valor_factura": 745200.0, "valor_remision": 745200.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:45:38.553965+00:00", "level": "info", "event": "email", "msg_id": "19bbd5e4108c4af6", "subject": "806003144;TODOMAR CHL S.A.S.;FC75758;01;TODOMAR CHL S.A.S.", "numdoctra": "75758"}
+{"ts": "2026-04-27T05:45:39.351417+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC75758.pdf"}
+{"ts": "2026-04-27T05:45:43.512451+00:00", "level": "info", "event": "conciliated", "numdoctra": "75758", "valor_factura": 529936.56, "valor_remision": 529937.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:45:43.513274+00:00", "level": "info", "event": "email", "msg_id": "19bc7b450b55377d", "subject": "806003144;TODOMAR CHL S.A.S.;FC75867;01;TODOMAR CHL S.A.S.", "numdoctra": "75867"}
+{"ts": "2026-04-27T05:45:44.279902+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC75867.pdf"}
+{"ts": "2026-04-27T05:45:47.952824+00:00", "level": "info", "event": "conciliated", "numdoctra": "75867", "valor_factura": 529920.0, "valor_remision": 529920.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:45:47.955292+00:00", "level": "info", "event": "email", "msg_id": "19bcd8552e670736", "subject": "806003144;TODOMAR CHL S.A.S.;FC75925;01;TODOMAR CHL S.A.S.", "numdoctra": "75925"}
+{"ts": "2026-04-27T05:45:49.075614+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC75925.pdf"}
+{"ts": "2026-04-27T05:45:54.080707+00:00", "level": "warn", "event": "vision_response_not_json", "file": "REM-FC75925.pdf", "response": "I need to carefully read each field from this fuel station receipt.\n\n**TOTAL:** The receipt shows \"TOTAL = $ 529.920\" — let me verify each digit: 5, 2, 9, 9, 2, 0 → 529920\n\n**PLACA (boat identifier):*"}
+{"ts": "2026-04-27T05:45:54.659061+00:00", "level": "info", "event": "conciliated", "numdoctra": "75925", "valor_factura": 529920.0, "valor_remision": 0, "n_remisiones": 1, "conciliacion": "Pendiente revisión manual (OCR no concluyente)", "diferencia": null}
+{"ts": "2026-04-27T05:45:54.660384+00:00", "level": "info", "event": "email", "msg_id": "19bd1a32518d095f", "subject": "806003144;TODOMAR CHL S.A.S.;FC75983;01;TODOMAR CHL S.A.S.", "numdoctra": "75983"}
+{"ts": "2026-04-27T05:45:55.468853+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC75983.pdf"}
+{"ts": "2026-04-27T05:45:58.800194+00:00", "level": "info", "event": "conciliated", "numdoctra": "75983", "valor_factura": 579600.0, "valor_remision": 579600.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:45:58.801633+00:00", "level": "info", "event": "email", "msg_id": "19be65a03d015c5c", "subject": "806003144;TODOMAR CHL S.A.S.;FC76143;01;TODOMAR CHL S.A.S.", "numdoctra": "76143"}
+{"ts": "2026-04-27T05:45:59.558396+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC76143.pdf"}
+{"ts": "2026-04-27T05:46:06.876617+00:00", "level": "warn", "event": "vision_response_not_json", "file": "REM-FC76143.pdf", "response": "Looking carefully at the receipt:\n\n- **TOTAL**: \"$ 745.200\" — I can see 745,200\n- **BOTE/EMBARCACION**: \"LE MARIE\" (written by hand next to \"CONSUMIDO\")\n- **FECHA/HORA**: \"2026/01/22 HORA 07:55:21\"\n\n{"}
+{"ts": "2026-04-27T05:46:07.520308+00:00", "level": "info", "event": "conciliated", "numdoctra": "76143", "valor_factura": 745200.0, "valor_remision": 0, "n_remisiones": 1, "conciliacion": "Pendiente revisión manual (OCR no concluyente)", "diferencia": null}
+{"ts": "2026-04-27T05:46:07.521782+00:00", "level": "info", "event": "email", "msg_id": "19beba2ac617ca05", "subject": "806003144;TODOMAR CHL S.A.S.;FC76189;01;TODOMAR CHL S.A.S.", "numdoctra": "76189"}
+{"ts": "2026-04-27T05:46:08.296148+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC76189.pdf"}
+{"ts": "2026-04-27T05:46:14.753318+00:00", "level": "info", "event": "conciliated", "numdoctra": "76189", "valor_factura": 579600.0, "valor_remision": 579600.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:46:14.754479+00:00", "level": "info", "event": "email", "msg_id": "19bf138f06b4ee55", "subject": "806003144;TODOMAR CHL S.A.S.;FC76238;01;TODOMAR CHL S.A.S.", "numdoctra": "76238"}
+{"ts": "2026-04-27T05:46:15.528592+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC76238.pdf"}
+{"ts": "2026-04-27T05:46:19.117704+00:00", "level": "info", "event": "conciliated", "numdoctra": "76238", "valor_factura": 746988.48, "valor_remision": 746988.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:46:19.119172+00:00", "level": "info", "event": "email", "msg_id": "19bfc80bdc6dbc11", "subject": "806003144;TODOMAR CHL S.A.S.;FC76357;01;TODOMAR CHL S.A.S.", "numdoctra": "76357"}
+{"ts": "2026-04-27T05:46:19.874226+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC76357.pdf"}
+{"ts": "2026-04-27T05:46:23.517345+00:00", "level": "info", "event": "conciliated", "numdoctra": "76357", "valor_factura": 662400.0, "valor_remision": 662400.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:46:23.518855+00:00", "level": "info", "event": "email", "msg_id": "19c0527233206672", "subject": "806003144;TODOMAR CHL S.A.S.;FC76401;01;TODOMAR CHL S.A.S.", "numdoctra": "76401"}
+{"ts": "2026-04-27T05:46:24.346717+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC76401.pdf"}
+{"ts": "2026-04-27T05:46:29.979575+00:00", "level": "warn", "event": "vision_response_not_json", "file": "REM-FC76401.pdf", "response": "I'll carefully analyze each field:\n\n**TOTAL**: The receipt shows \"TOTAL $ 662,400\" — I can see 6, 6, 2, 4, 0, 0. The value is 662400.\n\n**PLACA/BOTE**: Shows \"PLACA: L MARTI\" (or similar — partially le"}
+{"ts": "2026-04-27T05:46:30.561971+00:00", "level": "info", "event": "conciliated", "numdoctra": "76401", "valor_factura": 662400.0, "valor_remision": 0, "n_remisiones": 1, "conciliacion": "Pendiente revisión manual (OCR no concluyente)", "diferencia": null}
+{"ts": "2026-04-27T05:46:30.562972+00:00", "level": "info", "event": "email", "msg_id": "19c05271df8bca0f", "subject": "806003144;TODOMAR CHL S.A.S.;FC76401;01;TODOMAR CHL S.A.S.", "numdoctra": "76401"}
+{"ts": "2026-04-27T05:46:30.563576+00:00", "level": "info", "event": "already_processed_skip", "numdoctra": "76401"}
+{"ts": "2026-04-27T05:46:31.091851+00:00", "level": "info", "event": "email", "msg_id": "19c0fe39e6fa431c", "subject": "806003144;TODOMAR CHL S.A.S.;FC76489;01;TODOMAR CHL S.A.S.", "numdoctra": "76489"}
+{"ts": "2026-04-27T05:46:31.842396+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC76489.pdf"}
+{"ts": "2026-04-27T05:46:36.183235+00:00", "level": "info", "event": "conciliated", "numdoctra": "76489", "valor_factura": 794880.0, "valor_remision": 794880.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:46:36.183973+00:00", "level": "info", "event": "email", "msg_id": "19c1118948189436", "subject": "806003144;TODOMAR CHL S.A.S.;FC76519;01;TODOMAR CHL S.A.S.", "numdoctra": "76519"}
+{"ts": "2026-04-27T05:46:36.953433+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC76519.pdf"}
+{"ts": "2026-04-27T05:46:40.738391+00:00", "level": "info", "event": "conciliated", "numdoctra": "76519", "valor_factura": 563040.0, "valor_remision": 563040.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:46:40.739635+00:00", "level": "info", "event": "email", "msg_id": "19c2981f2c2a9fc6", "subject": "806003144;TODOMAR CHL S.A.S.;FC76593;01;TODOMAR CHL S.A.S.", "numdoctra": "76593"}
+{"ts": "2026-04-27T05:46:41.823605+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC76593.pdf"}
+{"ts": "2026-04-27T05:46:45.949210+00:00", "level": "info", "event": "conciliated", "numdoctra": "76593", "valor_factura": 526711.92, "valor_remision": 526712.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:46:45.950179+00:00", "level": "info", "event": "email", "msg_id": "19c2e5c9783cb25f", "subject": "806003144;TODOMAR CHL S.A.S.;FC76611;01;TODOMAR CHL S.A.S.", "numdoctra": "76611"}
+{"ts": "2026-04-27T05:46:46.697146+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC76611.pdf"}
+{"ts": "2026-04-27T05:46:49.860961+00:00", "level": "info", "event": "conciliated", "numdoctra": "76611", "valor_factura": 558600.0, "valor_remision": 558600.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:46:49.862542+00:00", "level": "info", "event": "email", "msg_id": "19c2e5fb88341543", "subject": "806003144;TODOMAR CHL S.A.S.;FC76613;01;TODOMAR CHL S.A.S.", "numdoctra": "76613"}
+{"ts": "2026-04-27T05:46:50.692789+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC76613.pdf"}
+{"ts": "2026-04-27T05:46:54.027536+00:00", "level": "info", "event": "conciliated", "numdoctra": "76613", "valor_factura": 574560.0, "valor_remision": 574560.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:46:54.028689+00:00", "level": "info", "event": "email", "msg_id": "19c396f8b841d10f", "subject": "806003144;TODOMAR CHL S.A.S.;FC76705;01;TODOMAR CHL S.A.S.", "numdoctra": "76705"}
+{"ts": "2026-04-27T05:46:54.967096+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC76705.pdf"}
+{"ts": "2026-04-27T05:46:58.242594+00:00", "level": "info", "event": "conciliated", "numdoctra": "76705", "valor_factura": 558600.0, "valor_remision": 558600.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:46:58.244008+00:00", "level": "info", "event": "email", "msg_id": "19c523d8b039c71c", "subject": "806003144;TODOMAR CHL S.A.S.;FC76835;01;TODOMAR CHL S.A.S.", "numdoctra": "76835"}
+{"ts": "2026-04-27T05:46:59.108269+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC76835.pdf"}
+{"ts": "2026-04-27T05:47:02.215622+00:00", "level": "info", "event": "conciliated", "numdoctra": "76835", "valor_factura": 558600.0, "valor_remision": 558600.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:47:02.216907+00:00", "level": "info", "event": "email", "msg_id": "19c6285e75a4050a", "subject": "806003144;TODOMAR CHL S.A.S.;FC76954;01;TODOMAR CHL S.A.S.", "numdoctra": "76954"}
+{"ts": "2026-04-27T05:47:03.059847+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC76954.pdf"}
+{"ts": "2026-04-27T05:47:06.849932+00:00", "level": "info", "event": "conciliated", "numdoctra": "76954", "valor_factura": 590520.0, "valor_remision": 590520.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:47:06.850783+00:00", "level": "info", "event": "email", "msg_id": "19c62871b6fa6e0a", "subject": "806003144;TODOMAR CHL S.A.S.;FC76955;01;TODOMAR CHL S.A.S.", "numdoctra": "76955"}
+{"ts": "2026-04-27T05:47:07.962049+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC76955.pdf"}
+{"ts": "2026-04-27T05:47:11.720745+00:00", "level": "info", "event": "conciliated", "numdoctra": "76955", "valor_factura": 622440.0, "valor_remision": 622440.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:47:11.721902+00:00", "level": "info", "event": "email", "msg_id": "19c689128c663c64", "subject": "806003144;TODOMAR CHL S.A.S.;FC77031;01;TODOMAR CHL S.A.S.", "numdoctra": "77031"}
+{"ts": "2026-04-27T05:47:12.519826+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC77031.pdf"}
+{"ts": "2026-04-27T05:47:17.236634+00:00", "level": "info", "event": "conciliated", "numdoctra": "77031", "valor_factura": 686280.0, "valor_remision": 686280.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:47:17.237859+00:00", "level": "info", "event": "email", "msg_id": "19c71980628d87c8", "subject": "806003144;TODOMAR CHL S.A.S.;FC77091;01;TODOMAR CHL S.A.S.", "numdoctra": "77091"}
+{"ts": "2026-04-27T05:47:18.192424+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC77091.pdf"}
+{"ts": "2026-04-27T05:47:21.839536+00:00", "level": "info", "event": "conciliated", "numdoctra": "77091", "valor_factura": 686280.0, "valor_remision": 686280.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:47:21.840510+00:00", "level": "info", "event": "email", "msg_id": "19c767fd9e97b28f", "subject": "806003144;TODOMAR CHL S.A.S.;FC77136;01;TODOMAR CHL S.A.S.", "numdoctra": "77136"}
+{"ts": "2026-04-27T05:47:22.598266+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC77136.pdf"}
+{"ts": "2026-04-27T05:47:27.527081+00:00", "level": "info", "event": "conciliated", "numdoctra": "77136", "valor_factura": 750120.0, "valor_remision": 750120.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:47:27.528441+00:00", "level": "info", "event": "email", "msg_id": "19c7cf5e712a8e8a", "subject": "806003144;TODOMAR CHL S.A.S.;FC77174;01;TODOMAR CHL S.A.S.", "numdoctra": "77174"}
+{"ts": "2026-04-27T05:47:28.435339+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC77174.pdf"}
+{"ts": "2026-04-27T05:47:32.320257+00:00", "level": "info", "event": "conciliated", "numdoctra": "77174", "valor_factura": 558600.0, "valor_remision": 558600.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:47:32.321840+00:00", "level": "info", "event": "email", "msg_id": "19c7cf86a911b023", "subject": "806003144;TODOMAR CHL S.A.S.;FC77181;01;TODOMAR CHL S.A.S.", "numdoctra": "77181"}
+{"ts": "2026-04-27T05:47:33.522621+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC77181.pdf"}
+{"ts": "2026-04-27T05:47:38.313129+00:00", "level": "info", "event": "conciliated", "numdoctra": "77181", "valor_factura": 638400.0, "valor_remision": 638400.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:47:38.314173+00:00", "level": "info", "event": "email", "msg_id": "19c811dce58cdd46", "subject": "806003144;TODOMAR CHL S.A.S.;FC77230;01;TODOMAR CHL S.A.S.", "numdoctra": "77230"}
+{"ts": "2026-04-27T05:47:39.474204+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC77230.pdf"}
+{"ts": "2026-04-27T05:47:44.112826+00:00", "level": "info", "event": "conciliated", "numdoctra": "77230", "valor_factura": 702240.0, "valor_remision": 702240.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:47:44.113935+00:00", "level": "info", "event": "email", "msg_id": "19c811fc535accaf", "subject": "806003144;TODOMAR CHL S.A.S.;FC77237;01;TODOMAR CHL S.A.S.", "numdoctra": "77237"}
+{"ts": "2026-04-27T05:47:44.992654+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC77237.pdf"}
+{"ts": "2026-04-27T05:47:49.535148+00:00", "level": "warn", "event": "vision_response_not_json", "file": "REM-FC77237.pdf", "response": "Looking carefully at the receipt:\n\n- **TOTAL**: \"$ 558.600\" — I can see 5, 5, 8, 6, 0, 0\n- **PLACA**: \"B10\"\n- **FECHA/HORA**: \"2026/02/21\" and \"09:18:05\"\n\n{\"valor\": 558600, \"bote\": \"B10\", \"fecha_hora\""}
+{"ts": "2026-04-27T05:47:50.116382+00:00", "level": "info", "event": "conciliated", "numdoctra": "77237", "valor_factura": 558600.0, "valor_remision": 0, "n_remisiones": 1, "conciliacion": "Pendiente revisión manual (OCR no concluyente)", "diferencia": null}
+{"ts": "2026-04-27T05:47:50.116982+00:00", "level": "info", "event": "email", "msg_id": "19c812202e2805d7", "subject": "806003144;TODOMAR CHL S.A.S.;FC77240;01;TODOMAR CHL S.A.S.", "numdoctra": "77240"}
+{"ts": "2026-04-27T05:47:51.002491+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC77240.pdf"}
+{"ts": "2026-04-27T05:47:54.543116+00:00", "level": "info", "event": "conciliated", "numdoctra": "77240", "valor_factura": 606480.0, "valor_remision": 606480.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:47:54.544287+00:00", "level": "info", "event": "email", "msg_id": "19c8fff03d598067", "subject": "806003144;TODOMAR CHL S.A.S.;FC77385;01;TODOMAR CHL S.A.S.", "numdoctra": "77385"}
+{"ts": "2026-04-27T05:47:55.462231+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC77385.pdf"}
+{"ts": "2026-04-27T05:47:59.271911+00:00", "level": "info", "event": "conciliated", "numdoctra": "77385", "valor_factura": 718200.0, "valor_remision": 718200.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:47:59.273384+00:00", "level": "info", "event": "email", "msg_id": "19c90530e5c0b94e", "subject": "806003144;TODOMAR CHL S.A.S.;FC77392;01;TODOMAR CHL S.A.S.", "numdoctra": "77392"}
+{"ts": "2026-04-27T05:48:00.409005+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC77392.pdf"}
+{"ts": "2026-04-27T05:48:03.958994+00:00", "level": "info", "event": "conciliated", "numdoctra": "77392", "valor_factura": 558600.0, "valor_remision": 558600.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:48:03.960444+00:00", "level": "info", "event": "email", "msg_id": "19c95a347b4b0b04", "subject": "806003144;TODOMAR CHL S.A.S.;FC77430;01;TODOMAR CHL S.A.S.", "numdoctra": "77430"}
+{"ts": "2026-04-27T05:48:04.951460+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC77430.pdf"}
+{"ts": "2026-04-27T05:48:09.748618+00:00", "level": "info", "event": "conciliated", "numdoctra": "77430", "valor_factura": 718200.0, "valor_remision": 718200.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:48:09.749189+00:00", "level": "info", "event": "email", "msg_id": "19c9ac6e21f7d13f", "subject": "806003144;TODOMAR CHL S.A.S.;FC77467;01;TODOMAR CHL S.A.S.", "numdoctra": "77467"}
+{"ts": "2026-04-27T05:48:10.697964+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC77467.pdf"}
+{"ts": "2026-04-27T05:48:14.202288+00:00", "level": "info", "event": "conciliated", "numdoctra": "77467", "valor_factura": 446880.0, "valor_remision": 446880.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:48:14.203490+00:00", "level": "info", "event": "email", "msg_id": "19cb02286d6c130a", "subject": "806003144;TODOMAR CHL S.A.S.;FC77623;01;TODOMAR CHL S.A.S.", "numdoctra": "77623"}
+{"ts": "2026-04-27T05:48:15.773045+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC77623.pdf"}
+{"ts": "2026-04-27T05:48:20.059999+00:00", "level": "warn", "event": "vision_response_not_json", "file": "REM-FC77623.pdf", "response": "Looking carefully at the receipt:\n\n- **TOTAL**: \"TOTAL = $ 558.600\" — I can see 558,600\n- **PLACA**: \"B10\"\n- **FECHA/HORA**: \"2026/03/01 HORA 10:56:04\"\n\n{\"valor\": 558600, \"bote\": \"B10\", \"fecha_hora\": "}
+{"ts": "2026-04-27T05:48:20.709775+00:00", "level": "info", "event": "conciliated", "numdoctra": "77623", "valor_factura": 558600.0, "valor_remision": 0, "n_remisiones": 1, "conciliacion": "Pendiente revisión manual (OCR no concluyente)", "diferencia": null}
+{"ts": "2026-04-27T05:48:20.711605+00:00", "level": "info", "event": "email", "msg_id": "19cb02df910efbc6", "subject": "806003144;TODOMAR CHL S.A.S.;FC77631;01;TODOMAR CHL S.A.S.", "numdoctra": "77631"}
+{"ts": "2026-04-27T05:48:22.426237+00:00", "level": "info", "event": "conciliated", "numdoctra": "77631", "valor_factura": 861840.0, "valor_remision": 0, "n_remisiones": 0, "conciliacion": "No hay remisión", "diferencia": null}
+{"ts": "2026-04-27T05:48:22.427427+00:00", "level": "info", "event": "email", "msg_id": "19cb46f28e972b93", "subject": "806003144;TODOMAR CHL S.A.S.;FC77679;01;TODOMAR CHL S.A.S.", "numdoctra": "77679"}
+{"ts": "2026-04-27T05:48:23.788765+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC77679.pdf"}
+{"ts": "2026-04-27T05:48:28.164427+00:00", "level": "info", "event": "conciliated", "numdoctra": "77679", "valor_factura": 541100.0, "valor_remision": 541100.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:48:28.165716+00:00", "level": "info", "event": "email", "msg_id": "19cc3f7da48ac7f1", "subject": "806003144;TODOMAR CHL S.A.S.;FC77779;01;TODOMAR CHL S.A.S.", "numdoctra": "77779"}
+{"ts": "2026-04-27T05:48:29.285657+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC77779.pdf"}
+{"ts": "2026-04-27T05:48:33.033105+00:00", "level": "info", "event": "conciliated", "numdoctra": "77779", "valor_factura": 463800.0, "valor_remision": 463800.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:48:33.034365+00:00", "level": "info", "event": "email", "msg_id": "19cce5b88c3f2365", "subject": "806003144;TODOMAR CHL S.A.S.;FC77871;01;TODOMAR CHL S.A.S.", "numdoctra": "77871"}
+{"ts": "2026-04-27T05:48:34.550080+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC77871.pdf"}
+{"ts": "2026-04-27T05:48:38.066446+00:00", "level": "info", "event": "conciliated", "numdoctra": "77871", "valor_factura": 525640.0, "valor_remision": 525640.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:48:38.067781+00:00", "level": "info", "event": "email", "msg_id": "19cd877f5ee966f0", "subject": "806003144;TODOMAR CHL S.A.S.;FC77932;01;TODOMAR CHL S.A.S.", "numdoctra": "77932"}
+{"ts": "2026-04-27T05:48:39.462601+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC77932.pdf"}
+{"ts": "2026-04-27T05:48:43.151007+00:00", "level": "info", "event": "conciliated", "numdoctra": "77932", "valor_factura": 525640.0, "valor_remision": 525640.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:48:43.153002+00:00", "level": "info", "event": "email", "msg_id": "19cd87e10a8d5583", "subject": "806003144;TODOMAR CHL S.A.S.;FC77934;01;TODOMAR CHL S.A.S.", "numdoctra": "77934"}
+{"ts": "2026-04-27T05:48:44.370319+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC77934.pdf"}
+{"ts": "2026-04-27T05:48:48.381844+00:00", "level": "info", "event": "conciliated", "numdoctra": "77934", "valor_factura": 680240.0, "valor_remision": 680240.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:48:48.383426+00:00", "level": "info", "event": "email", "msg_id": "19ce27ae74473cbb", "subject": "806003144;TODOMAR CHL S.A.S.;FC77959;01;TODOMAR CHL S.A.S.", "numdoctra": "77959"}
+{"ts": "2026-04-27T05:48:49.686281+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC77959.pdf"}
+{"ts": "2026-04-27T05:48:56.837602+00:00", "level": "info", "event": "conciliated", "numdoctra": "77959", "valor_factura": 850300.0, "valor_remision": 850300.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:48:56.838744+00:00", "level": "info", "event": "email", "msg_id": "19ce27b1d0c50c1f", "subject": "806003144;TODOMAR CHL S.A.S.;FC77960;01;TODOMAR CHL S.A.S.", "numdoctra": "77960"}
+{"ts": "2026-04-27T05:48:57.642562+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC77960.pdf"}
+{"ts": "2026-04-27T05:49:01.399890+00:00", "level": "info", "event": "conciliated", "numdoctra": "77960", "valor_factura": 510180.0, "valor_remision": 510180.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:49:01.401746+00:00", "level": "info", "event": "email", "msg_id": "19ce2899b3c61d2e", "subject": "806003144;TODOMAR CHL S.A.S.;FC77965;01;TODOMAR CHL S.A.S.", "numdoctra": "77965"}
+{"ts": "2026-04-27T05:49:02.240759+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC77965.pdf"}
+{"ts": "2026-04-27T05:49:06.369900+00:00", "level": "info", "event": "conciliated", "numdoctra": "77965", "valor_factura": 850300.0, "valor_remision": 850300.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:49:06.371045+00:00", "level": "info", "event": "email", "msg_id": "19ce3668e7d51ab9", "subject": "806003144;TODOMAR CHL S.A.S.;FC78006;01;TODOMAR CHL S.A.S.", "numdoctra": "78006"}
+{"ts": "2026-04-27T05:49:07.217528+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC78006.pdf"}
+{"ts": "2026-04-27T05:49:12.116993+00:00", "level": "info", "event": "conciliated", "numdoctra": "78006", "valor_factura": 803920.0, "valor_remision": 803920.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:49:12.118989+00:00", "level": "info", "event": "email", "msg_id": "19cee17e40ce5024", "subject": "806003144;TODOMAR CHL S.A.S.;FC78140;01;TODOMAR CHL S.A.S.", "numdoctra": "78140"}
+{"ts": "2026-04-27T05:49:12.860344+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC78140.pdf"}
+{"ts": "2026-04-27T05:49:17.584093+00:00", "level": "info", "event": "conciliated", "numdoctra": "78140", "valor_factura": 819380.0, "valor_remision": 819380.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:49:17.585896+00:00", "level": "info", "event": "email", "msg_id": "19cf29c64c29e2c1", "subject": "806003144;TODOMAR CHL S.A.S.;FC78182;01;TODOMAR CHL S.A.S.", "numdoctra": "78182"}
+{"ts": "2026-04-27T05:49:18.361262+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC78182.pdf"}
+{"ts": "2026-04-27T05:49:21.709305+00:00", "level": "info", "event": "conciliated", "numdoctra": "78182", "valor_factura": 742080.0, "valor_remision": 742080.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:49:21.710839+00:00", "level": "info", "event": "email", "msg_id": "19cf79898abd8ee3", "subject": "806003144;TODOMAR CHL S.A.S.;FC78247;01;TODOMAR CHL S.A.S.", "numdoctra": "78247"}
+{"ts": "2026-04-27T05:49:22.562819+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC78247.pdf"}
+{"ts": "2026-04-27T05:49:26.022297+00:00", "level": "info", "event": "conciliated", "numdoctra": "78247", "valor_factura": 1082200.0, "valor_remision": 1082200.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:49:26.023771+00:00", "level": "info", "event": "email", "msg_id": "19cf9168b9654280", "subject": "806003144;TODOMAR CHL S.A.S.;FC78265;01;TODOMAR CHL S.A.S.", "numdoctra": "78265"}
+{"ts": "2026-04-27T05:49:26.864570+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC78265.pdf"}
+{"ts": "2026-04-27T05:49:32.878912+00:00", "level": "info", "event": "conciliated", "numdoctra": "78265", "valor_factura": 958520.0, "valor_remision": 958520.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:49:32.880788+00:00", "level": "info", "event": "email", "msg_id": "19cf91783e517201", "subject": "806003144;TODOMAR CHL S.A.S.;FC78266;01;TODOMAR CHL S.A.S.", "numdoctra": "78266"}
+{"ts": "2026-04-27T05:49:33.646335+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC78266.pdf"}
+{"ts": "2026-04-27T05:49:36.987441+00:00", "level": "info", "event": "conciliated", "numdoctra": "78266", "valor_factura": 927600.0, "valor_remision": 927600.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:49:36.988789+00:00", "level": "info", "event": "email", "msg_id": "19cfd3623711550f", "subject": "806003144;TODOMAR CHL S.A.S.;FC78278;01;TODOMAR CHL S.A.S.", "numdoctra": "78278"}
+{"ts": "2026-04-27T05:49:37.754837+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC78278.pdf"}
+{"ts": "2026-04-27T05:49:40.954412+00:00", "level": "info", "event": "conciliated", "numdoctra": "78278", "valor_factura": 819380.0, "valor_remision": 819380.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:49:40.955891+00:00", "level": "info", "event": "email", "msg_id": "19cfd48d6b7b2bf3", "subject": "806003144;TODOMAR CHL S.A.S.;FC78283;01;TODOMAR CHL S.A.S.", "numdoctra": "78283"}
+{"ts": "2026-04-27T05:49:41.764953+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC78283.pdf"}
+{"ts": "2026-04-27T05:49:45.008430+00:00", "level": "info", "event": "conciliated", "numdoctra": "78283", "valor_factura": 587480.0, "valor_remision": 587480.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:49:45.010466+00:00", "level": "info", "event": "email", "msg_id": "19d01b49a4074424", "subject": "806003144;TODOMAR CHL S.A.S.;FC78317;01;TODOMAR CHL S.A.S.", "numdoctra": "78317"}
+{"ts": "2026-04-27T05:49:45.819429+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC78317.pdf"}
+{"ts": "2026-04-27T05:49:49.028973+00:00", "level": "info", "event": "conciliated", "numdoctra": "78317", "valor_factura": 649320.0, "valor_remision": 649320.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:49:49.029637+00:00", "level": "info", "event": "email", "msg_id": "19d11e3fabd68cc3", "subject": "806003144;TODOMAR CHL S.A.S.;FC78450;01;TODOMAR CHL S.A.S.", "numdoctra": "78450"}
+{"ts": "2026-04-27T05:49:49.753992+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC78450.pdf"}
+{"ts": "2026-04-27T05:49:53.705908+00:00", "level": "info", "event": "conciliated", "numdoctra": "78450", "valor_factura": 664780.0, "valor_remision": 664780.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:49:53.707246+00:00", "level": "info", "event": "email", "msg_id": "19d17ef17fb8ae73", "subject": "806003144;TODOMAR CHL S.A.S.;FC78554;01;TODOMAR CHL S.A.S.", "numdoctra": "78554"}
+{"ts": "2026-04-27T05:49:54.549557+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC78554.pdf"}
+{"ts": "2026-04-27T05:49:57.997410+00:00", "level": "info", "event": "conciliated", "numdoctra": "78554", "valor_factura": 773000.0, "valor_remision": 773000.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:49:57.998437+00:00", "level": "info", "event": "email", "msg_id": "19d2068c6eccb155", "subject": "806003144;TODOMAR CHL S.A.S.;FC78641;01;TODOMAR CHL S.A.S.", "numdoctra": "78641"}
+{"ts": "2026-04-27T05:49:58.898733+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC78641.pdf"}
+{"ts": "2026-04-27T05:50:02.647725+00:00", "level": "info", "event": "conciliated", "numdoctra": "78641", "valor_factura": 742080.0, "valor_remision": 742080.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:50:02.648321+00:00", "level": "info", "event": "email", "msg_id": "19d26e7b08d59afb", "subject": "806003144;TODOMAR CHL S.A.S.;FC78715;01;TODOMAR CHL S.A.S.", "numdoctra": "78715"}
+{"ts": "2026-04-27T05:50:03.426553+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC78715.pdf"}
+{"ts": "2026-04-27T05:50:07.850674+00:00", "level": "info", "event": "conciliated", "numdoctra": "78715", "valor_factura": 67199.99, "valor_remision": 106000.0, "n_remisiones": 1, "conciliacion": "Remisión con valor diferente", "diferencia": -38800.01}
+{"ts": "2026-04-27T05:50:07.851987+00:00", "level": "info", "event": "email", "msg_id": "19d272b75536d8c2", "subject": "806003144;TODOMAR CHL S.A.S.;FC78725;01;TODOMAR CHL S.A.S.", "numdoctra": "78725"}
+{"ts": "2026-04-27T05:50:10.255590+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC78725.pdf"}
+{"ts": "2026-04-27T05:50:15.374820+00:00", "level": "info", "event": "conciliated", "numdoctra": "78725", "valor_factura": 1236800.0, "valor_remision": 463800.0, "n_remisiones": 1, "conciliacion": "Remisión con valor diferente", "diferencia": 773000.0}
+{"ts": "2026-04-27T05:50:15.376726+00:00", "level": "info", "event": "email", "msg_id": "19d2fdea4596f6e1", "subject": "806003144;TODOMAR CHL S.A.S.;FC78767;01;TODOMAR CHL S.A.S.", "numdoctra": "78767"}
+{"ts": "2026-04-27T05:50:17.765213+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC78767.pdf"}
+{"ts": "2026-04-27T05:50:22.732203+00:00", "level": "info", "event": "conciliated", "numdoctra": "78767", "valor_factura": 649320.0, "valor_remision": 649320.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:50:22.733384+00:00", "level": "info", "event": "email", "msg_id": "19d35e2045f7922c", "subject": "806003144;TODOMAR CHL S.A.S.;FC78827;01;TODOMAR CHL S.A.S.", "numdoctra": "78827"}
+{"ts": "2026-04-27T05:50:25.073339+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC78827.pdf"}
+{"ts": "2026-04-27T05:50:28.756087+00:00", "level": "info", "event": "conciliated", "numdoctra": "78827", "valor_factura": 541100.0, "valor_remision": 541100.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:50:28.758352+00:00", "level": "info", "event": "email", "msg_id": "19d35f79b1956a00", "subject": "806003144;TODOMAR CHL S.A.S.;FC78839;01;TODOMAR CHL S.A.S.", "numdoctra": "78839"}
+{"ts": "2026-04-27T05:50:31.230152+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC78839.pdf"}
+{"ts": "2026-04-27T05:50:35.445508+00:00", "level": "info", "event": "conciliated", "numdoctra": "78839", "valor_factura": 649320.0, "valor_remision": 649320.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:50:35.446573+00:00", "level": "info", "event": "email", "msg_id": "19d3af82c98700ae", "subject": "806003144;TODOMAR CHL S.A.S.;FC78924;01;TODOMAR CHL S.A.S.", "numdoctra": "78924"}
+{"ts": "2026-04-27T05:50:37.728510+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC78924.pdf"}
+{"ts": "2026-04-27T05:50:41.769535+00:00", "level": "info", "event": "conciliated", "numdoctra": "78924", "valor_factura": 541100.0, "valor_remision": 541100.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:50:41.771906+00:00", "level": "info", "event": "email", "msg_id": "19d44960408b4b40", "subject": "806003144;TODOMAR CHL S.A.S.;FC79011;01;TODOMAR CHL S.A.S.", "numdoctra": "79011"}
+{"ts": "2026-04-27T05:50:44.143309+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79011.pdf"}
+{"ts": "2026-04-27T05:50:47.988917+00:00", "level": "info", "event": "conciliated", "numdoctra": "79011", "valor_factura": 633860.0, "valor_remision": 633860.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:50:47.990658+00:00", "level": "info", "event": "email", "msg_id": "19d4f3f6784c7a70", "subject": "806003144;TODOMAR CHL S.A.S.;FC79147;01;TODOMAR CHL S.A.S.", "numdoctra": "79147"}
+{"ts": "2026-04-27T05:50:50.500131+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79147.pdf"}
+{"ts": "2026-04-27T05:50:54.175503+00:00", "level": "info", "event": "conciliated", "numdoctra": "79147", "valor_factura": 556150.0, "valor_remision": 556150.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:50:54.176774+00:00", "level": "info", "event": "email", "msg_id": "19d4f66686b56491", "subject": "806003144;TODOMAR CHL S.A.S.;FC79164;01;TODOMAR CHL S.A.S.", "numdoctra": "79164"}
+{"ts": "2026-04-27T05:50:55.126325+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79164.pdf"}
+{"ts": "2026-04-27T05:51:01.701295+00:00", "level": "info", "event": "conciliated", "numdoctra": "79164", "valor_factura": 715050.0, "valor_remision": 715050.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:51:01.702535+00:00", "level": "info", "event": "email", "msg_id": "19d4f7cdb813e32b", "subject": "806003144;TODOMAR CHL S.A.S.;FC79175;01;TODOMAR CHL S.A.S.", "numdoctra": "79175"}
+{"ts": "2026-04-27T05:51:03.263610+00:00", "level": "info", "event": "conciliated", "numdoctra": "79175", "valor_factura": 556150.0, "valor_remision": 0, "n_remisiones": 0, "conciliacion": "No hay remisión", "diferencia": null}
+{"ts": "2026-04-27T05:51:03.265081+00:00", "level": "info", "event": "email", "msg_id": "19d50409c3d1b208", "subject": "806003144;TODOMAR CHL S.A.S.;FC79202;01;TODOMAR CHL S.A.S.", "numdoctra": "79202"}
+{"ts": "2026-04-27T05:51:04.103905+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79202.pdf"}
+{"ts": "2026-04-27T05:51:07.417020+00:00", "level": "info", "event": "conciliated", "numdoctra": "79202", "valor_factura": 667380.0, "valor_remision": 667380.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:51:07.418218+00:00", "level": "info", "event": "email", "msg_id": "19d5041f33f5e91d", "subject": "806003144;TODOMAR CHL S.A.S.;FC79203;01;TODOMAR CHL S.A.S.", "numdoctra": "79203"}
+{"ts": "2026-04-27T05:51:08.170243+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79203.pdf"}
+{"ts": "2026-04-27T05:51:11.425576+00:00", "level": "info", "event": "conciliated", "numdoctra": "79203", "valor_factura": 492590.0, "valor_remision": 492590.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:51:11.426977+00:00", "level": "info", "event": "email", "msg_id": "19d5a0838e49f906", "subject": "806003144;TODOMAR CHL S.A.S.;FC79324;01;TODOMAR CHL S.A.S.", "numdoctra": "79324"}
+{"ts": "2026-04-27T05:51:12.255589+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79324.pdf"}
+{"ts": "2026-04-27T05:51:16.823048+00:00", "level": "info", "event": "conciliated", "numdoctra": "79324", "valor_factura": 603820.0, "valor_remision": 603820.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:51:16.824279+00:00", "level": "info", "event": "email", "msg_id": "19d5a274a7c5ccaa", "subject": "806003144;TODOMAR CHL S.A.S.;FC79345;01;TODOMAR CHL S.A.S.", "numdoctra": "79345"}
+{"ts": "2026-04-27T05:51:17.616906+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79345.pdf"}
+{"ts": "2026-04-27T05:51:22.376331+00:00", "level": "info", "event": "conciliated", "numdoctra": "79345", "valor_factura": 842170.0, "valor_remision": 842170.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:51:22.377638+00:00", "level": "info", "event": "email", "msg_id": "19d5e3a591bd8df0", "subject": "806003144;TODOMAR CHL S.A.S.;FC79392;01;TODOMAR CHL S.A.S.", "numdoctra": "79392"}
+{"ts": "2026-04-27T05:51:23.141679+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79392.pdf"}
+{"ts": "2026-04-27T05:51:27.044869+00:00", "level": "info", "event": "conciliated", "numdoctra": "79392", "valor_factura": 270130.0, "valor_remision": 270130.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:51:27.045490+00:00", "level": "info", "event": "email", "msg_id": "19d5f320685d1259", "subject": "806003144;TODOMAR CHL S.A.S.;FC79421;01;TODOMAR CHL S.A.S.", "numdoctra": "79421"}
+{"ts": "2026-04-27T05:51:28.090421+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79421.pdf"}
+{"ts": "2026-04-27T05:51:31.478833+00:00", "level": "info", "event": "conciliated", "numdoctra": "79421", "valor_factura": 556150.0, "valor_remision": 556150.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:51:31.479858+00:00", "level": "info", "event": "email", "msg_id": "19d68a2b5e9d4b84", "subject": "806003144;TODOMAR CHL S.A.S.;FC79484;01;TODOMAR CHL S.A.S.", "numdoctra": "79484"}
+{"ts": "2026-04-27T05:51:32.314413+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79484.pdf"}
+{"ts": "2026-04-27T05:51:36.239528+00:00", "level": "info", "event": "conciliated", "numdoctra": "79484", "valor_factura": 476700.0, "valor_remision": 476700.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:51:36.240420+00:00", "level": "info", "event": "email", "msg_id": "19d68b098813172b", "subject": "806003144;TODOMAR CHL S.A.S.;FC79489;01;TODOMAR CHL S.A.S.", "numdoctra": "79489"}
+{"ts": "2026-04-27T05:51:37.074998+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79489.pdf"}
+{"ts": "2026-04-27T05:51:40.394603+00:00", "level": "info", "event": "conciliated", "numdoctra": "79489", "valor_factura": 683270.0, "valor_remision": 683270.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:51:40.395710+00:00", "level": "info", "event": "email", "msg_id": "19d69f786f915628", "subject": "806003144;TODOMAR CHL S.A.S.;FC79518;01;TODOMAR CHL S.A.S.", "numdoctra": "79518"}
+{"ts": "2026-04-27T05:51:41.258395+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79518.pdf"}
+{"ts": "2026-04-27T05:51:45.145118+00:00", "level": "info", "event": "conciliated", "numdoctra": "79518", "valor_factura": 794500.0, "valor_remision": 794500.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:51:45.145847+00:00", "level": "info", "event": "email", "msg_id": "19d72abcedaf625a", "subject": "806003144;TODOMAR CHL S.A.S.;FC79560;01;TODOMAR CHL S.A.S.", "numdoctra": "79560"}
+{"ts": "2026-04-27T05:51:45.922110+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79560.pdf"}
+{"ts": "2026-04-27T05:51:51.235305+00:00", "level": "info", "event": "conciliated", "numdoctra": "79560", "valor_factura": 365470.0, "valor_remision": 365470.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:51:51.235952+00:00", "level": "info", "event": "email", "msg_id": "19d781b05f47765d", "subject": "806003144;TODOMAR CHL S.A.S.;FC79606;01;TODOMAR CHL S.A.S.", "numdoctra": "79606"}
+{"ts": "2026-04-27T05:51:52.090847+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79606.pdf"}
+{"ts": "2026-04-27T05:52:00.625382+00:00", "level": "warn", "event": "vision_response_not_json", "file": "REM-FC79606.pdf", "response": "Looking carefully at the receipt:\n\n- **TOTAL**: The receipt shows \"$ 95.9\" but part is obscured. The subtotal line shows \"$ 95\" (obscured). The quantity is 6.038 GL at a price per unit that gives $95,"}
+{"ts": "2026-04-27T05:52:01.206670+00:00", "level": "info", "event": "conciliated", "numdoctra": "79606", "valor_factura": 95943.82, "valor_remision": 0, "n_remisiones": 1, "conciliacion": "Pendiente revisión manual (OCR no concluyente)", "diferencia": null}
+{"ts": "2026-04-27T05:52:01.208168+00:00", "level": "info", "event": "email", "msg_id": "19d782317768b87f", "subject": "806003144;TODOMAR CHL S.A.S.;FC79607;01;TODOMAR CHL S.A.S.", "numdoctra": "79607"}
+{"ts": "2026-04-27T05:52:02.142072+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79607.pdf"}
+{"ts": "2026-04-27T05:52:05.582089+00:00", "level": "info", "event": "conciliated", "numdoctra": "79607", "valor_factura": 476700.0, "valor_remision": 572040.0, "n_remisiones": 1, "conciliacion": "Remisión con valor diferente", "diferencia": -95340.0}
+{"ts": "2026-04-27T05:52:05.583400+00:00", "level": "info", "event": "email", "msg_id": "19d786b875b68796", "subject": "806003144;TODOMAR CHL S.A.S.;FC79620;01;TODOMAR CHL S.A.S.", "numdoctra": "79620"}
+{"ts": "2026-04-27T05:52:06.353398+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79620.pdf"}
+{"ts": "2026-04-27T05:52:12.424981+00:00", "level": "info", "event": "conciliated", "numdoctra": "79620", "valor_factura": 365470.0, "valor_remision": 365470.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:52:12.425926+00:00", "level": "info", "event": "email", "msg_id": "19d799e573679159", "subject": "806003144;TODOMAR CHL S.A.S.;FC79634;01;TODOMAR CHL S.A.S.", "numdoctra": "79634"}
+{"ts": "2026-04-27T05:52:13.311173+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79634.pdf"}
+{"ts": "2026-04-27T05:52:17.815405+00:00", "level": "info", "event": "conciliated", "numdoctra": "79634", "valor_factura": 508480.0, "valor_remision": 508480.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:52:17.816647+00:00", "level": "info", "event": "email", "msg_id": "19d7d9e3b2cec74e", "subject": "806003144;TODOMAR CHL S.A.S.;FC79640;01;TODOMAR CHL S.A.S.", "numdoctra": "79640"}
+{"ts": "2026-04-27T05:52:18.638388+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79640.pdf"}
+{"ts": "2026-04-27T05:52:22.207360+00:00", "level": "info", "event": "conciliated", "numdoctra": "79640", "valor_factura": 556150.0, "valor_remision": 556150.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:52:22.208257+00:00", "level": "info", "event": "email", "msg_id": "19d7dee4f4fa18d0", "subject": "806003144;TODOMAR CHL S.A.S.;FC79659;01;TODOMAR CHL S.A.S.", "numdoctra": "79659"}
+{"ts": "2026-04-27T05:52:22.991908+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79659.pdf"}
+{"ts": "2026-04-27T05:52:26.561572+00:00", "level": "info", "event": "conciliated", "numdoctra": "79659", "valor_factura": 476700.0, "valor_remision": 476700.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:52:26.562280+00:00", "level": "info", "event": "email", "msg_id": "19d8246cd7a74c4f", "subject": "806003144;TODOMAR CHL S.A.S.;FC79724;01;TODOMAR CHL S.A.S.", "numdoctra": "79724"}
+{"ts": "2026-04-27T05:52:27.512636+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79724.pdf"}
+{"ts": "2026-04-27T05:52:30.899506+00:00", "level": "info", "event": "conciliated", "numdoctra": "79724", "valor_factura": 715050.0, "valor_remision": 715050.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:52:30.900717+00:00", "level": "info", "event": "email", "msg_id": "19d83b27c172431f", "subject": "806003144;TODOMAR CHL S.A.S.;FC79738;01;TODOMAR CHL S.A.S.", "numdoctra": "79738"}
+{"ts": "2026-04-27T05:52:31.647018+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79738.pdf"}
+{"ts": "2026-04-27T05:52:34.865918+00:00", "level": "info", "event": "conciliated", "numdoctra": "79738", "valor_factura": 476700.0, "valor_remision": 476700.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:52:34.867490+00:00", "level": "info", "event": "email", "msg_id": "19d9154d294cafe9", "subject": "806003144;TODOMAR CHL S.A.S.;FC79820;01;TODOMAR CHL S.A.S.", "numdoctra": "79820"}
+{"ts": "2026-04-27T05:52:35.720785+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79820.pdf"}
+{"ts": "2026-04-27T05:52:38.981749+00:00", "level": "info", "event": "conciliated", "numdoctra": "79820", "valor_factura": 873950.0, "valor_remision": 873950.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:52:38.982979+00:00", "level": "info", "event": "email", "msg_id": "19d93228b8ebf143", "subject": "806003144;TODOMAR CHL S.A.S.;FC79832;01;TODOMAR CHL S.A.S.", "numdoctra": "79832"}
+{"ts": "2026-04-27T05:52:39.771957+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79832.pdf"}
+{"ts": "2026-04-27T05:52:43.749089+00:00", "level": "info", "event": "conciliated", "numdoctra": "79832", "valor_factura": 842170.0, "valor_remision": 842170.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:52:43.750408+00:00", "level": "info", "event": "email", "msg_id": "19d97f4a9e03f87c", "subject": "806003144;TODOMAR CHL S.A.S.;FC79863;01;TODOMAR CHL S.A.S.", "numdoctra": "79863"}
+{"ts": "2026-04-27T05:52:44.509515+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79863.pdf"}
+{"ts": "2026-04-27T05:52:48.838512+00:00", "level": "info", "event": "conciliated", "numdoctra": "79863", "valor_factura": 463800.0, "valor_remision": 463800.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:52:48.839429+00:00", "level": "info", "event": "email", "msg_id": "19d9801233c984fa", "subject": "806003144;TODOMAR CHL S.A.S.;FC79866;01;TODOMAR CHL S.A.S.", "numdoctra": "79866"}
+{"ts": "2026-04-27T05:52:49.783718+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79866.pdf"}
+{"ts": "2026-04-27T05:52:54.668635+00:00", "level": "info", "event": "conciliated", "numdoctra": "79866", "valor_factura": 794547.67, "valor_remision": 699160.0, "n_remisiones": 1, "conciliacion": "Remisión con valor diferente", "diferencia": 95387.67}
+{"ts": "2026-04-27T05:52:54.669378+00:00", "level": "info", "event": "email", "msg_id": "19d9c393d85361db", "subject": "806003144;TODOMAR CHL S.A.S.;FC79882;01;TODOMAR CHL S.A.S.", "numdoctra": "79882"}
+{"ts": "2026-04-27T05:52:55.505946+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79882.pdf"}
+{"ts": "2026-04-27T05:52:58.939767+00:00", "level": "info", "event": "conciliated", "numdoctra": "79882", "valor_factura": 556150.0, "valor_remision": 556150.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:52:58.941404+00:00", "level": "info", "event": "email", "msg_id": "19d9d6eebe1cbabf", "subject": "806003144;TODOMAR CHL S.A.S.;FC79913;01;TODOMAR CHL S.A.S.", "numdoctra": "79913"}
+{"ts": "2026-04-27T05:52:59.716968+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79913.pdf"}
+{"ts": "2026-04-27T05:53:03.928173+00:00", "level": "info", "event": "conciliated", "numdoctra": "79913", "valor_factura": 508480.0, "valor_remision": 508480.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:53:03.929059+00:00", "level": "info", "event": "email", "msg_id": "19d9d7011fbf7bb0", "subject": "806003144;TODOMAR CHL S.A.S.;FC79914;01;TODOMAR CHL S.A.S.", "numdoctra": "79914"}
+{"ts": "2026-04-27T05:53:04.760705+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79914.pdf"}
+{"ts": "2026-04-27T05:53:08.582744+00:00", "level": "info", "event": "conciliated", "numdoctra": "79914", "valor_factura": 699160.0, "valor_remision": 699160.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:53:08.583409+00:00", "level": "info", "event": "email", "msg_id": "19da29acda1ae2d1", "subject": "806003144;TODOMAR CHL S.A.S.;FC79961;01;TODOMAR CHL S.A.S.", "numdoctra": "79961"}
+{"ts": "2026-04-27T05:53:09.308853+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79961.pdf"}
+{"ts": "2026-04-27T05:53:15.916964+00:00", "level": "info", "event": "conciliated", "numdoctra": "79961", "valor_factura": 651490.0, "valor_remision": 651490.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:53:15.918070+00:00", "level": "info", "event": "email", "msg_id": "19da695b04a2980c", "subject": "806003144;TODOMAR CHL S.A.S.;FC79988;01;TODOMAR CHL S.A.S.", "numdoctra": "79988"}
+{"ts": "2026-04-27T05:53:16.762951+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79988.pdf"}
+{"ts": "2026-04-27T05:53:20.804098+00:00", "level": "info", "event": "conciliated", "numdoctra": "79988", "valor_factura": 429030.0, "valor_remision": 429030.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:53:20.805411+00:00", "level": "info", "event": "email", "msg_id": "19da69a12c621e92", "subject": "806003144;TODOMAR CHL S.A.S.;FC79989;01;TODOMAR CHL S.A.S.", "numdoctra": "79989"}
+{"ts": "2026-04-27T05:53:21.948751+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC79989.pdf"}
+{"ts": "2026-04-27T05:53:25.278188+00:00", "level": "info", "event": "conciliated", "numdoctra": "79989", "valor_factura": 492590.0, "valor_remision": 492590.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:53:25.279065+00:00", "level": "info", "event": "email", "msg_id": "19dad6b2775703de", "subject": "806003144;TODOMAR CHL S.A.S.;FC80049;01;TODOMAR CHL S.A.S.", "numdoctra": "80049"}
+{"ts": "2026-04-27T05:53:26.041100+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC80049.pdf"}
+{"ts": "2026-04-27T05:53:29.468588+00:00", "level": "info", "event": "conciliated", "numdoctra": "80049", "valor_factura": 397250.0, "valor_remision": 397250.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:53:29.469755+00:00", "level": "info", "event": "email", "msg_id": "19dad6d09937dd1a", "subject": "806003144;TODOMAR CHL S.A.S.;FC80050;01;TODOMAR CHL S.A.S.", "numdoctra": "80050"}
+{"ts": "2026-04-27T05:53:30.299549+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC80050.pdf"}
+{"ts": "2026-04-27T05:53:34.140827+00:00", "level": "info", "event": "conciliated", "numdoctra": "80050", "valor_factura": 651490.0, "valor_remision": 651490.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:53:34.141568+00:00", "level": "info", "event": "email", "msg_id": "19dad7513e79b001", "subject": "806003144;TODOMAR CHL S.A.S.;FC80053;01;TODOMAR CHL S.A.S.", "numdoctra": "80053"}
+{"ts": "2026-04-27T05:53:34.934360+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC80053.pdf"}
+{"ts": "2026-04-27T05:53:38.872393+00:00", "level": "info", "event": "conciliated", "numdoctra": "80053", "valor_factura": 556150.0, "valor_remision": 556150.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:53:38.873681+00:00", "level": "info", "event": "email", "msg_id": "19db1baa8b853953", "subject": "806003144;TODOMAR CHL S.A.S.;FC80082;01;TODOMAR CHL S.A.S.", "numdoctra": "80082"}
+{"ts": "2026-04-27T05:53:39.614876+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC80082.pdf"}
+{"ts": "2026-04-27T05:53:44.065456+00:00", "level": "info", "event": "conciliated", "numdoctra": "80082", "valor_factura": 444920.0, "valor_remision": 444920.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:53:44.066031+00:00", "level": "info", "event": "email", "msg_id": "19db22bfd44c17d4", "subject": "806003144;TODOMAR CHL S.A.S.;FC80091;01;TODOMAR CHL S.A.S.", "numdoctra": "80091"}
+{"ts": "2026-04-27T05:53:44.890303+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC80091.pdf"}
+{"ts": "2026-04-27T05:53:48.001784+00:00", "level": "info", "event": "conciliated", "numdoctra": "80091", "valor_factura": 508480.0, "valor_remision": 508480.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:53:48.003486+00:00", "level": "info", "event": "email", "msg_id": "19db2304ed9ce49c", "subject": "806003144;TODOMAR CHL S.A.S.;FC80092;01;TODOMAR CHL S.A.S.", "numdoctra": "80092"}
+{"ts": "2026-04-27T05:53:48.788280+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC80092.pdf"}
+{"ts": "2026-04-27T05:53:53.775511+00:00", "level": "info", "event": "conciliated", "numdoctra": "80092", "valor_factura": 143010.0, "valor_remision": 651490.0, "n_remisiones": 1, "conciliacion": "Remisión con valor diferente", "diferencia": -508480.0}
+{"ts": "2026-04-27T05:53:53.776922+00:00", "level": "info", "event": "email", "msg_id": "19db236c4e571218", "subject": "806003144;TODOMAR CHL S.A.S.;FC80094;01;TODOMAR CHL S.A.S.", "numdoctra": "80094"}
+{"ts": "2026-04-27T05:53:54.522543+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC80094.pdf"}
+{"ts": "2026-04-27T05:53:58.117405+00:00", "level": "info", "event": "conciliated", "numdoctra": "80094", "valor_factura": 556150.0, "valor_remision": 556150.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:53:58.118391+00:00", "level": "info", "event": "email", "msg_id": "19dbadc66c9f2535", "subject": "806003144;TODOMAR CHL S.A.S.;FC80130;01;TODOMAR CHL S.A.S.", "numdoctra": "80130"}
+{"ts": "2026-04-27T05:53:59.040039+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC80130.pdf"}
+{"ts": "2026-04-27T05:54:02.759563+00:00", "level": "info", "event": "conciliated", "numdoctra": "80130", "valor_factura": 794500.0, "valor_remision": 794500.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:54:02.761280+00:00", "level": "info", "event": "email", "msg_id": "19dbc5752a0dce46", "subject": "806003144;TODOMAR CHL S.A.S.;FC80149;01;TODOMAR CHL S.A.S.", "numdoctra": "80149"}
+{"ts": "2026-04-27T05:54:03.492750+00:00", "level": "info", "event": "vision_fallback", "file": "REM-FC80149.pdf"}
+{"ts": "2026-04-27T05:54:07.343658+00:00", "level": "info", "event": "conciliated", "numdoctra": "80149", "valor_factura": 556150.0, "valor_remision": 556150.0, "n_remisiones": 1, "conciliacion": "OK", "diferencia": 0.0}
+{"ts": "2026-04-27T05:54:07.344932+00:00", "level": "info", "event": "email", "msg_id": "19dc0c6e89cb5226", "subject": "806003144;TODOMAR CHL S.A.S.;FC80178;01;TODOMAR CHL S.A.S.", "numdoctra": "80178"}
+{"ts": "2026-04-27T05:54:07.345552+00:00", "level": "warn", "event": "numdoctra_not_expected", "numdoctra": "80178"}
+{"ts": "2026-04-27T05:54:07.346149+00:00", "level": "info", "event": "email", "msg_id": "19dc0d5a656ad23a", "subject": "806003144;TODOMAR CHL S.A.S.;FC80183;01;TODOMAR CHL S.A.S.", "numdoctra": "80183"}
+{"ts": "2026-04-27T05:54:07.346829+00:00", "level": "warn", "event": "numdoctra_not_expected", "numdoctra": "80183"}
+{"ts": "2026-04-27T05:54:07.347797+00:00", "level": "info", "event": "email", "msg_id": "19dc647adef4cfcd", "subject": "806003144;TODOMAR CHL S.A.S.;FC80230;01;TODOMAR CHL S.A.S.", "numdoctra": "80230"}
+{"ts": "2026-04-27T05:54:07.348750+00:00", "level": "warn", "event": "numdoctra_not_expected", "numdoctra": "80230"}
+{"ts": "2026-04-27T05:54:07.412615+00:00", "level": "info", "event": "done", "emails_read": 118, "zips_downloaded": 105, "facturas_new": 105, "facturas_skipped": 13, "errors": 0, "inconsistencies": 0, "detail": ""}
