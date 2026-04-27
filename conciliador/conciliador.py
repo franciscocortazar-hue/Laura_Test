@@ -25,7 +25,14 @@ from pathlib import Path
 from urllib.parse import quote
 
 import pdfplumber
+import pypdfium2 as pdfium
 from dotenv import load_dotenv
+
+try:
+    import anthropic
+    HAS_ANTHROPIC = True
+except ImportError:
+    HAS_ANTHROPIC = False
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -72,6 +79,7 @@ def load_config() -> dict:
         "tolerance_pesos": float(os.environ.get("TOLERANCE_PESOS", "1000")),
         "date_from": os.environ.get("DATE_FROM", "2026-01-01"),
         "date_to": os.environ.get("DATE_TO", "2026-04-30"),
+        "anthropic_api_key": os.environ.get("ANTHROPIC_API_KEY"),
     }
     return cfg
 
@@ -425,15 +433,141 @@ def _find_nit(text: str) -> str | None:
     return None
 
 
-def extract_remision_data(pdf_path: Path) -> dict:
+def extract_remision_data(pdf_path: Path, api_key: str | None = None, log: "RunLog | None" = None) -> dict:
+    """Extrae datos de la remision. Si pdfplumber no logra extraer el valor
+    (PDF escaneado), cae a Claude Vision API si esta configurada."""
     text = pdf_text(pdf_path)
+    valor = find_money_after(text, ["TOTAL", "VALOR TOTAL", "Total"]) if text else None
+    bote = _find_bote(text) if text else None
+    fecha = _find_fecha_hora(text) if text else None
+
+    if valor is not None:
+        # Extraccion clasica funciono
+        return {
+            "valor": valor,
+            "bote": bote,
+            "fecha_hora": fecha,
+            "raw_text_sample": text[:300] if text else "",
+        }
+
+    # Sin valor extraido por regex -> intentar Vision si configurada
+    if api_key and HAS_ANTHROPIC:
+        if log is not None:
+            log.info("vision_fallback", file=pdf_path.name)
+        return vision_extract_remision(pdf_path, api_key, log)
+
     return {
-        "valor": find_money_after(text, [
-            "TOTAL", "VALOR TOTAL", "Total"
-        ]),
-        "bote": _find_bote(text),
-        "fecha_hora": _find_fecha_hora(text),
-        "raw_text_sample": text[:300],
+        "valor": None,
+        "bote": bote,
+        "fecha_hora": fecha,
+        "raw_text_sample": text[:300] if text else "",
+    }
+
+
+VISION_PROMPT = """Esta es una remisión (recibo POS) de una estación de servicio de combustible para un bote.
+
+Extrae los siguientes datos. Responde SOLO con JSON valido, sin markdown, sin explicacion:
+
+{
+  "valor": <numero entero, el TOTAL del despacho en pesos colombianos, sin signo $ ni puntos de miles. Ejemplo: 685948>,
+  "bote": <string con el identificador del bote/embarcacion. Suele aparecer como PLACA, EMBARCACION, BOTE. Ejemplo: "B-10">,
+  "fecha_hora": <string formato YYYY-MM-DD HH:MM:SS. Ejemplo: "2026-01-02 08:05:30">
+}
+
+Si no encuentras un campo, usa null. NO inventes datos."""
+
+
+def render_pdf_first_page_to_png(pdf_path: Path, scale: float = 2.0) -> bytes:
+    """Renderiza la primera pagina del PDF como PNG bytes."""
+    pdf = pdfium.PdfDocument(str(pdf_path))
+    try:
+        page = pdf[0]
+        pil_image = page.render(scale=scale).to_pil()
+        buf = BytesIO()
+        pil_image.save(buf, format="PNG")
+        return buf.getvalue()
+    finally:
+        pdf.close()
+
+
+def vision_extract_remision(pdf_path: Path, api_key: str, log: "RunLog | None" = None) -> dict:
+    """Usa Claude Vision (Haiku) para extraer datos de una remision escaneada."""
+    if not HAS_ANTHROPIC:
+        return {
+            "valor": None, "bote": None, "fecha_hora": None,
+            "raw_text_sample": "anthropic_not_installed",
+        }
+    try:
+        png_bytes = render_pdf_first_page_to_png(pdf_path)
+    except Exception as e:
+        if log is not None:
+            log.warn("pdf_render_failed", file=pdf_path.name, err=str(e))
+        return {
+            "valor": None, "bote": None, "fecha_hora": None,
+            "raw_text_sample": f"pdf_render_failed: {e}",
+        }
+
+    img_b64 = base64.b64encode(png_bytes).decode()
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=512,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": "image/png",
+                            "data": img_b64,
+                        },
+                    },
+                    {"type": "text", "text": VISION_PROMPT},
+                ],
+            }],
+        )
+        response_text = msg.content[0].text.strip()
+    except Exception as e:
+        if log is not None:
+            log.warn("vision_api_failed", file=pdf_path.name, err=str(e))
+        return {
+            "valor": None, "bote": None, "fecha_hora": None,
+            "raw_text_sample": f"vision_api_failed: {e}",
+        }
+
+    # Strip code fences si los hay
+    if response_text.startswith("```"):
+        lines = response_text.split("\n")
+        end = len(lines)
+        if lines and lines[-1].startswith("```"):
+            end -= 1
+        response_text = "\n".join(lines[1:end])
+
+    try:
+        data = json.loads(response_text)
+    except json.JSONDecodeError:
+        if log is not None:
+            log.warn("vision_response_not_json", file=pdf_path.name,
+                     response=response_text[:200])
+        return {
+            "valor": None, "bote": None, "fecha_hora": None,
+            "raw_text_sample": f"not_json: {response_text[:100]}",
+        }
+
+    valor = data.get("valor")
+    if valor is not None:
+        try:
+            valor = float(valor)
+        except (TypeError, ValueError):
+            valor = None
+
+    return {
+        "valor": valor,
+        "bote": data.get("bote"),
+        "fecha_hora": data.get("fecha_hora"),
+        "raw_text_sample": "vision",
     }
 
 
@@ -951,7 +1085,10 @@ def process_one_email(
         summary["facturas_skipped"] += 1
         return
 
-    remisiones_data = [extract_remision_data(p) for p in remisiones_paths]
+    remisiones_data = [
+        extract_remision_data(p, cfg.get("anthropic_api_key"), log)
+        for p in remisiones_paths
+    ]
 
     if factura_data.get("valor") is None:
         log.warn("factura_value_not_extracted", numdoctra=numdoctra,
