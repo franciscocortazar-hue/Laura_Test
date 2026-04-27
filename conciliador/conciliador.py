@@ -859,12 +859,19 @@ def main() -> None:
     service = get_gmail_service(cfg, log)
     ids = gmail_search(service, cfg, log)
     meta: list[tuple[str, datetime, email.message.Message]] = []
+    non_invoice_count = 0
     for mid in ids:
         try:
             m = fetch_message(service, mid)
+            subj = decode_subject(m.get("Subject", ""))
+            if not extract_numdoctra(subj):
+                non_invoice_count += 1
+                continue
             meta.append((mid, message_date(m), m))
         except Exception as e:
             log.error("fetch_failed", msg_id=mid, err=str(e))
+    if non_invoice_count > 0:
+        log.info("non_invoices_filtered", count=non_invoice_count)
     meta.sort(key=lambda x: x[1])
     if args.limit and args.limit > 0:
         meta = meta[:args.limit]
