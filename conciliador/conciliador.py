@@ -323,21 +323,23 @@ def classify_pdfs(pdfs: list[Path]) -> tuple[Path | None, list[Path]]:
     return factura, remisiones
 
 
-def rename_classified(folder: Path, factura: Path | None, remisiones: list[Path]) -> tuple[Path | None, list[Path]]:
+def rename_classified(
+    folder: Path, factura: Path | None, remisiones: list[Path], numdoctra: str
+) -> tuple[Path | None, list[Path]]:
     new_factura = None
     if factura:
-        new_factura = folder / "factura.pdf"
+        new_factura = folder / f"FAC-FC{numdoctra}.pdf"
         if factura.resolve() != new_factura.resolve():
             shutil.move(str(factura), str(new_factura))
     new_remisiones: list[Path] = []
     if len(remisiones) == 1:
-        target = folder / "remision.pdf"
+        target = folder / f"REM-FC{numdoctra}.pdf"
         if remisiones[0].resolve() != target.resolve():
             shutil.move(str(remisiones[0]), str(target))
         new_remisiones.append(target)
     else:
         for i, r in enumerate(remisiones, start=1):
-            target = folder / f"remision_{i}.pdf"
+            target = folder / f"REM-FC{numdoctra}_{i}.pdf"
             if r.resolve() != target.resolve():
                 shutil.move(str(r), str(target))
             new_remisiones.append(target)
@@ -704,7 +706,7 @@ def process_one_email(
         return
 
     folder = cfg["facturas_dir"] / f"FC{numdoctra}"
-    if (folder / "factura.pdf").exists():
+    if (folder / f"FAC-FC{numdoctra}.pdf").exists():
         log.info("already_processed_skip", numdoctra=numdoctra)
         summary["facturas_skipped"] += 1
         add_label(service, msg_id, cfg["label_processed"])
@@ -732,7 +734,7 @@ def process_one_email(
         return
 
     factura_path, remisiones_paths = classify_pdfs(pdfs)
-    factura_path, remisiones_paths = rename_classified(folder, factura_path, remisiones_paths)
+    factura_path, remisiones_paths = rename_classified(folder, factura_path, remisiones_paths, numdoctra)
 
     if not factura_path:
         log.warn("no_factura_pdf", numdoctra=numdoctra)
