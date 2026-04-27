@@ -33,7 +33,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from openpyxl import Workbook, load_workbook
 from openpyxl.formatting.rule import CellIsRule, FormulaRule
-from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
@@ -492,6 +492,32 @@ COL = {h: i + 1 for i, h in enumerate(CONTROL_HEADERS)}
 MONEY_FMT = '"$"#,##0;[Red]-"$"#,##0'
 HYPERLINK_FONT = Font(color="0563C1", underline="single")
 
+# Estilos visuales del archivo de control
+THIN_BORDER = Border(
+    left=Side(style="thin", color="D0D0D0"),
+    right=Side(style="thin", color="D0D0D0"),
+    top=Side(style="thin", color="D0D0D0"),
+    bottom=Side(style="thin", color="D0D0D0"),
+)
+ZEBRA_FILL = PatternFill("solid", fgColor="F5F7FA")  # gris muy claro
+
+# Iconos para columna Conciliación (visual de un vistazo)
+STATUS_ICONS = [
+    ("OK", "🟢"),
+    ("Pendiente revisión manual", "🟠"),
+    ("Remisión con valor diferente", "🔴"),
+    ("No hay remisión", "🟡"),
+]
+
+
+def format_status_with_icon(status: str | None) -> str | None:
+    if not status:
+        return status
+    for prefix, icon in STATUS_ICONS:
+        if status.startswith(prefix):
+            return f"{icon} {status}"
+    return status
+
 
 def path_to_file_url(path: Path) -> str:
     """Convierte una ruta local a un URL file:// que Excel pueda abrir al hacer click."""
@@ -533,13 +559,14 @@ def bootstrap_control(control_path: Path, source_excel: Path, log: RunLog) -> No
     ws = wb.active
     ws.title = "Conciliación"
 
-    header_font = Font(bold=True, color="FFFFFF")
+    header_font = Font(bold=True, color="FFFFFF", size=11)
     header_fill = PatternFill("solid", fgColor="305496")
     for col_idx, name in enumerate(CONTROL_HEADERS, start=1):
         c = ws.cell(row=1, column=col_idx, value=name)
         c.font = header_font
         c.fill = header_fill
-        c.alignment = Alignment(horizontal="center", vertical="center")
+        c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        c.border = THIN_BORDER
 
     for r, row in enumerate(rows, start=2):
         ws.cell(row=r, column=1, value=row[0])
@@ -550,27 +577,47 @@ def bootstrap_control(control_path: Path, source_excel: Path, log: RunLog) -> No
         ws.cell(row=r, column=6, value=row[5])
 
     last_row = len(rows) + 1
+
+    # Zebra + bordes + alineación + alto de fila para todas las celdas de datos
+    n_cols = len(CONTROL_HEADERS)
+    ws.row_dimensions[1].height = 28
+    for r in range(2, last_row + 1):
+        ws.row_dimensions[r].height = 22
+        is_even = (r % 2 == 0)
+        for c_idx in range(1, n_cols + 1):
+            cell = ws.cell(row=r, column=c_idx)
+            cell.border = THIN_BORDER
+            cell.alignment = Alignment(vertical="center")
+            if is_even:
+                cell.fill = ZEBRA_FILL
+
+    # Formato moneda en F, I, L
     for col_letter in ("F", "I", "L"):
         for r in range(2, last_row + 1):
             ws[f"{col_letter}{r}"].number_format = MONEY_FMT
 
     ws.freeze_panes = "A2"
-    ws.auto_filter.ref = f"A1:{get_column_letter(len(CONTROL_HEADERS))}{last_row}"
+    ws.auto_filter.ref = f"A1:{get_column_letter(n_cols)}{last_row}"
 
+    # Formato condicional col K (Conciliación) — usa SEARCH para que matchee con o sin icono
     green = PatternFill("solid", fgColor="C6EFCE")
     yellow = PatternFill("solid", fgColor="FFEB9C")
     red = PatternFill("solid", fgColor="FFC7CE")
     orange = PatternFill("solid", fgColor="FFD9A6")
     rng_k = f"K2:K{last_row}"
     ws.conditional_formatting.add(
-        rng_k, FormulaRule(formula=[f'EXACT(K2,"OK")'], fill=green)
+        rng_k, FormulaRule(formula=['ISNUMBER(SEARCH("OK",K2))'], fill=green, stopIfTrue=True)
     )
     ws.conditional_formatting.add(
-        rng_k, FormulaRule(formula=[f'EXACT(K2,"No hay remisión")'], fill=yellow)
+        rng_k, FormulaRule(formula=['ISNUMBER(SEARCH("Pendiente revisión manual",K2))'], fill=orange, stopIfTrue=True)
     )
     ws.conditional_formatting.add(
-        rng_k, FormulaRule(formula=[f'ISNUMBER(SEARCH("Remisión con valor diferente",K2))'], fill=red)
+        rng_k, FormulaRule(formula=['ISNUMBER(SEARCH("Remisión con valor diferente",K2))'], fill=red, stopIfTrue=True)
     )
+    ws.conditional_formatting.add(
+        rng_k, FormulaRule(formula=['ISNUMBER(SEARCH("No hay remisión",K2))'], fill=yellow, stopIfTrue=True)
+    )
+    # Formato condicional col L (diferencia)
     rng_l = f"L2:L{last_row}"
     ws.conditional_formatting.add(
         rng_l, CellIsRule(operator="greaterThan", formula=["1000"], fill=red)
@@ -580,7 +627,7 @@ def bootstrap_control(control_path: Path, source_excel: Path, log: RunLog) -> No
     )
 
     widths = {"A": 12, "B": 13, "C": 22, "D": 14, "E": 8, "F": 16, "G": 18,
-              "H": 22, "I": 16, "J": 8, "K": 38, "L": 16, "M": 50, "N": 50, "O": 22}
+              "H": 22, "I": 16, "J": 8, "K": 42, "L": 16, "M": 28, "N": 32, "O": 20}
     for letter, w in widths.items():
         ws.column_dimensions[letter].width = w
 
@@ -599,33 +646,113 @@ def _build_resumen_sheet(wb: Workbook, last_data_row: int) -> None:
     rng_f = f"'Conciliación'!F2:F{last_data_row}"
     rng_i = f"'Conciliación'!I2:I{last_data_row}"
 
-    rows = [
-        ("Métrica", "Valor", None),
-        ("Total facturas en alcance", f"=COUNTA('Conciliación'!A2:A{last_data_row})", None),
-        ("Total facturado ($)", f"=SUM({rng_f})", MONEY_FMT),
-        ("", "", None),
-        ("Conciliación: OK", f'=COUNTIF({rng_k},"OK")', None),
-        ("Conciliación: Sin remisión", f'=COUNTIF({rng_k},"No hay remisión")', None),
-        ("Conciliación: Con diferencia", f'=COUNTIF({rng_k},"Remisión con valor diferente*")', None),
-        ("", "", None),
-        ("Diferencia a favor de Nautiturismo", f'=SUMIF({rng_l},">0")', MONEY_FMT),
-        ("Diferencia a favor de Todomar", f'=SUMIF({rng_l},"<0")', MONEY_FMT),
-        ("Neto de diferencias", f"=SUM({rng_l})", MONEY_FMT),
-        ("", "", None),
-        ("Facturas procesadas", f'=COUNTIFS({rng_k},"<>")', None),
-        ("Facturas pendientes (sin correo)", f'=COUNTBLANK({rng_k})', None),
-        ("Total remisiones leídas", f"=SUM({rng_i})", MONEY_FMT),
-    ]
-    for r, (label, value, fmt) in enumerate(rows, start=1):
-        ws.cell(row=r, column=1, value=label)
-        c = ws.cell(row=r, column=2, value=value)
+    # Estilos
+    title_font = Font(bold=True, size=18, color="1F4E79")
+    section_font = Font(bold=True, size=13, color="FFFFFF")
+    section_fill = PatternFill("solid", fgColor="305496")
+    label_font = Font(size=11, color="44546A")
+    value_font = Font(bold=True, size=16, color="1F4E79")
+    money_font = Font(bold=True, size=14, color="1F4E79")
+    centered = Alignment(horizontal="center", vertical="center")
+    left_aligned = Alignment(horizontal="left", vertical="center", indent=1)
+
+    # Colores de tarjetas por estado
+    fill_ok = PatternFill("solid", fgColor="E2F0D9")        # verde claro
+    fill_yellow = PatternFill("solid", fgColor="FFF2CC")    # amarillo claro
+    fill_red = PatternFill("solid", fgColor="FCE4E4")       # rojo claro
+    fill_orange = PatternFill("solid", fgColor="FCE6C9")    # naranja claro
+    fill_blue = PatternFill("solid", fgColor="DEEBF7")      # azul claro
+
+    # Fila 1: titulo
+    ws.merge_cells("A1:C1")
+    ws["A1"] = "Resumen de Conciliación"
+    ws["A1"].font = title_font
+    ws["A1"].alignment = centered
+    ws.row_dimensions[1].height = 32
+
+    # Fila 3: seccion General
+    ws.merge_cells("A3:C3")
+    ws["A3"] = "GENERAL"
+    ws["A3"].font = section_font
+    ws["A3"].fill = section_fill
+    ws["A3"].alignment = centered
+    ws.row_dimensions[3].height = 22
+
+    def kpi_card(start_row: int, label: str, formula: str, fmt: str | None,
+                 fill: PatternFill, val_font: Font = value_font) -> None:
+        """Pinta una tarjeta KPI: A=label (fila start_row), B=valor (fila start_row+1)."""
+        ws.cell(row=start_row, column=1, value=label).font = label_font
+        ws.cell(row=start_row, column=1).alignment = left_aligned
+        ws.cell(row=start_row, column=1).fill = fill
+        ws.cell(row=start_row, column=1).border = THIN_BORDER
+
+        c = ws.cell(row=start_row, column=2, value=formula)
+        c.font = val_font
+        c.alignment = Alignment(horizontal="right", vertical="center", indent=1)
+        c.fill = fill
+        c.border = THIN_BORDER
         if fmt:
             c.number_format = fmt
-        if r == 1:
-            ws.cell(row=r, column=1).font = Font(bold=True)
-            ws.cell(row=r, column=2).font = Font(bold=True)
-    ws.column_dimensions["A"].width = 38
+        ws.row_dimensions[start_row].height = 26
+
+    # Fila 4-5: KPIs generales
+    kpi_card(4, "Total facturas en alcance",
+             f"=COUNTA('Conciliación'!A2:A{last_data_row})", None, fill_blue)
+    kpi_card(5, "Total facturado ($)",
+             f"=SUM({rng_f})", MONEY_FMT, fill_blue, money_font)
+
+    # Fila 7: seccion Conciliacion
+    ws.merge_cells("A7:C7")
+    ws["A7"] = "ESTADO DE CONCILIACIÓN"
+    ws["A7"].font = section_font
+    ws["A7"].fill = section_fill
+    ws["A7"].alignment = centered
+    ws.row_dimensions[7].height = 22
+
+    # Fila 8-11: KPIs por estado
+    kpi_card(8, "🟢 OK (cuadradas)",
+             f'=COUNTIF({rng_k},"*OK*")', None, fill_ok)
+    kpi_card(9, "🟡 Sin remisión",
+             f'=COUNTIF({rng_k},"*No hay remisión*")', None, fill_yellow)
+    kpi_card(10, "🔴 Con diferencia",
+             f'=COUNTIF({rng_k},"*Remisión con valor diferente*")', None, fill_red)
+    kpi_card(11, "🟠 Pendiente revisión manual",
+             f'=COUNTIF({rng_k},"*Pendiente revisión manual*")', None, fill_orange)
+
+    # Fila 13: seccion Diferencias
+    ws.merge_cells("A13:C13")
+    ws["A13"] = "DIFERENCIAS DE VALOR"
+    ws["A13"].font = section_font
+    ws["A13"].fill = section_fill
+    ws["A13"].alignment = centered
+    ws.row_dimensions[13].height = 22
+
+    # Fila 14-16
+    kpi_card(14, "A favor de Nautiturismo (factura > remisión)",
+             f'=SUMIF({rng_l},">0")', MONEY_FMT, fill_red, money_font)
+    kpi_card(15, "A favor de Todomar (factura < remisión)",
+             f'=SUMIF({rng_l},"<0")', MONEY_FMT, fill_orange, money_font)
+    kpi_card(16, "Neto de diferencias",
+             f"=SUM({rng_l})", MONEY_FMT, fill_blue, money_font)
+
+    # Fila 18: seccion Cobertura
+    ws.merge_cells("A18:C18")
+    ws["A18"] = "COBERTURA"
+    ws["A18"].font = section_font
+    ws["A18"].fill = section_fill
+    ws["A18"].alignment = centered
+    ws.row_dimensions[18].height = 22
+
+    # Fila 19-20
+    kpi_card(19, "Facturas procesadas",
+             f'=COUNTIFS({rng_k},"<>")', None, fill_blue)
+    kpi_card(20, "Facturas pendientes (sin correo)",
+             f'=COUNTBLANK({rng_k})', None, fill_yellow)
+
+    ws.column_dimensions["A"].width = 48
     ws.column_dimensions["B"].width = 22
+    ws.column_dimensions["C"].width = 4
+    ws.sheet_view.showGridLines = False
 
 
 def _build_log_sheet(wb: Workbook) -> None:
@@ -681,7 +808,7 @@ def update_control_row(
     if remisiones_data:
         c_vr.number_format = MONEY_FMT
     ws.cell(row=row, column=COL["# Remisiones"], value=len(remisiones_data))
-    ws.cell(row=row, column=COL["Conciliación"], value=conciliacion)
+    ws.cell(row=row, column=COL["Conciliación"], value=format_status_with_icon(conciliacion))
     c_diff = ws.cell(row=row, column=COL["Valor (diferencia)"], value=valor_diff)
     c_diff.number_format = MONEY_FMT
     c_m = ws.cell(row=row, column=COL["Link factura"])
