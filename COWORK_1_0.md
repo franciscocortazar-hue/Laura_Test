@@ -115,6 +115,19 @@ Para cada correo que pase el filtro Gmail:
 
 ### Paso 4 — Conciliación
 
+#### 4.1 Estrategia de extracción del valor (con fallback)
+
+Para leer el `valor_remision` de un PDF de remisión, aplicar en orden:
+
+1. **`pdfplumber`** sobre el PDF — funciona si el PDF es digital (texto seleccionable).
+2. **OCR (tesseract)** sobre la imagen — funciona en escaneos limpios.
+3. **Visión multimodal** (Claude Vision API si es Python; visión nativa de Cowork si es Cowork) — leer la imagen directamente con un modelo que tolera ruido. Maneja recibos POS escaneados borrosos.
+4. **Fallback final** → marcar como **`Pendiente revisión manual`** (ver lógica abajo).
+
+Aplicar en orden: si la opción 1 da un número plausible (entero, en rango razonable), parar. Si no, intentar 2. Y así.
+
+#### 4.2 Lógica de conciliación
+
 ```
 SI no existe ningún REM-FC<NUMDOCTRA>*.pdf:
     Conciliacion       = "No hay remisión"
@@ -122,7 +135,14 @@ SI no existe ningún REM-FC<NUMDOCTRA>*.pdf:
     Nombre de Bote     = (vacío)
     Fecha y hora       = (vacío)
 
-SI existe 1 sola REM-FC<NUMDOCTRA>.pdf:
+SI existe(n) remisión(es) PERO el valor NO se pudo extraer
+   (los 3 métodos fallaron):
+    Conciliacion       = "Pendiente revisión manual (OCR no concluyente)"
+    Valor              = (vacío)
+    Nombre de Bote     = (lo que se haya podido leer del filename o PDF)
+    Fecha y hora       = (lo que se haya podido leer)
+
+SI existe 1 sola REM-FC<NUMDOCTRA>.pdf con valor extraíble:
     diferencia = valor_factura - valor_remision
     SI |diferencia| <= 1000:
         Conciliacion = "OK"
@@ -131,7 +151,7 @@ SI existe 1 sola REM-FC<NUMDOCTRA>.pdf:
         Conciliacion = "Remisión con valor diferente"
         Valor        = diferencia            (con signo)
 
-SI existen N remisiones (N >= 2):
+SI existen N remisiones (N >= 2) con TODOS los valores extraíbles:
     suma_remisiones = sum(valor_remision_i)
     diferencia      = valor_factura - suma_remisiones
     SI |diferencia| <= 1000:
@@ -140,6 +160,10 @@ SI existen N remisiones (N >= 2):
     SI NO:
         Conciliacion = "Remisión con valor diferente (" + N + " remisiones, no coincide con el valor facturado)"
         Valor        = diferencia            (con signo)
+
+SI existen N remisiones (N >= 2) y al menos UNA no se pudo extraer:
+    Conciliacion       = "Pendiente revisión manual (1 de N remisiones no legible)"
+    Valor              = (vacío)
 ```
 
 **Tolerancia**: ±$1.000 (mil pesos) absorbe redondeos. Dentro de eso → OK.
@@ -208,6 +232,7 @@ La primera corrida crea el archivo con las **114 filas listadas**, pero solo **2
   - Verde claro → `OK`
   - Amarillo → `No hay remisión`
   - Rojo claro → empieza con `Remisión con valor diferente`
+  - Naranja → empieza con `Pendiente revisión manual` (acción humana requerida)
 - Formato condicional en columna **L (Valor)**:
   - Rojo si > 1000 (a favor Nautiturismo, revisar)
   - Naranja si < -1000 (a favor Todomar, revisar)
@@ -224,6 +249,7 @@ La primera corrida crea el archivo con las **114 filas listadas**, pero solo **2
 | OK | conteo + $ |
 | Sin remisión | conteo + $ |
 | Con diferencia | conteo + suma de Valor (con signo) |
+| Pendiente revisión manual | conteo + $ facturado (sin valor diferencia, queda para ojo humano) |
 | **Diferencias** | |
 | A favor de Nautiturismo (Valor > 0) | conteo + suma $ |
 | A favor de Todomar (Valor < 0) | conteo + suma $ |
