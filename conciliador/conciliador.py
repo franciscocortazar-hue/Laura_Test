@@ -551,15 +551,25 @@ def vision_extract_remision(pdf_path: Path, api_key: str, log: "RunLog | None" =
             end -= 1
         response_text = "\n".join(lines[1:end])
 
+    # Si la respuesta tiene texto antes/despues del JSON, extraer solo el bloque {...}
+    # (Sonnet a veces ignora "responde solo JSON" y escribe explicacion antes del JSON)
+    json_text = response_text.strip()
+    if not json_text.startswith("{"):
+        # Buscar el primer { y el ultimo } para extraer el bloque JSON
+        first_brace = json_text.find("{")
+        last_brace = json_text.rfind("}")
+        if first_brace >= 0 and last_brace > first_brace:
+            json_text = json_text[first_brace:last_brace + 1]
+
     try:
-        data = json.loads(response_text)
+        data = json.loads(json_text)
     except json.JSONDecodeError:
         if log is not None:
             log.warn("vision_response_not_json", file=pdf_path.name,
-                     response=response_text[:200])
+                     response=response_text[:500])
         return {
             "valor": None, "bote": None, "fecha_hora": None,
-            "raw_text_sample": f"not_json: {response_text[:100]}",
+            "raw_text_sample": f"not_json: {response_text[:200]}",
         }
 
     valor = data.get("valor")
