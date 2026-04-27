@@ -15,13 +15,16 @@ Implementación local del spec [`COWORK_1_0.md`](./COWORK_1_0.md). Procesa los c
 4. Crea una nueva app password (nombre: `Conciliador combustible`). Copia los 16 caracteres.
 
 ### 1.2 Instalar dependencias
-En Git Bash, dentro de la carpeta donde está `conciliador.py`:
+En Git Bash, **entra a la carpeta `conciliador/`** del repo y crea el venv ahí:
 
 ```bash
+cd ~/Downloads/Laura_Test/conciliador
 python -m venv .venv
 source .venv/Scripts/activate          # Git Bash en Windows
 python -m pip install -r requirements.txt
 ```
+
+> Todos los comandos siguientes (cp, python conciliador.py, etc.) se corren desde dentro de `conciliador/` con el venv activado.
 
 > Si tu Python no es 3.14 y `pdfplumber` da problemas, prueba `pip install pdfplumber==0.11.4`.
 
