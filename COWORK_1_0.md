@@ -197,8 +197,8 @@ La primera corrida crea el archivo con las **114 filas listadas**, pero solo **2
 | J | # Remisiones | Cowork | 0, 1, 2, ... |
 | K | Conciliación | Cowork | OK / No hay remisión / Remisión con valor diferente (...) |
 | L | Valor (diferencia $) | Cowork | con signo, 0 si OK |
-| M | Link factura | Cowork | hipervínculo a `G:\...\FC<num>\FAC-FC<num>.pdf` |
-| N | Link remisión(es) | Cowork | hipervínculo a `G:\...\FC<num>\REM-FC<num>.pdf` (si N≥2, listar separados por `;`: `REM-FC<num>_1.pdf;REM-FC<num>_2.pdf`) |
+| M | Link factura | Cowork | **Hipervínculo clicable** que abre el PDF al hacer clic. URL: `file:///G:/Mi unidad/Inteligencia Artificial/Productividad/Gasolina/Facturas/FC<num>/FAC-FC<num>.pdf`. Texto visible: `FAC-FC<num>.pdf`. Estilo: azul subrayado. |
+| N | Link remisión(es) | Cowork | **Hipervínculo clicable** que abre el PDF al hacer clic. <br>**Caso 1 remisión** → URL: `file:///.../FC<num>/REM-FC<num>.pdf`, texto visible: `REM-FC<num>.pdf`. <br>**Caso N≥2 remisiones** (Excel solo soporta 1 hipervínculo por celda) → URL: `file:///.../FC<num>/` (apunta a la **carpeta**, al hacer clic se abre el explorador con todas las remisiones), texto visible: `Carpeta (N remisiones)`. <br>**Caso sin remisión** → vacío. |
 | O | Última actualización | Cowork | timestamp de la corrida que tocó la fila |
 
 **Formato:**
