@@ -1,6 +1,10 @@
 # Credenciales locales — NUNCA subir
 .env
 *.env.local
+credentials.json
+token.json
+*.credentials.json
+*.token.json
 
 # Python
 __pycache__/

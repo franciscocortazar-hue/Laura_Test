@@ -3,20 +3,19 @@
 Conciliador de facturas de combustible Nautiturismo -> Todomar.
 
 Implementacion Python del spec en COWORK_1_0.md.
-Lee Gmail (IMAP), descarga ZIPs adjuntos, organiza por carpeta FC<NUM>,
+Lee Gmail (Gmail API + OAuth), descarga ZIPs adjuntos, organiza por carpeta FC<NUM>,
 extrae valores de los PDFs, concilia y escribe el archivo de control.
 """
 from __future__ import annotations
 
 import argparse
+import base64
 import email
-import imaplib
 import json
 import os
 import re
 import shutil
 import sys
-import time
 import zipfile
 from datetime import datetime, timezone
 from email.header import decode_header
@@ -26,10 +25,17 @@ from pathlib import Path
 
 import pdfplumber
 from dotenv import load_dotenv
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from openpyxl import Workbook, load_workbook
 from openpyxl.formatting.rule import CellIsRule, FormulaRule
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
+
+GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
 
 
 # ============================================================
@@ -46,11 +52,11 @@ def load_config() -> dict:
                      f"Crea un archivo .env basado en .env.example")
         return v
 
+    here = Path(__file__).resolve().parent
     cfg = {
         "gmail_user": req("GMAIL_USER"),
-        "gmail_pass": req("GMAIL_APP_PASSWORD"),
-        "gmail_host": os.environ.get("GMAIL_IMAP_HOST", "imap.gmail.com"),
-        "gmail_port": int(os.environ.get("GMAIL_IMAP_PORT", "993")),
+        "credentials_path": Path(os.environ.get("GMAIL_CREDENTIALS_PATH", str(here / "credentials.json"))),
+        "token_path": Path(os.environ.get("GMAIL_TOKEN_PATH", str(here / "token.json"))),
         "from_filter": os.environ.get("GMAIL_FROM_FILTER", "no-responder@facture.co"),
         "subject_filter": os.environ.get("GMAIL_SUBJECT_FILTER", "TODOMAR CHL"),
         "label_processed": os.environ.get("GMAIL_LABEL_PROCESSED", "Procesado/Nautiturismo"),
@@ -126,40 +132,77 @@ def decode_subject(raw: str) -> str:
 
 
 # ============================================================
-# Cliente IMAP
+# Cliente Gmail API (OAuth)
 # ============================================================
 
-def imap_connect(cfg: dict, log: RunLog) -> imaplib.IMAP4_SSL:
-    log.info("imap_connect", host=cfg["gmail_host"], user=cfg["gmail_user"])
-    imap = imaplib.IMAP4_SSL(cfg["gmail_host"], cfg["gmail_port"])
-    imap.login(cfg["gmail_user"], cfg["gmail_pass"])
-    imap.select('"[Gmail]/Todos"' if False else "INBOX")  # INBOX por defecto
-    return imap
+def get_gmail_service(cfg: dict, log: "RunLog"):
+    """Devuelve un servicio Gmail API listo para usar.
+
+    La primera vez abre el navegador para autorizar la app y guarda token.json.
+    Las siguientes corridas reutilizan token.json (refrescando si expiro).
+    """
+    creds = None
+    token_path = cfg["token_path"]
+    creds_path = cfg["credentials_path"]
+
+    if token_path.exists():
+        creds = Credentials.from_authorized_user_file(str(token_path), GMAIL_SCOPES)
+
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            log.info("oauth_refresh_token")
+            creds.refresh(Request())
+        else:
+            if not creds_path.exists():
+                sys.exit(
+                    f"ERROR: no se encontro credentials.json en {creds_path}\n"
+                    f"Descargalo desde Google Cloud Console -> APIs & Services -> "
+                    f"Credentials, y ponlo en esa ruta (o ajusta GMAIL_CREDENTIALS_PATH en .env)."
+                )
+            log.info("oauth_browser_flow_start", credentials=str(creds_path))
+            flow = InstalledAppFlow.from_client_secrets_file(str(creds_path), GMAIL_SCOPES)
+            creds = flow.run_local_server(port=0)
+            log.info("oauth_browser_flow_done")
+        token_path.parent.mkdir(parents=True, exist_ok=True)
+        token_path.write_text(creds.to_json(), encoding="utf-8")
+        log.info("oauth_token_saved", path=str(token_path))
+
+    log.info("gmail_service_ready", user=cfg["gmail_user"])
+    return build("gmail", "v1", credentials=creds, cache_discovery=False)
 
 
-def imap_search(imap: imaplib.IMAP4_SSL, cfg: dict, log: RunLog) -> list[bytes]:
-    since = datetime.strptime(cfg["date_from"], "%Y-%m-%d").strftime("%d-%b-%Y")
-    before = datetime.strptime(cfg["date_to"], "%Y-%m-%d").strftime("%d-%b-%Y")
-    criteria = (
-        f'(FROM "{cfg["from_filter"]}" '
-        f'SUBJECT "{cfg["subject_filter"]}" '
-        f'SINCE {since} BEFORE {before})'
+def gmail_search(service, cfg: dict, log: "RunLog") -> list[str]:
+    """Busca mensajes que pasen el filtro y devuelve sus IDs."""
+    since = datetime.strptime(cfg["date_from"], "%Y-%m-%d").strftime("%Y/%m/%d")
+    # Gmail "before" es exclusivo; sumamos 1 dia para que sea inclusivo.
+    until_dt = datetime.strptime(cfg["date_to"], "%Y-%m-%d")
+    before = (until_dt.replace(day=until_dt.day) ).strftime("%Y/%m/%d")
+    query = (
+        f'from:{cfg["from_filter"]} '
+        f'subject:"{cfg["subject_filter"]}" '
+        f'after:{since} before:{before}'
     )
-    log.info("imap_search", criteria=criteria)
-    typ, data = imap.search(None, criteria)
-    if typ != "OK":
-        log.error("imap_search_failed", response=typ)
-        return []
-    ids = data[0].split() if data and data[0] else []
-    log.info("imap_search_result", count=len(ids))
+    log.info("gmail_search", query=query)
+
+    ids: list[str] = []
+    page_token = None
+    while True:
+        resp = service.users().messages().list(
+            userId="me", q=query, pageToken=page_token, maxResults=500
+        ).execute()
+        for m in resp.get("messages", []):
+            ids.append(m["id"])
+        page_token = resp.get("nextPageToken")
+        if not page_token:
+            break
+    log.info("gmail_search_result", count=len(ids))
     return ids
 
 
-def fetch_message(imap: imaplib.IMAP4_SSL, msg_id: bytes) -> email.message.Message:
-    typ, data = imap.fetch(msg_id, "(RFC822)")
-    if typ != "OK" or not data or not data[0]:
-        raise RuntimeError(f"fetch failed for {msg_id!r}")
-    return email.message_from_bytes(data[0][1])
+def fetch_message(service, msg_id: str) -> email.message.Message:
+    raw_resp = service.users().messages().get(userId="me", id=msg_id, format="raw").execute()
+    raw_bytes = base64.urlsafe_b64decode(raw_resp["raw"])
+    return email.message_from_bytes(raw_bytes)
 
 
 def message_date(msg: email.message.Message) -> datetime:
@@ -185,10 +228,41 @@ def extract_zip_attachment(msg: email.message.Message) -> tuple[str, bytes] | No
     return None
 
 
-def add_label(imap: imaplib.IMAP4_SSL, msg_id: bytes, label: str) -> None:
+_LABEL_ID_CACHE: dict[str, str] = {}
+
+
+def _get_or_create_label_id(service, label_name: str) -> str | None:
+    if label_name in _LABEL_ID_CACHE:
+        return _LABEL_ID_CACHE[label_name]
     try:
-        imap.store(msg_id, "+X-GM-LABELS", f'"{label}"')
-    except Exception:
+        existing = service.users().labels().list(userId="me").execute().get("labels", [])
+        for lbl in existing:
+            if lbl["name"] == label_name:
+                _LABEL_ID_CACHE[label_name] = lbl["id"]
+                return lbl["id"]
+        created = service.users().labels().create(
+            userId="me",
+            body={
+                "name": label_name,
+                "labelListVisibility": "labelShow",
+                "messageListVisibility": "show",
+            },
+        ).execute()
+        _LABEL_ID_CACHE[label_name] = created["id"]
+        return created["id"]
+    except HttpError:
+        return None
+
+
+def add_label(service, msg_id: str, label_name: str) -> None:
+    try:
+        label_id = _get_or_create_label_id(service, label_name)
+        if not label_id:
+            return
+        service.users().messages().modify(
+            userId="me", id=msg_id, body={"addLabelIds": [label_id]}
+        ).execute()
+    except HttpError:
         pass
 
 
@@ -608,16 +682,16 @@ def append_log_row(control_path: Path, summary: dict) -> None:
 
 def process_one_email(
     cfg: dict,
-    msg_id: bytes,
+    msg_id: str,
     msg: email.message.Message,
     expected_numdoctras: set[str],
     log: RunLog,
     summary: dict,
-    imap: imaplib.IMAP4_SSL,
+    service,
 ) -> None:
     subject = decode_subject(msg.get("Subject", ""))
     numdoctra = extract_numdoctra(subject)
-    log.info("email", msg_id=msg_id.decode(), subject=subject, numdoctra=numdoctra)
+    log.info("email", msg_id=msg_id, subject=subject, numdoctra=numdoctra)
 
     if not numdoctra:
         log.warn("no_numdoctra_in_subject", subject=subject)
@@ -633,7 +707,7 @@ def process_one_email(
     if (folder / "factura.pdf").exists():
         log.info("already_processed_skip", numdoctra=numdoctra)
         summary["facturas_skipped"] += 1
-        add_label(imap, msg_id, cfg["label_processed"])
+        add_label(service, msg_id, cfg["label_processed"])
         return
 
     attach = extract_zip_attachment(msg)
@@ -698,7 +772,7 @@ def process_one_email(
     )
     if ok:
         summary["facturas_new"] += 1
-        add_label(imap, msg_id, cfg["label_processed"])
+        add_label(service, msg_id, cfg["label_processed"])
         log.info(
             "conciliated",
             numdoctra=numdoctra, valor_factura=factura_data["valor"],
@@ -752,47 +826,41 @@ def main() -> None:
     expected = load_expected_numdoctras(cfg["source_excel"])
     log.info("expected_loaded", count=len(expected))
 
-    imap = imap_connect(cfg, log)
-    try:
-        ids = imap_search(imap, cfg, log)
-        meta: list[tuple[bytes, datetime, email.message.Message]] = []
-        for mid in ids:
-            try:
-                m = fetch_message(imap, mid)
-                meta.append((mid, message_date(m), m))
-            except Exception as e:
-                log.error("fetch_failed", msg_id=mid.decode(errors="replace"), err=str(e))
-        meta.sort(key=lambda x: x[1])
-        if args.limit and args.limit > 0:
-            meta = meta[:args.limit]
-        log.info("to_process", count=len(meta))
-
-        summary = {
-            "emails_read": len(meta), "zips_downloaded": 0, "facturas_new": 0,
-            "facturas_skipped": 0, "errors": 0, "inconsistencies": 0, "detail": "",
-        }
-
-        if args.dry_run:
-            for mid, dt, m in meta:
-                subj = decode_subject(m.get("Subject", ""))
-                print(f"  [DRY] {dt.isoformat()} | {extract_numdoctra(subj)} | {subj}")
-            log.info("dry_run_done")
-            return
-
-        for mid, _dt, m in meta:
-            try:
-                process_one_email(cfg, mid, m, expected, log, summary, imap)
-            except Exception as e:
-                log.error("process_failed", msg_id=mid.decode(errors="replace"), err=str(e))
-                summary["errors"] += 1
-
-        append_log_row(control_path, summary)
-        log.info("done", **summary)
-    finally:
+    service = get_gmail_service(cfg, log)
+    ids = gmail_search(service, cfg, log)
+    meta: list[tuple[str, datetime, email.message.Message]] = []
+    for mid in ids:
         try:
-            imap.logout()
-        except Exception:
-            pass
+            m = fetch_message(service, mid)
+            meta.append((mid, message_date(m), m))
+        except Exception as e:
+            log.error("fetch_failed", msg_id=mid, err=str(e))
+    meta.sort(key=lambda x: x[1])
+    if args.limit and args.limit > 0:
+        meta = meta[:args.limit]
+    log.info("to_process", count=len(meta))
+
+    summary = {
+        "emails_read": len(meta), "zips_downloaded": 0, "facturas_new": 0,
+        "facturas_skipped": 0, "errors": 0, "inconsistencies": 0, "detail": "",
+    }
+
+    if args.dry_run:
+        for mid, dt, m in meta:
+            subj = decode_subject(m.get("Subject", ""))
+            print(f"  [DRY] {dt.isoformat()} | {extract_numdoctra(subj)} | {subj}")
+        log.info("dry_run_done")
+        return
+
+    for mid, _dt, m in meta:
+        try:
+            process_one_email(cfg, mid, m, expected, log, summary, service)
+        except Exception as e:
+            log.error("process_failed", msg_id=mid, err=str(e))
+            summary["errors"] += 1
+
+    append_log_row(control_path, summary)
+    log.info("done", **summary)
 
 
 if __name__ == "__main__":
