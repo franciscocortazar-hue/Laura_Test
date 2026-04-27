@@ -40,7 +40,7 @@ Procesar de forma autónoma los correos de facturación electrónica recibidos e
   Filtrar por correos cuyo asunto contenga `TODOMAR CHL S.A.S.` y un segmento `FC<digits>`.
 - **Rango de fechas**: configurable. Para esta corrida: **2026-01-01 a 2026-04-30**.
 - **Adjuntos**: cada correo trae un ZIP con uno o más PDFs (factura + remisión(es)).
-- **Aviso**: la cuenta de Todomar solo recibe por Facture facturas de Nautiturismo (confirmado por el usuario). De todas formas Cowork hace una verificación silenciosa del NIT del emisor en `factura.pdf` como auditoría defensiva: si alguna vez aparece un emisor distinto, lo loggea y lo aparta a la carpeta de excepciones (ver Paso 2).
+- **Aviso**: la cuenta de Todomar solo recibe por Facture facturas de Nautiturismo (confirmado por el usuario). De todas formas Cowork hace una verificación silenciosa del NIT del emisor en el PDF de la factura como auditoría defensiva: si alguna vez aparece un emisor distinto, lo loggea y lo aparta a la carpeta de excepciones (ver Paso 2).
 
 ### B) Excel fuente (solo lectura — referencia)
 - Hoja: `Hoja1`
@@ -94,17 +94,19 @@ Para cada correo que pase el filtro Gmail:
    ```
    G:\Mi unidad\Inteligencia Artificial\Productividad\Gasolina\Facturas\FC<NUMDOCTRA>\
    ```
-2. **Idempotencia**: si la carpeta ya existe Y contiene `factura.pdf`, saltar este ZIP (ya procesado en una corrida anterior). Loggear como duplicado.
+2. **Idempotencia**: si la carpeta ya existe Y contiene `FAC-FC<NUMDOCTRA>.pdf`, saltar este ZIP (ya procesado en una corrida anterior). Loggear como duplicado.
 3. Descomprimir el ZIP dentro de la carpeta.
-4. Identificar y renombrar los PDFs:
-   - El PDF firmado por la DIAN (con CUFE / código QR de validación) → **`factura.pdf`**
-   - El/los PDF(s) de despacho (encabezado "REMISIÓN" o similar, traen nombre del bote) → **`remision.pdf`** si hay una sola, o **`remision_1.pdf`, `remision_2.pdf`, ...** si hay varias.
-5. **Validar emisor (auditoría)**: abrir `factura.pdf` y confirmar que el emisor es `NAUTITURISMO SAS` (NIT `901459048`). Si no lo es → mover la carpeta completa a `G:\Mi unidad\Inteligencia Artificial\Productividad\Gasolina\No_Aplica\FC<NUMDOCTRA>\` y loggear "emisor distinto, apartado". (Caso esperado: nunca debería ocurrir; se deja como red de seguridad).
+4. Identificar y renombrar los PDFs (filenames auto-descriptivos):
+   - El PDF firmado por la DIAN (con CUFE / código QR de validación) → **`FAC-FC<NUMDOCTRA>.pdf`**
+   - El/los PDF(s) de despacho (encabezado "REMISIÓN" o similar, traen nombre del bote):
+     - Si hay 1 sola → **`REM-FC<NUMDOCTRA>.pdf`**
+     - Si hay N≥2 → **`REM-FC<NUMDOCTRA>_1.pdf`, `REM-FC<NUMDOCTRA>_2.pdf`, ...**
+5. **Validar emisor (auditoría)**: abrir el PDF de la factura y confirmar que el emisor es `NAUTITURISMO SAS` (NIT `901459048`). Si no lo es → mover la carpeta completa a `G:\Mi unidad\Inteligencia Artificial\Productividad\Gasolina\No_Aplica\FC<NUMDOCTRA>\` y loggear "emisor distinto, apartado". (Caso esperado: nunca debería ocurrir; se deja como red de seguridad).
 
 ### Paso 3 — Extraer datos de los PDFs
-- De **`factura.pdf`**:
+- De **`FAC-FC<NUMDOCTRA>.pdf`**:
   - `valor_factura` (valor total de la factura)
-- De **cada `remision*.pdf`** (si existen):
+- De **cada `REM-FC<NUMDOCTRA>*.pdf`** (si existen):
   - `valor_remision_i`
   - `nombre_bote` (literal lo que aparezca: "B10", "B5", "Lemarie", etc.)
   - `fecha_hora_tanqueo` (timestamp del despacho)
@@ -114,13 +116,13 @@ Para cada correo que pase el filtro Gmail:
 ### Paso 4 — Conciliación
 
 ```
-SI no existe ninguna remision*.pdf:
+SI no existe ningún REM-FC<NUMDOCTRA>*.pdf:
     Conciliacion       = "No hay remisión"
     Valor              = (vacío)
     Nombre de Bote     = (vacío)
     Fecha y hora       = (vacío)
 
-SI existe 1 sola remision.pdf:
+SI existe 1 sola REM-FC<NUMDOCTRA>.pdf:
     diferencia = valor_factura - valor_remision
     SI |diferencia| <= 1000:
         Conciliacion = "OK"
@@ -195,8 +197,8 @@ La primera corrida crea el archivo con las **114 filas listadas**, pero solo **2
 | J | # Remisiones | Cowork | 0, 1, 2, ... |
 | K | Conciliación | Cowork | OK / No hay remisión / Remisión con valor diferente (...) |
 | L | Valor (diferencia $) | Cowork | con signo, 0 si OK |
-| M | Link factura | Cowork | hipervínculo a `G:\...\FC<num>\factura.pdf` |
-| N | Link remisión(es) | Cowork | hipervínculo (si N≥2, listar separados por `;`) |
+| M | Link factura | Cowork | hipervínculo a `G:\...\FC<num>\FAC-FC<num>.pdf` |
+| N | Link remisión(es) | Cowork | hipervínculo a `G:\...\FC<num>\REM-FC<num>.pdf` (si N≥2, listar separados por `;`: `REM-FC<num>_1.pdf;REM-FC<num>_2.pdf`) |
 | O | Última actualización | Cowork | timestamp de la corrida que tocó la fila |
 
 **Formato:**
