@@ -22,6 +22,7 @@ from email.header import decode_header
 from email.utils import parsedate_to_datetime
 from io import BytesIO
 from pathlib import Path
+from urllib.parse import quote
 
 import pdfplumber
 from dotenv import load_dotenv
@@ -476,6 +477,23 @@ CONTROL_HEADERS = [
 ]
 COL = {h: i + 1 for i, h in enumerate(CONTROL_HEADERS)}
 MONEY_FMT = '"$"#,##0;[Red]-"$"#,##0'
+HYPERLINK_FONT = Font(color="0563C1", underline="single")
+
+
+def path_to_file_url(path: Path) -> str:
+    """Convierte una ruta local a un URL file:// que Excel pueda abrir al hacer click."""
+    s = str(path).replace("\\", "/")
+    return "file:///" + quote(s, safe="/:")
+
+
+def set_hyperlink_cell(cell, target_path: Path | None, display_text: str) -> None:
+    """Escribe una celda como hipervinculo clicable en Excel."""
+    if target_path is None:
+        cell.value = None
+        return
+    cell.value = display_text
+    cell.hyperlink = path_to_file_url(target_path)
+    cell.font = HYPERLINK_FONT
 
 
 def bootstrap_control(control_path: Path, source_excel: Path, log: RunLog) -> None:
@@ -653,8 +671,18 @@ def update_control_row(
     ws.cell(row=row, column=COL["Conciliación"], value=conciliacion)
     c_diff = ws.cell(row=row, column=COL["Valor (diferencia)"], value=valor_diff)
     c_diff.number_format = MONEY_FMT
-    ws.cell(row=row, column=COL["Link factura"], value=str(factura_link) if factura_link else None)
-    ws.cell(row=row, column=COL["Link remisión(es)"], value="; ".join(str(p) for p in remision_links) if remision_links else None)
+    c_m = ws.cell(row=row, column=COL["Link factura"])
+    set_hyperlink_cell(c_m, factura_link, factura_link.name if factura_link else "")
+
+    c_n = ws.cell(row=row, column=COL["Link remisión(es)"])
+    if not remision_links:
+        c_n.value = None
+    elif len(remision_links) == 1:
+        set_hyperlink_cell(c_n, remision_links[0], remision_links[0].name)
+    else:
+        folder_path = remision_links[0].parent
+        set_hyperlink_cell(c_n, folder_path, f"Carpeta ({len(remision_links)} remisiones)")
+
     ws.cell(row=row, column=COL["Última actualización"], value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
     wb.save(str(control_path))
