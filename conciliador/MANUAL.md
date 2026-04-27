@@ -44,14 +44,52 @@ DATE_TO=2026-12-31
 
 (O usar flags `--since 2026-01-01 --until 2026-12-31` al correr para overrideear sin tocar el `.env`.)
 
-### 1.2 Verificar que el Excel fuente cubra el período
+### 1.2 Verificar que la fuente cubra el período
 
-El archivo `DETALLE FACTURAS COMBUSTIBLES <PERIODO>.xlsx` (en `G:\...\Gasolina\`) define el universo de facturas esperadas. Si vas a procesar un período que el Excel actual no cubre:
+La "fuente" define el universo de facturas esperadas. El script acepta **3 formatos**:
 
-- Opción A: actualizar el Excel maestro para que incluya las nuevas facturas del periodo
-- Opción B: usar un Excel maestro diferente y ajustar `SOURCE_EXCEL` en `.env`
+#### Formato A — Excel maestro (`DETALLE FACTURAS COMBUSTIBLES <PERIODO>.xlsx`)
 
-Las facturas que no estén en el Excel se loggean como `numdoctra_not_expected` y **no se escriben al control** (sí se descarga el ZIP igual, queda en `Facturas/FC<num>/` para auditoría).
+Usa este si tienes un xlsx con cabeceras NUMDOCTRA, FECHATRA, RAZONCIAL, IDTERCERO, VALORTRA, etc. Configura en `.env`:
+
+```
+SOURCE_EXCEL=C:/Users/franc/Mi unidad/.../DETALLE FACTURAS COMBUSTIBLES ENERO A ABRIL 24-2026.xlsx
+```
+
+#### Formato B — PDF Zeus de estado de cuenta (un solo archivo)
+
+Cuando Nautiturismo (o tu sistema contable) te entrega un **estado de cuenta de cartera** en PDF (formato Zeus con columnas Documento/Fecha/Débitos/Créditos/Saldo). El script extrae automáticamente las filas FC.
+
+Sobrescribe la fuente con flag CLI:
+```bash
+python conciliador.py --source-pdf "G:/Mi unidad/.../estado_cuenta_2026.pdf"
+```
+
+#### Formato C — Directorio con varios PDFs Zeus (mensuales o anuales)
+
+Si tienes un PDF por mes o por año, los pones en una carpeta y le pasas la carpeta:
+```bash
+python conciliador.py --source-pdf "G:/Mi unidad/.../EstadosCuenta/"
+```
+
+El script lee TODOS los `.pdf` de ese directorio, extrae las facturas FC, y deduplica por NUMDOCTRA.
+
+> ⚠️ Las facturas que no estén en la fuente se loggean como `numdoctra_not_expected` y **no se escriben al control** (sí se descarga el ZIP igual, queda en `Facturas/FC<num>/` para auditoría).
+
+### 1.2.1 Verificar el parseo del PDF Zeus antes de correr
+
+Antes del primer procesamiento con un PDF nuevo, valida que el parser lee bien:
+
+```bash
+python conciliador.py --source-pdf "ruta/al/estado.pdf" --validate-source
+```
+
+NO conecta a Gmail. Solo lee el PDF y muestra:
+- Cuántas filas FC encontró
+- Las primeras 5 con NUMDOCTRA, fecha, valor
+- Las últimas 3
+
+Si los números cuadran con lo que esperas → procede al lote real. Si no, pégame el PDF y ajusto el parser (puede ser que el formato Zeus sea ligeramente diferente al que probé).
 
 ### 1.3 Snapshot defensivo (recomendado antes de cada lote grande)
 
@@ -84,6 +122,53 @@ python conciliador.py
 Tarda ~3-10 segundos por factura (mayoría es la llamada a Claude Vision para remisiones escaneadas). Para 118 facturas: ~5-10 min.
 
 **Costo aproximado**: $0.008 × N facturas. Para un año (~1.500 facturas): ~$12 USD.
+
+---
+
+### 1.6 Procesar un periodo histórico (ej. 2020-2026)
+
+Para procesar varios años en una corrida:
+
+1. **Reúne las fuentes**: pone todos los PDFs de estado de cuenta (uno por año o por mes) en una carpeta dedicada, ej:
+   ```
+   G:/Mi unidad/.../EstadosCuenta/
+   ├── estado_2020.pdf
+   ├── estado_2021.pdf
+   ├── estado_2022.pdf
+   ├── estado_2023.pdf
+   ├── estado_2024.pdf
+   ├── estado_2025.pdf
+   └── estado_2026.pdf
+   ```
+
+2. **Verifica con dry-validate**:
+   ```bash
+   python conciliador.py --source-pdf "G:/Mi unidad/.../EstadosCuenta/" --validate-source
+   ```
+   Confirma que extrae el total esperado de facturas. Para 6 años de gasolina suele ser **2.000-3.000**.
+
+3. **Snapshot defensivo OBLIGATORIO** (lote grande):
+   ```bash
+   GASOLINA="/c/Users/franc/Mi unidad/Inteligencia Artificial/Productividad/Gasolina"
+   SNAPSHOT="$GASOLINA/_snapshots/$(date +%Y%m%d_%H%M)_pre_historico"
+   mkdir -p "$SNAPSHOT"
+   cp -r "$GASOLINA/Facturas" "$SNAPSHOT/" 2>/dev/null
+   cp "$GASOLINA/Control/Control_Conciliacion_Combustibles.xlsx" "$SNAPSHOT/" 2>/dev/null
+   ```
+
+4. **Lanza el lote completo** (puede tardar 3-6 horas):
+   ```bash
+   python conciliador.py \
+     --source-pdf "G:/Mi unidad/.../EstadosCuenta/" \
+     --since 2020-01-01 \
+     --until 2026-12-31
+   ```
+
+5. **Mientras corre**: el script hace retry automático ante errores transitorios (rate limit, 5xx, connection drops). Los errores se loggean como `vision_retry`. Si una llamada falla todos los retries, esa factura queda como "Pendiente revisión manual".
+
+6. **Costo estimado** para 2.000-3.000 facturas con Sonnet 4.6: $16-24 USD.
+
+7. **Si la corrida se interrumpe** (PC se apaga, internet cae): no pasa nada, vuelves a lanzar el mismo comando. Las ya procesadas se saltan (idempotencia).
 
 ---
 

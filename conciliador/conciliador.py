@@ -513,10 +513,12 @@ def vision_extract_remision(pdf_path: Path, api_key: str, log: "RunLog | None" =
         }
 
     img_b64 = base64.b64encode(png_bytes).decode()
-    try:
-        client = anthropic.Anthropic(api_key=api_key)
-        model = os.environ.get("ANTHROPIC_VISION_MODEL", "claude-sonnet-4-6")
-        msg = client.messages.create(
+    client = anthropic.Anthropic(api_key=api_key)
+    model = os.environ.get("ANTHROPIC_VISION_MODEL", "claude-sonnet-4-6")
+    max_retries = int(os.environ.get("ANTHROPIC_MAX_RETRIES", "4"))
+
+    def _call_vision():
+        return client.messages.create(
             model=model,
             max_tokens=512,
             messages=[{
@@ -534,13 +536,45 @@ def vision_extract_remision(pdf_path: Path, api_key: str, log: "RunLog | None" =
                 ],
             }],
         )
-        response_text = msg.content[0].text.strip()
-    except Exception as e:
-        if log is not None:
-            log.warn("vision_api_failed", file=pdf_path.name, err=str(e))
+
+    response_text = None
+    last_err: Exception | None = None
+    import time
+    for attempt in range(max_retries):
+        try:
+            msg = _call_vision()
+            response_text = msg.content[0].text.strip()
+            break
+        except Exception as e:
+            last_err = e
+            err_name = type(e).__name__
+            err_msg = str(e)
+            # Retry-able: rate limit, overloaded, connection issues, 5xx
+            retryable = (
+                "RateLimit" in err_name
+                or "Overloaded" in err_name
+                or "Connection" in err_name
+                or "Timeout" in err_name
+                or "APIStatusError" in err_name and ("529" in err_msg or "503" in err_msg or "502" in err_msg or "500" in err_msg)
+            )
+            if not retryable or attempt == max_retries - 1:
+                if log is not None:
+                    log.warn("vision_api_failed", file=pdf_path.name,
+                             attempt=attempt + 1, err=f"{err_name}: {err_msg[:200]}")
+                return {
+                    "valor": None, "bote": None, "fecha_hora": None,
+                    "raw_text_sample": f"vision_api_failed: {err_name}",
+                }
+            wait = (2 ** attempt) * 2  # 2s, 4s, 8s, 16s
+            if log is not None:
+                log.warn("vision_retry", file=pdf_path.name,
+                         attempt=attempt + 1, wait_sec=wait, err=err_name)
+            time.sleep(wait)
+
+    if response_text is None:
         return {
             "valor": None, "bote": None, "fecha_hora": None,
-            "raw_text_sample": f"vision_api_failed: {e}",
+            "raw_text_sample": f"vision_api_failed: {type(last_err).__name__ if last_err else 'unknown'}",
         }
 
     # Strip code fences si los hay
@@ -710,11 +744,11 @@ def set_hyperlink_cell(cell, target_path: Path | None, display_text: str) -> Non
     cell.font = HYPERLINK_FONT
 
 
-def bootstrap_control(control_path: Path, source_excel: Path, log: RunLog) -> None:
-    if control_path.exists():
-        log.info("control_exists", path=str(control_path))
-        return
-    log.info("control_bootstrap", path=str(control_path), source=str(source_excel))
+def _load_rows_from_xlsx(source_excel: Path) -> list[tuple]:
+    """Lee las filas esperadas del Excel maestro DETALLE FACTURAS.
+
+    Retorna tuplas (numdoctra, fecha, razon_social, nit, tipo_doc, valor).
+    """
     src = load_workbook(str(source_excel), data_only=True)
     src_ws = src["Hoja1"]
     rows: list[tuple] = []
@@ -730,6 +764,99 @@ def bootstrap_control(control_path: Path, source_excel: Path, log: RunLog) -> No
             f'{src_ws.cell(row=r, column=5).value or ""}{src_ws.cell(row=r, column=10).value or ""}',
             src_ws.cell(row=r, column=9).value,
         ))
+    return rows
+
+
+# Regex para parsear filas FC del PDF Zeus de estado de cuenta.
+# Formato observado:
+#   FC  0000077623  2026/03/02  CR 0000077623 2026/03/04   558,600.00   0.00   ...
+ZEUS_FC_LINE = re.compile(
+    r"^FC\s+(\d{6,})\s+(\d{4}/\d{1,2}/\d{1,2})\s+.*?"
+    r"([\d,]+\.\d{2})\s+0\.00",
+    re.IGNORECASE,
+)
+
+
+def parse_zeus_account_pdf(pdf_path: Path) -> list[dict]:
+    """Parsea un PDF de estado de cuenta Zeus y extrae las facturas FC.
+
+    Retorna lista de dicts: {numdoctra, fecha (YYYY/MM/DD), valor (float)}.
+    Solo las filas FC (facturas), ignora CR (notas credito) y otras.
+    """
+    entries: list[dict] = []
+    seen: set[str] = set()
+    with pdfplumber.open(str(pdf_path)) as pdf:
+        for page in pdf.pages:
+            text = page.extract_text() or ""
+            for raw_line in text.split("\n"):
+                line = raw_line.strip()
+                m = ZEUS_FC_LINE.match(line)
+                if not m:
+                    continue
+                numdoctra = m.group(1).lstrip("0") or "0"
+                if numdoctra in seen:
+                    continue
+                fecha = m.group(2)
+                valor = float(m.group(3).replace(",", ""))
+                seen.add(numdoctra)
+                entries.append({
+                    "numdoctra": numdoctra,
+                    "fecha": fecha,
+                    "valor": valor,
+                })
+    return entries
+
+
+def _load_rows_from_pdfs(source: Path) -> list[tuple]:
+    """Lee filas esperadas desde un PDF Zeus o un directorio con varios PDFs.
+
+    Para los campos que el PDF no trae (Razon social, NIT, Tipo doc), usa
+    constantes Nautiturismo (NIT 901459048).
+    """
+    pdfs: list[Path]
+    if source.is_dir():
+        pdfs = sorted(source.glob("*.pdf"))
+    else:
+        pdfs = [source]
+    if not pdfs:
+        raise FileNotFoundError(f"No se encontraron PDFs en {source}")
+    seen: set[str] = set()
+    rows: list[tuple] = []
+    for pdf in pdfs:
+        for entry in parse_zeus_account_pdf(pdf):
+            if entry["numdoctra"] in seen:
+                continue
+            seen.add(entry["numdoctra"])
+            rows.append((
+                int(entry["numdoctra"]),
+                entry["fecha"],
+                "NAUTITURISMO SAS",
+                901459048,
+                "FC",
+                entry["valor"],
+            ))
+    return rows
+
+
+def load_expected_rows(source: Path) -> list[tuple]:
+    """Detecta el formato del source y delega al loader apropiado."""
+    if source.is_dir():
+        return _load_rows_from_pdfs(source)
+    suffix = source.suffix.lower()
+    if suffix == ".pdf":
+        return _load_rows_from_pdfs(source)
+    if suffix in (".xlsx", ".xls"):
+        return _load_rows_from_xlsx(source)
+    raise ValueError(f"Formato de source no reconocido: {source}")
+
+
+def bootstrap_control(control_path: Path, source: Path, log: RunLog) -> None:
+    if control_path.exists():
+        log.info("control_exists", path=str(control_path))
+        return
+    log.info("control_bootstrap", path=str(control_path), source=str(source))
+    rows = load_expected_rows(source)
+    log.info("source_loaded", rows=len(rows), source_type=("pdf" if source.is_dir() or source.suffix.lower() == ".pdf" else "xlsx"))
     wb = Workbook()
     ws = wb.active
     ws.title = "Conciliación"
@@ -1131,12 +1258,12 @@ def process_one_email(
         )
 
 
-def load_expected_numdoctras(source_excel: Path) -> set[str]:
-    wb = load_workbook(str(source_excel), data_only=True)
-    ws = wb["Hoja1"]
+def load_expected_numdoctras(source: Path) -> set[str]:
+    """Devuelve set de NUMDOCTRA esperados, leyendo desde xlsx o PDF Zeus."""
+    rows = load_expected_rows(source)
     out: set[str] = set()
-    for r in range(2, ws.max_row + 1):
-        v = ws.cell(row=r, column=6).value
+    for row in rows:
+        v = row[0]
         if v is None:
             continue
         out.add(str(int(v) if isinstance(v, float) else v).strip())
@@ -1151,6 +1278,12 @@ def main() -> None:
     parser.add_argument("--until", help="YYYY-MM-DD (override DATE_TO del .env)")
     parser.add_argument("--dry-run", action="store_true",
                         help="No descarga, solo muestra qué se procesaría")
+    parser.add_argument("--source-pdf",
+                        help="Ruta a PDF Zeus de estado de cuenta (o directorio con varios PDFs). "
+                             "Sobrescribe SOURCE_EXCEL del .env.")
+    parser.add_argument("--validate-source", action="store_true",
+                        help="Solo lee y muestra el contenido de la fuente (sin Gmail ni nada). "
+                             "Util para verificar que el PDF Zeus se parsea bien.")
     args = parser.parse_args()
 
     cfg = load_config()
@@ -1158,6 +1291,8 @@ def main() -> None:
         cfg["date_from"] = args.since
     if args.until:
         cfg["date_to"] = args.until
+    if args.source_pdf:
+        cfg["source_excel"] = Path(args.source_pdf)  # nombre legacy, ahora puede ser PDF o dir
 
     cfg["facturas_dir"].mkdir(parents=True, exist_ok=True)
     cfg["control_dir"].mkdir(parents=True, exist_ok=True)
@@ -1165,11 +1300,24 @@ def main() -> None:
 
     log = RunLog(cfg["control_dir"])
     log.info("start", limit=args.limit, since=cfg["date_from"], until=cfg["date_to"],
-             dry_run=args.dry_run)
+             dry_run=args.dry_run, source=str(cfg["source_excel"]))
 
     if not cfg["source_excel"].exists():
-        log.error("source_excel_missing", path=str(cfg["source_excel"]))
+        log.error("source_missing", path=str(cfg["source_excel"]))
         sys.exit(1)
+
+    if args.validate_source:
+        rows = load_expected_rows(cfg["source_excel"])
+        log.info("source_validated", rows=len(rows))
+        print(f"\n  Fuente: {cfg['source_excel']}")
+        print(f"  Filas extraidas: {len(rows)}")
+        print(f"\n  Primeras 5 filas:")
+        for r in rows[:5]:
+            print(f"    NUMDOCTRA={r[0]}  fecha={r[1]}  valor=${r[5]}")
+        print(f"\n  Ultimas 3 filas:")
+        for r in rows[-3:]:
+            print(f"    NUMDOCTRA={r[0]}  fecha={r[1]}  valor=${r[5]}")
+        return
 
     control_path = cfg["control_dir"] / cfg["control_filename"]
     bootstrap_control(control_path, cfg["source_excel"], log)
