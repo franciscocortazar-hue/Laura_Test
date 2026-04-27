@@ -272,16 +272,29 @@ def add_label(service, msg_id: str, label_name: str) -> None:
 # ============================================================
 
 def unzip_to(folder: Path, zip_bytes: bytes) -> list[Path]:
+    """Extrae el ZIP en folder. Si encuentra ZIPs anidados, los descomprime recursivamente
+    (Facture envia un ZIP que adentro trae otro ZIP con el PDF de la remision)."""
     folder.mkdir(parents=True, exist_ok=True)
     extracted: list[Path] = []
-    with zipfile.ZipFile(BytesIO(zip_bytes)) as z:
-        for name in z.namelist():
-            target = folder / Path(name).name  # flatten
-            if not name or name.endswith("/"):
-                continue
-            with z.open(name) as src, target.open("wb") as dst:
-                shutil.copyfileobj(src, dst)
-            extracted.append(target)
+    pending: list[bytes] = [zip_bytes]
+    while pending:
+        current = pending.pop()
+        try:
+            with zipfile.ZipFile(BytesIO(current)) as z:
+                for name in z.namelist():
+                    if not name or name.endswith("/"):
+                        continue
+                    flat_name = Path(name).name
+                    payload = z.read(name)
+                    if flat_name.lower().endswith(".zip"):
+                        # ZIP anidado: extraerlo recursivamente, no escribirlo a disco
+                        pending.append(payload)
+                    else:
+                        target = folder / flat_name
+                        target.write_bytes(payload)
+                        extracted.append(target)
+        except zipfile.BadZipFile:
+            continue
     return extracted
 
 
