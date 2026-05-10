@@ -1,12 +1,10 @@
-// Pega aquí los datos de tu proyecto Supabase (Project Settings > API).
-// Mientras no los pegues, la app corre en MODO DEMO usando localStorage.
-//
-// El "anon key" es público — se expone en el cliente y es seguro. La protección
-// real está en las políticas de Row-Level Security (ver supabase-schema.sql).
+// Credenciales del proyecto Supabase. El `anonKey` (publishable) es público —
+// va en el cliente y es seguro. La protección real está en las políticas RLS
+// (ver supabase-schema.sql, ya aplicadas en el proyecto).
 
 export const supabaseConfig = {
-  url: "PASTE_HERE",          // ej. "https://abcd1234.supabase.co"
-  anonKey: "PASTE_HERE",      // tu anon/public key
+  url: "https://fnmxsafsgggswysaemwj.supabase.co",
+  anonKey: "sb_publishable_6COFKaj_bjVpr6xsT5TUEQ_9oEi_Ttt",
 };
 
 // Total de láminas del álbum Panini Mundial 2026 (incluye especiales).
