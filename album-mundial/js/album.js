@@ -1,5 +1,5 @@
 // App principal: grid, tabs, amigos, intercambios y WhatsApp.
-import { isFirebaseConfigured } from "./firebase-config.js";
+import { isSupabaseConfigured } from "./supabase-config.js";
 import { createStore } from "./store.js";
 
 // ---------- Constantes y helpers ----------
@@ -55,14 +55,15 @@ const state = {
 (async function boot() {
   state.store = await createStore();
 
-  if (state.store.mode === "firebase") {
+  if (state.store.mode === "supabase") {
     state.store.backend.onAuthChanged(async (user) => {
       if (!user) { location.href = "./index.html"; return; }
-      state.uid = user.uid;
+      state.uid = user.id;
+      const meta = user.user_metadata || {};
       await state.store.backend.ensureUser({
-        uid: user.uid,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
+        uid: user.id,
+        displayName: meta.full_name || meta.name || user.email || "Sin nombre",
+        photoURL: meta.avatar_url || meta.picture || "",
       });
       attachSubscriptions();
     });
@@ -126,7 +127,7 @@ function wireUI() {
 
   // Logout
   $("#btn-logout").addEventListener("click", async () => {
-    if (state.store.mode === "firebase") {
+    if (state.store.mode === "supabase") {
       await state.store.backend.logout();
     } else {
       state.store.backend.clearSession();
@@ -472,6 +473,6 @@ function escapeHTML(s) {
 }
 
 // Hint para usuarios curiosos
-if (!isFirebaseConfigured()) {
-  console.info("[Álbum] Modo demo activo. Configura Firebase para sincronizar entre dispositivos. Ver README.md");
+if (!isSupabaseConfigured()) {
+  console.info("[Álbum] Modo demo activo. Configura Supabase para sincronizar entre dispositivos. Ver README.md");
 }

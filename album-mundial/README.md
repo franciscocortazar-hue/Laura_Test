@@ -1,20 +1,20 @@
 # ⚽ Álbum Mundial — Control de Láminas
 
-App web para controlar tu álbum del Mundial 2026 con tu familia y amigos:
-marca pegadas/faltantes/repetidas, encuentra **matches automáticos de
+App web para controlar tu álbum Panini Mundial 2026 con tu familia y amigos:
+marca pegadas / faltantes / repetidas, encuentra **matches automáticos de
 intercambio** y comparte por **WhatsApp** con un click.
 
-- ✅ Sin servidor propio. Sin costo.
-- ✅ Login con Google (Firebase) o **modo demo** en local.
-- ✅ Sincroniza en tiempo real entre tu celular y el de la familia.
-- ✅ 980 láminas (configurable en `js/firebase-config.js`).
-- ✅ Móvil, responsive, oscuro y bonito.
+- ✅ Static (HTML + CSS + JS modules). Sin build, sin Node.
+- ✅ Backend en **Supabase** (Auth con Google + Postgres + Realtime).
+- ✅ Modo demo con `localStorage` si aún no configuras Supabase.
+- ✅ 980 láminas (configurable).
+- ✅ Móvil y responsive, tema oscuro.
 
 ---
 
 ## 🚀 Probar en 30 segundos (modo demo)
 
-No necesitas configurar nada. Solo abre el sitio:
+No necesitas configurar nada:
 
 ```bash
 cd album-mundial
@@ -22,97 +22,106 @@ python3 -m http.server 8080
 # o:  npx serve .
 ```
 
-Abre <http://localhost:8080> y dale a *"Probar en modo demo"*.
-Tus datos se guardan en `localStorage` del navegador (solo este dispositivo).
+Abre <http://localhost:8080> y pulsa **"Probar en modo demo"**.
+Tus datos se guardan en `localStorage` solo en este navegador.
 
-> **Limitación del modo demo:** los amigos solo se ven si usan el mismo
-> navegador. Para sincronizar entre dispositivos, configura Firebase ⬇️.
+> **Limitación del demo:** los amigos solo se ven si entran desde el mismo
+> navegador. Para sincronizar entre dispositivos, configura Supabase ⬇️.
 
 ---
 
-## 🔥 Activar Firebase (gratis, recomendado)
+## 🟢 Configurar Supabase (en tu cuenta existente)
 
 ### 1. Crear el proyecto
 
-1. Entra a <https://console.firebase.google.com> con tu cuenta de Google.
-2. **Add project** → ponle un nombre (ej. `album-mundial-familia`).
-3. Puedes desactivar Google Analytics si quieres (no lo usamos).
+1. Entra a <https://supabase.com/dashboard>.
+2. **New project** → escoge tu organización (la que tienes Pro), ponle nombre
+   (ej. `album-mundial`), genera una contraseña fuerte para Postgres.
+3. Región más cercana (ej. *South America (São Paulo)*).
 
-### 2. Habilitar Authentication
+### 2. Aplicar el schema y las políticas
 
-1. En el menú lateral: **Build → Authentication → Get started**.
-2. Pestaña *Sign-in method* → activa **Google**. Soporta tu correo de soporte y guarda.
+1. Abre **SQL Editor → New query**.
+2. Pega el contenido completo de [`supabase-schema.sql`](./supabase-schema.sql) y dale **Run**.
+3. Crea las tablas `users`, `stickers`, `friendships`, habilita Realtime y
+   aplica las RLS policies. Es idempotente — se puede correr varias veces.
 
-### 3. Habilitar Firestore
+### 3. Activar Google como provider de Auth
 
-1. **Build → Firestore Database → Create database**.
-2. Modo **production** (con las reglas que pondremos después).
-3. Elige la región más cercana (ej. `southamerica-east1` o `us-east1`).
+1. **Authentication → Providers → Google → Enable**.
+2. Sigue la guía de Supabase para crear credenciales OAuth en Google Cloud
+   (es un wizard de 5 min). Pega *Client ID* y *Client Secret*.
+3. **Authentication → URL Configuration**:
+   - *Site URL*: el dominio donde vas a publicar (ej. `https://<usuario>.github.io/album-mundial/`).
+   - *Redirect URLs*: agrega esa misma URL y `http://localhost:8080/*` para desarrollo.
 
-### 4. Registrar una app web
+### 4. Pegar credenciales en el proyecto
 
-1. En *Project settings* (engranaje arriba a la izquierda) → **General**.
-2. Baja a *Your apps* → ícono **`</>`** (web).
-3. Apodo: `album-web`. **No** marques Firebase Hosting (lo configuramos aparte si quieres).
-4. Copia el bloque `firebaseConfig` que te muestra.
+En **Project Settings → API** copia:
+- *Project URL*
+- *Project API keys → anon public*
 
-### 5. Pegar credenciales en el proyecto
-
-Edita `js/firebase-config.js` y reemplaza los `PASTE_HERE` con tus valores:
+Edita `js/supabase-config.js`:
 
 ```js
-export const firebaseConfig = {
-  apiKey: "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-  authDomain: "album-mundial-familia.firebaseapp.com",
-  projectId: "album-mundial-familia",
-  storageBucket: "album-mundial-familia.appspot.com",
-  messagingSenderId: "123456789012",
-  appId: "1:123456789012:web:abc123def456",
+export const supabaseConfig = {
+  url: "https://abcd1234.supabase.co",
+  anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.…",
 };
 ```
 
-> Estas credenciales son **públicas** (van en el cliente). La seguridad real
-> está en las reglas de Firestore (`firestore.rules`).
+> El `anon key` es **público** (va en el cliente); la seguridad real está en
+> las RLS policies que ya cargaste.
 
-### 6. Subir las reglas de Firestore
-
-Copia el contenido de `firestore.rules` y pégalo en
-**Firestore Database → Rules**. Dale *Publish*.
-
-(O usa la CLI: `firebase deploy --only firestore:rules`.)
-
-### 7. Autorizar tu dominio
-
-En **Authentication → Settings → Authorized domains** agrega el dominio donde
-vas a hostear (ej. `tuusuario.github.io` o `album.tudominio.com`).
-`localhost` ya viene autorizado para desarrollo.
+¡Listo! Abre la app, dale a *"Continuar con Google"* y debería funcionar.
 
 ---
 
-## 🌐 Publicar online (gratis)
+## 🌐 Publicar en GitHub Pages (repo aparte)
 
-Elige una de estas opciones:
+Como esto vive hoy bajo `Laura_Test/album-mundial/`, te recomiendo moverlo a
+**su propio repo**. Una vez allí, GitHub Pages se activa en un click.
 
-### Opción A — GitHub Pages (la más simple)
+### Opción A — Nuevo repo `album-mundial`
 
-1. Sube el repo a GitHub.
-2. **Settings → Pages → Source: `main` branch / folder: `/album-mundial`**.
-3. Listo: tu app está en `https://<usuario>.github.io/<repo>/album-mundial/`.
-
-### Opción B — Firebase Hosting
+URL final: `https://<usuario>.github.io/album-mundial/`
 
 ```bash
-npm i -g firebase-tools
-firebase login
-firebase use --add        # selecciona tu proyecto
-firebase deploy --only hosting
+# desde tu máquina
+mkdir ~/github/album-mundial
+cp -R /ruta/a/Laura_Test/album-mundial/. ~/github/album-mundial/
+cd ~/github/album-mundial
+git init
+git add .
+git commit -m "Initial: World Cup 2026 sticker album"
+git branch -M main
+# Crea el repo en GitHub (vacío) y luego:
+git remote add origin git@github.com:<usuario>/album-mundial.git
+git push -u origin main
 ```
 
-URL: `https://<project-id>.web.app`.
+Activa Pages: **Settings → Pages → Source: `main` / root** → Save.
+A los ~30s tu app está online.
 
-### Opción C — Netlify / Vercel / Cloudflare Pages
+### Opción B — Reusar tu repo `claudefire`
 
-Arrastra la carpeta `album-mundial` a cualquiera de ellas. Es estático puro.
+URL final: `https://<usuario>.github.io/claudefire/album-mundial/`
+
+```bash
+cp -R /ruta/a/Laura_Test/album-mundial ~/github/claudefire/
+cd ~/github/claudefire
+git add album-mundial
+git commit -m "Add World Cup 2026 sticker album"
+git push
+```
+
+Activa Pages como arriba. Recuerda agregar la URL final en Supabase →
+*Authentication → URL Configuration* (Site URL + Redirect URLs).
+
+### Opción C — Subdominio personalizado
+
+Si tienes dominio propio, agrégalo en Pages (`Settings → Pages → Custom domain`)
+y en Supabase como Site URL.
 
 ---
 
@@ -120,33 +129,32 @@ Arrastra la carpeta `album-mundial` a cualquiera de ellas. Es estático puro.
 
 ### Marcar láminas
 
-- **Click**: alterna entre estados → `falta` → `pegada` → `repetida ×2` → `×3` → ... → `×6` → vuelve a `falta`.
-- **Click derecho** (escritorio) o **mantener presionado** (móvil): borra esa lámina (vuelve a faltante).
+- **Click**: alterna estados → `falta` → `pegada` → `repetida ×2` → `×3` → ... → `×6` → vuelve a `falta`.
+- **Click derecho** (escritorio) o **mantener presionado** (móvil): borra la lámina (regresa a faltante).
 
 ### Buscar
-Escribe el número en el cuadro de búsqueda y la app salta a esa lámina y la resalta.
+Escribe el número y la app salta a esa lámina y la resalta.
 
 ### Amigos
-1. En la pestaña **Amigos**, comparte tu *código de invitación* (6 letras/números) por WhatsApp con un click.
+1. Tab **Amigos** → comparte tu *código de invitación* (6 letras/números) por WhatsApp.
 2. Cuando un amigo te dé el suyo, pégalo y pulsa *Agregar*.
-3. Tu álbum y el suyo se ven en *Intercambios* automáticamente.
+3. Sus repes/faltantes salen en **Intercambios**.
 
 ### Intercambios
-La pestaña **Intercambios** muestra para cada amigo:
-
+Para cada amigo te muestra:
 - *Le doy*: tus repetidas que a él le faltan.
 - *Me da*: sus repetidas que a ti te faltan.
 
-Un botón arma un mensaje listo para WhatsApp con el listado.
+Un botón arma el mensaje listo para WhatsApp.
 
 ---
 
 ## 🛠️ Personalización
 
-- **Cambiar número de láminas**: `js/firebase-config.js → TOTAL_STICKERS`.
-- **Cargar nombres de jugadores**: aún no implementado en v1; cuando consigas
-  la lista oficial podemos cargarla y mostrar el nombre/equipo en cada celda.
-- **Cambiar paleta**: variables CSS al inicio de `css/styles.css`.
+- **Número de láminas**: `js/supabase-config.js → TOTAL_STICKERS`.
+- **Cargar nombres de jugadores**: aún no en v1. Cuando consigas la lista
+  oficial podemos cargarla y mostrar nombre/equipo en cada celda.
+- **Paleta**: variables CSS al inicio de `css/styles.css`.
 
 ---
 
@@ -154,28 +162,40 @@ Un botón arma un mensaje listo para WhatsApp con el listado.
 
 ```
 album-mundial/
-├── index.html            # Login
-├── album.html            # App principal
-├── css/styles.css        # Tema oscuro deportivo
+├── index.html               # Login
+├── album.html               # App principal
+├── css/styles.css           # Tema oscuro deportivo
 ├── js/
-│   ├── firebase-config.js  # ← edita esto con tus credenciales
-│   ├── store.js            # Capa de datos (Firebase o localStorage)
-│   ├── auth.js             # Login
-│   └── album.js            # App
-├── firestore.rules       # Seguridad de la BD
-├── firebase.json         # Config para Firebase Hosting
+│   ├── supabase-config.js   # ← edita esto con tu URL + anon key
+│   ├── store.js             # Capa de datos (Supabase / localStorage)
+│   ├── auth.js              # Login
+│   └── album.js             # App
+├── supabase-schema.sql      # SQL + RLS (correr una vez en Supabase)
 └── README.md
 ```
 
 ---
 
-## 🤝 Roadmap (ideas futuras)
+## 🛡️ Seguridad
+
+- El `anon key` se expone (es lo normal en Supabase).
+- Todas las tablas tienen **RLS habilitado**.
+- `users` y `stickers` son legibles por cualquier autenticado (necesario para
+  buscar por código y calcular intercambios), pero solo modificables por el
+  dueño.
+- `friendships` solo es legible/modificable por las dos partes.
+
+Si en el futuro quieres ocultar el álbum de extraños, podemos restringir
+lectura solo a *amigos confirmados* con una policy más estricta.
+
+---
+
+## 🤝 Roadmap
 
 - [ ] Lista oficial de jugadores con nombre y equipo.
-- [ ] Foto/escaneo de la lámina para autodetectar el número.
-- [ ] Notificaciones push cuando un amigo agrega una repetida que tú necesitas.
-- [ ] PWA: instalable y offline.
-- [ ] Migración a Supabase si se aprovecha la cuenta Pro.
+- [ ] Foto/scan de la lámina para autodetectar el número.
+- [ ] Notificación push cuando un amigo agrega una repe que tú necesitas.
+- [ ] PWA instalable / modo offline.
 
 ---
 

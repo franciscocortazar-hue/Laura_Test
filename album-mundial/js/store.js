@@ -1,7 +1,7 @@
-// Capa de datos: usa Firebase si está configurado, si no, localStorage (modo demo).
+// Capa de datos: Supabase si está configurado; si no, localStorage (modo demo).
 // La interfaz pública es la misma para que el resto de la app no sepa qué backend hay debajo.
 
-import { firebaseConfig, isFirebaseConfigured, TOTAL_STICKERS } from "./firebase-config.js";
+import { supabaseConfig, isSupabaseConfigured, TOTAL_STICKERS } from "./supabase-config.js";
 
 const LS_KEY = "album-mundial:v1";
 const DEMO_SESSION_KEY = "album-mundial:session";
@@ -12,11 +12,6 @@ function makeInviteCode() {
   let s = "";
   for (let i = 0; i < 6; i++) s += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
   return s;
-}
-
-function emptyStickers() {
-  // Estructura: { "1": { s: 0, c: 0 }, ... }  s = status (0=missing,1=owned,2=duplicate)
-  return {};
 }
 
 // ============================================================================
@@ -39,18 +34,22 @@ class LocalBackend {
     localStorage.setItem(LS_KEY, JSON.stringify(this.data));
   }
 
-  // ---- Sesión ----
-  getSessionUid() {
-    return localStorage.getItem(DEMO_SESSION_KEY);
+  // ---- Sesión demo ----
+  getSessionUid() { return localStorage.getItem(DEMO_SESSION_KEY); }
+  setSessionUid(uid) { localStorage.setItem(DEMO_SESSION_KEY, uid); }
+  clearSession() { localStorage.removeItem(DEMO_SESSION_KEY); }
+
+  async loginWithGoogle() {
+    throw new Error("Login con Google requiere Supabase configurado.");
   }
-  setSessionUid(uid) {
-    localStorage.setItem(DEMO_SESSION_KEY, uid);
-  }
-  clearSession() {
-    localStorage.removeItem(DEMO_SESSION_KEY);
+  async logout() { this.clearSession(); }
+  onAuthChanged(cb) {
+    const uid = this.getSessionUid();
+    cb(uid ? { uid } : null);
+    return () => {};
   }
 
-  ensureUser(profile) {
+  async ensureUser(profile) {
     const uid = profile.uid;
     if (!this.data.users[uid]) {
       this.data.users[uid] = {
@@ -58,12 +57,11 @@ class LocalBackend {
         displayName: profile.displayName || "Sin nombre",
         photoURL: profile.photoURL || "",
         inviteCode: makeInviteCode(),
-        stickers: emptyStickers(),
+        stickers: {},
         createdAt: Date.now(),
       };
       this._write();
     } else {
-      // Refresca campos cambiantes.
       this.data.users[uid].displayName = profile.displayName || this.data.users[uid].displayName;
       this.data.users[uid].photoURL = profile.photoURL || this.data.users[uid].photoURL;
       this._write();
@@ -71,9 +69,9 @@ class LocalBackend {
     return this.data.users[uid];
   }
 
-  getProfile(uid) { return this.data.users[uid] || null; }
+  async getProfile(uid) { return this.data.users[uid] || null; }
 
-  setSticker(uid, n, status, count) {
+  async setSticker(uid, n, status, count) {
     const u = this.data.users[uid];
     if (!u) return;
     if (status === 0) delete u.stickers[n];
@@ -81,12 +79,12 @@ class LocalBackend {
     this._write();
   }
 
-  findUserByCode(code) {
+  async findUserByCode(code) {
     code = (code || "").toUpperCase();
     return Object.values(this.data.users).find(u => u.inviteCode === code) || null;
   }
 
-  addFriendship(a, b) {
+  async addFriendship(a, b) {
     if (a === b) return false;
     const exists = this.data.friendships.find(f =>
       (f[0] === a && f[1] === b) || (f[0] === b && f[1] === a)
@@ -104,154 +102,258 @@ class LocalBackend {
     return ids.map(id => this.data.users[id]).filter(Boolean);
   }
 
-  onUserChange(_uid, cb)   { cb(this.getProfile(_uid)); return () => {}; }
+  onUserChange(uid, cb)   { cb(this.data.users[uid] || null); return () => {}; }
   onFriendsChange(uid, cb) { cb(this.listFriends(uid)); return () => {}; }
 }
 
 // ============================================================================
-//  Backend: FIREBASE (Firestore + Auth)
+//  Backend: SUPABASE
 // ============================================================================
-class FirebaseBackend {
+class SupabaseBackend {
   constructor() {
-    this.app = null;
-    this.auth = null;
-    this.db = null;
-    this._unsubProfile = null;
-    this._unsubFriends = null;
+    this.client = null;
+    this._stickerChannel = null;
+    this._friendsChannel = null;
+    this._friendStickersChannel = null;
   }
 
   async init() {
-    const [{ initializeApp }, authMod, dbMod] = await Promise.all([
-      import("https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js"),
-      import("https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js"),
-      import("https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js"),
-    ]);
-    this.app = initializeApp(firebaseConfig);
-    this.auth = authMod.getAuth(this.app);
-    this.db   = dbMod.getFirestore(this.app);
-    this._authMod = authMod;
-    this._dbMod   = dbMod;
+    const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.45.4");
+    this.client = createClient(supabaseConfig.url, supabaseConfig.anonKey, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+    });
   }
 
   async loginWithGoogle() {
-    const provider = new this._authMod.GoogleAuthProvider();
-    const res = await this._authMod.signInWithPopup(this.auth, provider);
-    return res.user;
-  }
-  async logout() {
-    await this._authMod.signOut(this.auth);
+    const { error } = await this.client.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: location.origin + location.pathname.replace(/index\.html$/, "") + "album.html" },
+    });
+    if (error) throw error;
+    // OAuth redirige, no devuelve aquí. Si redirige rápido, el siguiente await nunca corre.
+    return null;
   }
 
+  async logout() { await this.client.auth.signOut(); }
+
   onAuthChanged(cb) {
-    return this._authMod.onAuthStateChanged(this.auth, cb);
+    // Dispara una vez con la sesión actual y luego escucha cambios.
+    this.client.auth.getUser().then(({ data }) => cb(data?.user || null));
+    const { data: sub } = this.client.auth.onAuthStateChange((_event, session) => {
+      cb(session?.user || null);
+    });
+    return () => sub.subscription.unsubscribe();
+  }
+
+  async _generateUniqueInviteCode() {
+    for (let i = 0; i < 8; i++) {
+      const code = makeInviteCode();
+      const { data, error } = await this.client
+        .from("users").select("id").eq("invite_code", code).maybeSingle();
+      if (error) throw error;
+      if (!data) return code;
+    }
+    return makeInviteCode(); // fallback (probabilidad de colisión ínfima)
   }
 
   async ensureUser(profile) {
-    const { doc, getDoc, setDoc, updateDoc, serverTimestamp } = this._dbMod;
-    const ref = doc(this.db, "users", profile.uid);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) {
-      // Genera un inviteCode único (intentos limitados).
-      let code = makeInviteCode();
-      for (let i = 0; i < 5; i++) {
-        const { collection, query, where, getDocs } = this._dbMod;
-        const q = query(collection(this.db, "users"), where("inviteCode", "==", code));
-        const found = await getDocs(q);
-        if (found.empty) break;
-        code = makeInviteCode();
-      }
-      await setDoc(ref, {
-        uid: profile.uid,
-        displayName: profile.displayName || "Sin nombre",
-        photoURL: profile.photoURL || "",
-        inviteCode: code,
-        createdAt: serverTimestamp(),
-      });
+    const uid = profile.uid;
+    const { data: existing, error: e1 } = await this.client
+      .from("users").select("*").eq("id", uid).maybeSingle();
+    if (e1) throw e1;
+
+    if (!existing) {
+      const code = await this._generateUniqueInviteCode();
+      const { data, error } = await this.client
+        .from("users")
+        .insert({
+          id: uid,
+          display_name: profile.displayName || "Sin nombre",
+          photo_url: profile.photoURL || "",
+          invite_code: code,
+        })
+        .select().single();
+      if (error) throw error;
+      return this._mapUser(data);
     } else {
-      await updateDoc(ref, {
-        displayName: profile.displayName || snap.data().displayName,
-        photoURL: profile.photoURL || snap.data().photoURL || "",
-      });
+      const patch = {};
+      if (profile.displayName && profile.displayName !== existing.display_name) patch.display_name = profile.displayName;
+      if (profile.photoURL && profile.photoURL !== existing.photo_url) patch.photo_url = profile.photoURL;
+      if (Object.keys(patch).length) {
+        const { data, error } = await this.client
+          .from("users").update(patch).eq("id", uid).select().single();
+        if (error) throw error;
+        return this._mapUser(data);
+      }
+      return this._mapUser(existing);
     }
-    const fresh = await getDoc(ref);
-    return fresh.data();
+  }
+
+  _mapUser(row) {
+    if (!row) return null;
+    return {
+      uid: row.id,
+      displayName: row.display_name || "Sin nombre",
+      photoURL: row.photo_url || "",
+      inviteCode: row.invite_code,
+      stickers: {},
+    };
   }
 
   async getProfile(uid) {
-    const { doc, getDoc } = this._dbMod;
-    const snap = await getDoc(doc(this.db, "users", uid));
-    return snap.exists() ? snap.data() : null;
-  }
-
-  async setSticker(uid, n, status, count) {
-    const { doc, setDoc, deleteDoc } = this._dbMod;
-    const ref = doc(this.db, "users", uid, "stickers", String(n));
-    if (status === 0) await deleteDoc(ref);
-    else await setDoc(ref, { s: status, c: count, n: Number(n) });
+    const { data, error } = await this.client.from("users").select("*").eq("id", uid).maybeSingle();
+    if (error) throw error;
+    return this._mapUser(data);
   }
 
   async getStickers(uid) {
-    const { collection, getDocs } = this._dbMod;
-    const snap = await getDocs(collection(this.db, "users", uid, "stickers"));
+    const { data, error } = await this.client.from("stickers").select("n, status, count").eq("user_id", uid);
+    if (error) throw error;
     const out = {};
-    snap.forEach(d => { out[d.id] = d.data(); });
+    for (const row of (data || [])) out[String(row.n)] = { s: row.status, c: row.count || 0 };
     return out;
+  }
+
+  async setSticker(uid, n, status, count) {
+    if (status === 0) {
+      const { error } = await this.client.from("stickers").delete()
+        .eq("user_id", uid).eq("n", n);
+      if (error) throw error;
+    } else {
+      const { error } = await this.client.from("stickers").upsert({
+        user_id: uid, n: Number(n), status, count: count || 0,
+      }, { onConflict: "user_id,n" });
+      if (error) throw error;
+    }
   }
 
   async findUserByCode(code) {
     code = (code || "").toUpperCase();
-    const { collection, query, where, getDocs, limit } = this._dbMod;
-    const q = query(collection(this.db, "users"), where("inviteCode", "==", code), limit(1));
-    const snap = await getDocs(q);
-    return snap.empty ? null : snap.docs[0].data();
+    const { data, error } = await this.client
+      .from("users").select("*").eq("invite_code", code).maybeSingle();
+    if (error) throw error;
+    return this._mapUser(data);
   }
 
   async addFriendship(a, b) {
     if (a === b) return false;
-    const { doc, setDoc, serverTimestamp } = this._dbMod;
-    // ID determinista para que el par sea único.
-    const id = [a, b].sort().join("__");
-    await setDoc(doc(this.db, "friendships", id), {
-      users: [a, b].sort(),
-      createdAt: serverTimestamp(),
-    });
+    const [u1, u2] = [a, b].sort();
+    const { error } = await this.client.from("friendships")
+      .insert({ user_a: u1, user_b: u2 });
+    if (error) {
+      if (error.code === "23505") return false; // duplicate key
+      throw error;
+    }
     return true;
   }
 
   onUserChange(uid, cb) {
-    const { doc, onSnapshot, collection } = this._dbMod;
-    const unsubProfile = onSnapshot(doc(this.db, "users", uid), async (snap) => {
-      const profile = snap.exists() ? snap.data() : null;
-      if (!profile) { cb(null); return; }
-      profile.stickers = await this.getStickers(uid);
-      cb(profile);
+    let cancelled = false;
+
+    const reload = async () => {
+      if (cancelled) return;
+      try {
+        const profile = await this.getProfile(uid);
+        if (!profile) { cb(null); return; }
+        profile.stickers = await this.getStickers(uid);
+        cb(profile);
+      } catch (err) { console.error("onUserChange reload error", err); }
+    };
+
+    reload();
+    this._stickerChannel = this.client
+      .channel("stickers:" + uid)
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "stickers", filter: `user_id=eq.${uid}` },
+        reload)
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "users", filter: `id=eq.${uid}` },
+        reload)
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      if (this._stickerChannel) this.client.removeChannel(this._stickerChannel);
+      this._stickerChannel = null;
+    };
+  }
+
+  async _listFriendIds(uid) {
+    const { data, error } = await this.client
+      .from("friendships").select("user_a, user_b")
+      .or(`user_a.eq.${uid},user_b.eq.${uid}`);
+    if (error) throw error;
+    return (data || []).map(r => r.user_a === uid ? r.user_b : r.user_a);
+  }
+
+  async _hydrateFriends(uid) {
+    const ids = await this._listFriendIds(uid);
+    if (!ids.length) return [];
+    const { data: profiles, error: e1 } = await this.client
+      .from("users").select("*").in("id", ids);
+    if (e1) throw e1;
+    const { data: stickers, error: e2 } = await this.client
+      .from("stickers").select("user_id, n, status, count").in("user_id", ids);
+    if (e2) throw e2;
+    const byUser = {};
+    for (const s of (stickers || [])) {
+      (byUser[s.user_id] ||= {})[String(s.n)] = { s: s.status, c: s.count || 0 };
+    }
+    return (profiles || []).map(p => {
+      const u = this._mapUser(p);
+      u.stickers = byUser[p.id] || {};
+      return u;
     });
-    const unsubStickers = onSnapshot(collection(this.db, "users", uid, "stickers"), async () => {
-      const profile = await this.getProfile(uid);
-      if (!profile) return;
-      profile.stickers = await this.getStickers(uid);
-      cb(profile);
-    });
-    return () => { unsubProfile(); unsubStickers(); };
   }
 
   onFriendsChange(uid, cb) {
-    const { collection, query, where, onSnapshot } = this._dbMod;
-    const q = query(collection(this.db, "friendships"), where("users", "array-contains", uid));
-    return onSnapshot(q, async (snap) => {
-      const friendIds = [];
-      snap.forEach(d => {
-        const users = d.data().users;
-        friendIds.push(users[0] === uid ? users[1] : users[0]);
-      });
-      const friends = await Promise.all(friendIds.map(async fid => {
-        const p = await this.getProfile(fid);
-        if (!p) return null;
-        p.stickers = await this.getStickers(fid);
-        return p;
-      }));
-      cb(friends.filter(Boolean));
-    });
+    let cancelled = false;
+    let friendIds = [];
+    let stickerChannel = null;
+
+    const subscribeFriendStickers = () => {
+      if (stickerChannel) this.client.removeChannel(stickerChannel);
+      if (!friendIds.length) { stickerChannel = null; return; }
+      stickerChannel = this.client
+        .channel("friend-stickers:" + uid)
+        .on("postgres_changes",
+          { event: "*", schema: "public", table: "stickers",
+            filter: `user_id=in.(${friendIds.join(",")})` },
+          reload)
+        .subscribe();
+    };
+
+    const reload = async () => {
+      if (cancelled) return;
+      try {
+        const friends = await this._hydrateFriends(uid);
+        const newIds = friends.map(f => f.uid).sort().join(",");
+        const oldIds = friendIds.slice().sort().join(",");
+        if (newIds !== oldIds) {
+          friendIds = friends.map(f => f.uid);
+          subscribeFriendStickers();
+        }
+        cb(friends);
+      } catch (err) { console.error("onFriendsChange reload error", err); }
+    };
+
+    reload();
+    this._friendsChannel = this.client
+      .channel("friendships:" + uid)
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "friendships", filter: `user_a=eq.${uid}` },
+        reload)
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "friendships", filter: `user_b=eq.${uid}` },
+        reload)
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      if (this._friendsChannel) this.client.removeChannel(this._friendsChannel);
+      if (stickerChannel) this.client.removeChannel(stickerChannel);
+      this._friendsChannel = null;
+    };
   }
 }
 
@@ -259,10 +361,10 @@ class FirebaseBackend {
 //  Fábrica
 // ============================================================================
 export async function createStore() {
-  if (isFirebaseConfigured()) {
-    const fb = new FirebaseBackend();
-    await fb.init();
-    return { backend: fb, mode: "firebase", total: TOTAL_STICKERS };
+  if (isSupabaseConfigured()) {
+    const sb = new SupabaseBackend();
+    await sb.init();
+    return { backend: sb, mode: "supabase", total: TOTAL_STICKERS };
   }
   return { backend: new LocalBackend(), mode: "demo", total: TOTAL_STICKERS };
 }
