@@ -1,11 +1,11 @@
-// App principal: grid por secciones, tabs, amigos, intercambios y WhatsApp.
+// App principal del álbum compartido.
 import { isSupabaseConfigured } from "./supabase-config.js";
 import { createStore } from "./store.js";
 import { SECTIONS, STICKERS, BY_SECTION, TOTAL_STICKERS, findByCode, shortLabel } from "./album-structure.js";
 
-// ---------- Constantes y helpers ----------
 const STATUS = { MISSING: 0, OWNED: 1, DUPLICATE: 2 };
 const MAX_DUP = 6;
+const ACTIVE_ALBUM_KEY = "album-mundial:active-album";
 
 function $(sel) { return document.querySelector(sel); }
 function $$(sel) { return Array.from(document.querySelectorAll(sel)); }
@@ -33,16 +33,11 @@ function compactNumberList(nums) {
   return ranges.join(", ");
 }
 
-// Agrupa una lista de sticker objects por sección y devuelve líneas legibles
-// para WhatsApp, p.ej.: "*México:* 1, 5, 12-14".
 function groupBySectionForShare(stickers) {
   if (!stickers.length) return ["—"];
-  const buckets = new Map(); // section_id → { name, nums }
-  // Preservar orden de SECTIONS
+  const buckets = new Map();
   for (const s of stickers) {
-    if (!buckets.has(s.section_id)) {
-      buckets.set(s.section_id, { name: s.section_name, nums: [] });
-    }
+    if (!buckets.has(s.section_id)) buckets.set(s.section_id, { name: s.section_name, nums: [] });
     buckets.get(s.section_id).nums.push(s.n);
   }
   const lines = [];
@@ -61,14 +56,21 @@ function openWhatsApp(text, phone = "") {
   window.open(url, "_blank", "noopener");
 }
 
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;",
+  })[c]);
+}
+
 // ---------- Estado ----------
 const state = {
   store: null,
   uid: null,
-  profile: null,        // { uid, displayName, photoURL, inviteCode, stickers: { "CODE": {s,c} } }
-  friends: [],
+  myName: "",
+  album: null,          // { id, owner_id, name, invite_code, stickers: { code: {s,c} } }
+  members: [],          // [{ album_id, user_id, member_name, joined_at }]
+  friends: [],          // álbumes externos
   filter: "all",
-  search: "",
   tab: "album",
 };
 
@@ -83,40 +85,67 @@ const state = {
 
     const user = session.user;
     state.uid = user.id;
-    const meta = user.user_metadata || {};
-    await state.store.backend.ensureUser({
-      uid: user.id,
-      displayName: meta.full_name || meta.name || user.email || "Sin nombre",
-      photoURL: meta.avatar_url || meta.picture || "",
-    });
+    await state.store.backend.ensureUser(user.id);
 
     state.store.backend.client.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") location.replace("./index.html");
     });
 
-    attachSubscriptions();
+    // Decidir álbum activo:
+    //  - Si el usuario marcó uno como activo (vino de "join"), úsalo.
+    //  - Si no, listar álbumes en los que es miembro.
+    //  - Si está en alguno, pick el primero.
+    //  - Si no está en ninguno (es la primera vez con Google), crearle uno.
+    const meta = user.user_metadata || {};
+    const displayName = meta.full_name || meta.name || user.email || "Yo";
+
+    let albumId = localStorage.getItem(ACTIVE_ALBUM_KEY);
+    let memberAlbums = await state.store.backend.listAlbumsForUser(user.id);
+    if (albumId && !memberAlbums.find(a => a.id === albumId)) albumId = null;
+
+    if (!albumId) {
+      if (memberAlbums.length) {
+        albumId = memberAlbums[0].id;
+      } else {
+        // Usuario nuevo con Google: créale su propio álbum.
+        const created = await state.store.backend.ensureDefaultAlbum(user.id, displayName);
+        albumId = created.id;
+      }
+      localStorage.setItem(ACTIVE_ALBUM_KEY, albumId);
+    }
+
+    state.albumId = albumId;
+    state.myName = displayName;
   } else {
     state.uid = state.store.backend.getSessionUid();
     if (!state.uid) { location.href = "./index.html"; return; }
-    attachSubscriptions();
+    const album = await state.store.backend.ensureDefaultAlbum(state.uid, "Tú (demo)");
+    state.albumId = album.id;
+    state.myName = "Tú (demo)";
   }
 
+  attachSubscriptions();
   wireUI();
 })();
 
 function attachSubscriptions() {
-  state.store.backend.onUserChange(state.uid, async (profile) => {
-    if (!profile) return;
-    state.profile = { ...profile, stickers: profile.stickers || {} };
-    renderUserChip();
+  state.store.backend.onAlbumChange(state.albumId, (album) => {
+    if (!album) return;
+    state.album = { ...album, stickers: album.stickers || {} };
+    renderHeader();
+    renderInvite();
     renderGrid();
     renderStats();
-    renderInvite();
     renderMatches();
   });
-  state.store.backend.onFriendsChange(state.uid, (friends) => {
+  state.store.backend.onMembersChange(state.albumId, (members) => {
+    state.members = members;
+    renderMembers();
+    renderUserChip();
+  });
+  state.store.backend.onFriendsChange(state.albumId, (friends) => {
     state.friends = friends;
-    renderFriends();
+    renderFriendAlbums();
     renderMatches();
   });
 }
@@ -136,15 +165,11 @@ function wireUI() {
     applyFilter();
   }));
 
-  // Búsqueda por código (MEX5, ARG3, FWC9, 00, etc.)
-  const $search = $("#search-input");
-  $search.addEventListener("input", (e) => {
-    state.search = e.target.value;
-    const sticker = findByCode(state.search);
+  $("#search-input").addEventListener("input", (e) => {
+    const sticker = findByCode(e.target.value);
     if (!sticker) return;
     const cell = document.querySelector(`.cell[data-code="${sticker.code}"]`);
     if (cell) {
-      // Asegura que la sección esté visible aunque haya filtro
       const sec = cell.closest(".album-section");
       if (sec) sec.style.display = "";
       cell.style.display = "";
@@ -154,28 +179,26 @@ function wireUI() {
   });
 
   $("#btn-logout").addEventListener("click", async () => {
-    if (state.store.mode === "supabase") {
-      await state.store.backend.logout();
-    } else {
-      state.store.backend.clearSession();
-    }
+    if (state.store.mode === "supabase") await state.store.backend.logout();
+    else state.store.backend.clearSession();
+    localStorage.removeItem(ACTIVE_ALBUM_KEY);
     location.href = "./index.html";
   });
 
   $("#btn-copy-code").addEventListener("click", () => {
-    const code = state.profile?.inviteCode || "";
+    const code = state.album?.invite_code || "";
     navigator.clipboard.writeText(code);
     toast("Código copiado: " + code);
   });
   $("#btn-share-code").addEventListener("click", () => {
-    const code = state.profile?.inviteCode || "";
-    const txt = `¡Hola! Te invito a mi álbum del Mundial 2026 ⚽\n\nÚsalo para registrar tus repetidas y faltantes y cambiar conmigo.\n\nMi código: *${code}*\n\nEntra aquí: ${location.origin}${location.pathname.replace(/album\.html$/, "")}`;
+    const code = state.album?.invite_code || "";
+    const url = `${location.origin}${location.pathname.replace(/album\.html$/, "")}`;
+    const txt = `¡Hola! Te invito a llenar conmigo el álbum del Mundial 2026 ⚽\n\nEntra aquí: ${url}\n\nToca "Entrar a álbum familiar (con código)" y pega:\n\n*${code}*\n\n¡Listo, ya estamos llenando el mismo álbum!`;
     openWhatsApp(txt);
   });
-  $("#btn-add-friend").addEventListener("click", addFriendFromInput);
-  $("#friend-code").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") addFriendFromInput();
-  });
+
+  $("#btn-add-friend").addEventListener("click", addFriendAlbumFromInput);
+  $("#friend-code").addEventListener("keydown", (e) => { if (e.key === "Enter") addFriendAlbumFromInput(); });
 
   $("#btn-share-whatsapp").addEventListener("click", () => openShareModal(buildMyShareText()));
   $("#btn-share-close").addEventListener("click", closeShareModal);
@@ -189,26 +212,22 @@ function wireUI() {
   });
 }
 
-async function addFriendFromInput() {
+async function addFriendAlbumFromInput() {
   const input = $("#friend-code");
   const msg = $("#friend-msg");
   msg.className = "form-msg";
   const code = input.value.trim().toUpperCase();
   if (!code) { msg.textContent = "Escribe un código."; msg.classList.add("err"); return; }
-  if (code === state.profile.inviteCode) {
-    msg.textContent = "Ese es tu propio código 😄"; msg.classList.add("err"); return;
+  if (code === state.album?.invite_code) {
+    msg.textContent = "Ese es el código de TU álbum 😄"; msg.classList.add("err"); return;
   }
-  const friend = await state.store.backend.findUserByCode(code);
-  if (!friend) { msg.textContent = "No encontramos ese código."; msg.classList.add("err"); return; }
-  const added = await state.store.backend.addFriendship(state.uid, friend.uid);
-  if (!added) { msg.textContent = "Ya eran amigos."; msg.classList.add("ok"); return; }
-  msg.textContent = `¡Listo! Conectaste con ${friend.displayName}.`;
+  const other = await state.store.backend.findAlbumByCode(code);
+  if (!other) { msg.textContent = "No encontramos ese código."; msg.classList.add("err"); return; }
+  const added = await state.store.backend.addFriendship(state.albumId, other.id);
+  if (!added) { msg.textContent = "Ya estaban conectados."; msg.classList.add("ok"); return; }
+  msg.textContent = `¡Listo! Conectaste con "${other.name}".`;
   msg.classList.add("ok");
   input.value = "";
-  if (state.store.mode === "demo") {
-    state.friends = state.store.backend.listFriends(state.uid);
-    renderFriends(); renderMatches();
-  }
 }
 
 // ---------- Tabs ----------
@@ -220,13 +239,48 @@ function setTab(name) {
   history.replaceState(null, "", "#" + name);
 }
 
-// ---------- Render: header / chip ----------
+// ---------- Render: header ----------
+function renderHeader() {
+  if (!state.album) return;
+  const title = state.album.name || "Álbum Mundial";
+  $("#album-title").textContent = title;
+  document.title = `${title} — Mundial 2026`;
+}
+
 function renderUserChip() {
-  if (!state.profile) return;
-  $("#user-name").textContent = state.profile.displayName || "Sin nombre";
-  const img = $("#user-avatar");
-  if (state.profile.photoURL) { img.src = state.profile.photoURL; img.style.display = ""; }
-  else { img.removeAttribute("src"); img.style.display = "none"; }
+  // Muestra el nombre del MIEMBRO (no del Google user) en el chip.
+  const me = state.members.find(m => m.user_id === state.uid);
+  const name = me?.member_name || state.myName || "Yo";
+  $("#user-name").textContent = name;
+  $("#user-avatar").style.display = "none";
+}
+
+// ---------- Render: invite + miembros ----------
+function renderInvite() {
+  $("#my-invite-code").textContent = state.album?.invite_code || "------";
+}
+
+function renderMembers() {
+  const ul = $("#members-list");
+  ul.innerHTML = "";
+  if (!state.members.length) {
+    ul.innerHTML = '<li class="empty">Sin miembros todavía.</li>';
+    return;
+  }
+  const ownerId = state.album?.owner_id;
+  for (const m of state.members) {
+    const li = document.createElement("li");
+    const isMe = m.user_id === state.uid;
+    const isOwner = m.user_id === ownerId;
+    li.innerHTML = `
+      <img alt="" style="display:none" />
+      <div class="meta">
+        <span class="name">${escapeHTML(m.member_name || "Miembro")} ${isMe ? '<small class="muted">(tú)</small>' : ''} ${isOwner ? '<small class="muted">— dueño</small>' : ''}</span>
+        <span class="sub">Unido ${new Date(m.joined_at).toLocaleDateString()}</span>
+      </div>
+    `;
+    ul.appendChild(li);
+  }
 }
 
 // ---------- Render: grid ----------
@@ -259,7 +313,6 @@ function renderGrid() {
         cell.innerHTML = `<span class="num">${shortLabel(s)}</span>`;
         cell.addEventListener("click", () => cycleSticker(s.code));
         cell.addEventListener("contextmenu", (e) => { e.preventDefault(); resetSticker(s.code); });
-        // Long-press móvil
         let timer = null;
         cell.addEventListener("touchstart", () => {
           timer = setTimeout(() => { resetSticker(s.code); timer = null; }, 550);
@@ -274,8 +327,7 @@ function renderGrid() {
     grid.appendChild(frag);
     gridBuilt = true;
   }
-  // Pinta estados
-  const owned = state.profile?.stickers || {};
+  const owned = state.album?.stickers || {};
   for (const s of STICKERS) {
     const cell = document.querySelector(`.cell[data-code="${s.code}"]`);
     if (cell) paintCell(cell, owned[s.code]);
@@ -317,35 +369,35 @@ function applyFilter() {
 }
 
 async function cycleSticker(code) {
-  if (!state.profile) return;
-  const cur = state.profile.stickers[code] || { s: 0, c: 0 };
+  if (!state.album) return;
+  const cur = state.album.stickers[code] || { s: 0, c: 0 };
   let next;
   if (cur.s === STATUS.MISSING) next = { s: STATUS.OWNED, c: 0 };
   else if (cur.s === STATUS.OWNED) next = { s: STATUS.DUPLICATE, c: 2 };
   else if (cur.s === STATUS.DUPLICATE && (cur.c || 2) < MAX_DUP) next = { s: STATUS.DUPLICATE, c: (cur.c || 2) + 1 };
   else next = { s: STATUS.MISSING, c: 0 };
 
-  if (next.s === STATUS.MISSING) delete state.profile.stickers[code];
-  else state.profile.stickers[code] = next;
-  paintCell(document.querySelector(`.cell[data-code="${code}"]`), state.profile.stickers[code]);
+  if (next.s === STATUS.MISSING) delete state.album.stickers[code];
+  else state.album.stickers[code] = next;
+  paintCell(document.querySelector(`.cell[data-code="${code}"]`), state.album.stickers[code]);
   renderStats();
   applyFilter();
 
-  await state.store.backend.setSticker(state.uid, code, next.s, next.c);
+  await state.store.backend.setSticker(state.albumId, code, next.s, next.c);
 }
 
 async function resetSticker(code) {
-  if (!state.profile) return;
-  delete state.profile.stickers[code];
+  if (!state.album) return;
+  delete state.album.stickers[code];
   paintCell(document.querySelector(`.cell[data-code="${code}"]`), null);
   renderStats();
   applyFilter();
-  await state.store.backend.setSticker(state.uid, code, 0, 0);
+  await state.store.backend.setSticker(state.albumId, code, 0, 0);
 }
 
 // ---------- Render: stats ----------
 function renderStats() {
-  const stickers = state.profile?.stickers || {};
+  const stickers = state.album?.stickers || {};
   let owned = 0, dupes = 0;
   for (const k in stickers) {
     const st = stickers[k];
@@ -360,25 +412,21 @@ function renderStats() {
   $("#stat-progress").textContent = progress + "%";
 }
 
-// ---------- Render: amigos ----------
-function renderInvite() {
-  $("#my-invite-code").textContent = state.profile?.inviteCode || "------";
-}
-
-function renderFriends() {
+// ---------- Render: álbumes externos ----------
+function renderFriendAlbums() {
   const ul = $("#friends-list");
   ul.innerHTML = "";
   if (!state.friends.length) {
-    ul.innerHTML = '<li class="empty">Aún no tienes amigos conectados.</li>';
+    ul.innerHTML = '<li class="empty">Aún no tienes álbumes conectados.</li>';
     return;
   }
-  for (const f of state.friends) {
+  for (const a of state.friends) {
     const li = document.createElement("li");
     li.innerHTML = `
-      <img alt="" ${f.photoURL ? `src="${f.photoURL}"` : ""} />
+      <img alt="" style="display:none" />
       <div class="meta">
-        <span class="name">${escapeHTML(f.displayName || "Sin nombre")}</span>
-        <span class="sub">Código ${f.inviteCode || "—"} · ${countOwned(f.stickers)} / ${TOTAL_STICKERS} pegadas</span>
+        <span class="name">${escapeHTML(a.name || "Álbum")}</span>
+        <span class="sub">Código ${a.invite_code || "—"} · ${countOwned(a.stickers)} / ${TOTAL_STICKERS} pegadas</span>
       </div>
     `;
     ul.appendChild(li);
@@ -399,15 +447,15 @@ function renderMatches() {
   const wrap = $("#matches");
   wrap.innerHTML = "";
   if (!state.friends.length) {
-    wrap.innerHTML = '<div class="empty">Conecta amigos para ver intercambios.</div>';
+    wrap.innerHTML = '<div class="empty">Conecta álbumes externos en la tab "Miembros y Amigos" para ver intercambios.</div>';
     return;
   }
-  const my = state.profile?.stickers || {};
+  const my = state.album?.stickers || {};
   let anyMatch = false;
 
-  for (const f of state.friends) {
-    const fSt = f.stickers || {};
-    const iCanGive = [];   // sticker objects
+  for (const a of state.friends) {
+    const fSt = a.stickers || {};
+    const iCanGive = [];
     const heCanGive = [];
     for (const s of STICKERS) {
       const me = my[s.code];
@@ -428,8 +476,8 @@ function renderMatches() {
     const get  = heCanGive.length ? groupBySectionForShare(heCanGive).join("<br>") : "—";
     card.innerHTML = `
       <header>
-        <img alt="" ${f.photoURL ? `src="${f.photoURL}"` : ""} />
-        <h3>${escapeHTML(f.displayName || "Amigo")}</h3>
+        <img alt="" style="display:none" />
+        <h3>${escapeHTML(a.name || "Álbum")}</h3>
       </header>
       <div class="rows">
         <div class="row">
@@ -447,22 +495,22 @@ function renderMatches() {
       </div>
     `;
     card.querySelector('[data-act="wa"]').addEventListener("click", () => {
-      openShareModal(buildTradeText(f, iCanGive, heCanGive));
+      openShareModal(buildTradeText(a, iCanGive, heCanGive));
     });
     card.querySelector('[data-act="copy"]').addEventListener("click", async () => {
-      await navigator.clipboard.writeText(buildTradeText(f, iCanGive, heCanGive));
+      await navigator.clipboard.writeText(buildTradeText(a, iCanGive, heCanGive));
       toast("Texto copiado");
     });
     wrap.appendChild(card);
   }
   if (!anyMatch) {
-    wrap.innerHTML = '<div class="empty">Por ahora no hay matches con tus amigos. Cuando alguien tenga una repetida que a otro le falte, aparece aquí.</div>';
+    wrap.innerHTML = '<div class="empty">Por ahora no hay matches con tus álbumes conectados.</div>';
   }
 }
 
 // ---------- Compartir ----------
 function buildMyShareText() {
-  const owned = state.profile?.stickers || {};
+  const owned = state.album?.stickers || {};
   const missing = [], dupes = [];
   for (const s of STICKERS) {
     const st = owned[s.code];
@@ -470,23 +518,23 @@ function buildMyShareText() {
     else if (st.s === STATUS.DUPLICATE) dupes.push(s);
   }
   const ownedCount = TOTAL_STICKERS - missing.length;
-  const name = state.profile?.displayName || "Yo";
+  const name = state.album?.name || "Nuestro álbum";
   return [
-    `⚽ *Álbum Mundial 2026* — ${name}`,
-    `Llevo *${ownedCount}/${TOTAL_STICKERS}* pegadas (${Math.round(ownedCount*100/TOTAL_STICKERS)}%).`,
+    `⚽ *${name}* — Mundial 2026`,
+    `Llevamos *${ownedCount}/${TOTAL_STICKERS}* pegadas (${Math.round(ownedCount*100/TOTAL_STICKERS)}%).`,
     ``,
-    `🔁 *Repetidas que tengo (${dupes.length}):*`,
+    `🔁 *Repetidas que tenemos (${dupes.length}):*`,
     ...(dupes.length ? groupBySectionForShare(dupes) : ["Ninguna por ahora"]),
     ``,
-    `🙏 *Me faltan (${missing.length}):*`,
+    `🙏 *Nos faltan (${missing.length}):*`,
     ...(missing.length ? groupBySectionForShare(missing) : ["¡Ninguna! Álbum lleno 🏆"]),
     ``,
     `¿Cambiamos? 🤝`,
   ].join("\n");
 }
 
-function buildTradeText(friend, iCanGive, heCanGive) {
-  const name = friend.displayName || "parcero";
+function buildTradeText(friendAlbum, iCanGive, heCanGive) {
+  const name = friendAlbum.name || "vecino";
   return [
     `¡Hola ${name}! ⚽`,
     `Mira los intercambios que tenemos para el álbum del Mundial 2026:`,
@@ -513,13 +561,6 @@ function closeShareModal() {
   $("#share-modal").classList.add("hidden");
 }
 
-// ---------- Util ----------
-function escapeHTML(s) {
-  return String(s).replace(/[&<>"']/g, c => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;",
-  })[c]);
-}
-
 if (!isSupabaseConfigured()) {
-  console.info("[Álbum] Modo demo activo. Configura Supabase para sincronizar entre dispositivos. Ver README.md");
+  console.info("[Álbum] Modo demo activo. Configura Supabase para sincronizar. Ver README.md");
 }

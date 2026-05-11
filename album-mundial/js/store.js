@@ -1,14 +1,14 @@
 // Capa de datos: Supabase si está configurado; si no, localStorage (modo demo).
-// La interfaz pública es la misma para que el resto de la app no sepa qué backend hay debajo.
+// Modelo: "álbum compartido entre miembros". 1 álbum tiene N miembros,
+// todos editan el mismo conjunto de stickers.
 
 import { supabaseConfig, isSupabaseConfigured } from "./supabase-config.js";
 import { TOTAL_STICKERS } from "./album-structure.js";
 
-const LS_KEY = "album-mundial:v1";
+const LS_KEY = "album-mundial:v2";
 const DEMO_SESSION_KEY = "album-mundial:session";
 
 function makeInviteCode() {
-  // 6 caracteres alfanuméricos, sin caracteres confusos (0, O, I, 1).
   const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let s = "";
   for (let i = 0; i < 6; i++) s += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
@@ -16,7 +16,7 @@ function makeInviteCode() {
 }
 
 // ============================================================================
-//  Backend: LOCAL (demo / sin login)
+//  Backend: LOCAL (demo / sin login) — 1 álbum, 1 miembro (tú).
 // ============================================================================
 class LocalBackend {
   constructor() {
@@ -25,86 +25,106 @@ class LocalBackend {
   _read() {
     try {
       const raw = localStorage.getItem(LS_KEY);
-      if (!raw) return { users: {}, friendships: [] };
+      if (!raw) return { albums: {}, members: [], friendships: [] };
       return JSON.parse(raw);
     } catch {
-      return { users: {}, friendships: [] };
+      return { albums: {}, members: [], friendships: [] };
     }
   }
-  _write() {
-    localStorage.setItem(LS_KEY, JSON.stringify(this.data));
-  }
+  _write() { localStorage.setItem(LS_KEY, JSON.stringify(this.data)); }
 
-  // ---- Sesión demo ----
-  getSessionUid() { return localStorage.getItem(DEMO_SESSION_KEY); }
+  getSessionUid()    { return localStorage.getItem(DEMO_SESSION_KEY); }
   setSessionUid(uid) { localStorage.setItem(DEMO_SESSION_KEY, uid); }
-  clearSession() { localStorage.removeItem(DEMO_SESSION_KEY); }
+  clearSession()     { localStorage.removeItem(DEMO_SESSION_KEY); }
 
-  async loginWithGoogle() {
-    throw new Error("Login con Google requiere Supabase configurado.");
-  }
+  async loginWithGoogle() { throw new Error("Login con Google requiere Supabase."); }
+  async loginAnonymously() { throw new Error("Login anónimo requiere Supabase."); }
   async logout() { this.clearSession(); }
+
+  async ensureUser() { /* nada */ }
+
+  async ensureDefaultAlbum(uid, displayName) {
+    let album = Object.values(this.data.albums).find(a => a.owner_id === uid);
+    if (!album) {
+      const id = "alb-" + Math.random().toString(36).slice(2, 10);
+      album = { id, owner_id: uid, name: displayName || "Mi álbum", invite_code: makeInviteCode(), stickers: {}, created_at: Date.now() };
+      this.data.albums[id] = album;
+      this.data.members.push({ album_id: id, user_id: uid, member_name: displayName || "Yo", joined_at: Date.now() });
+      this._write();
+    }
+    return album;
+  }
+
+  async listAlbumsForUser(uid) {
+    const ids = new Set(this.data.members.filter(m => m.user_id === uid).map(m => m.album_id));
+    return Object.values(this.data.albums).filter(a => ids.has(a.id));
+  }
+
+  async getAlbum(albumId) { return this.data.albums[albumId] || null; }
+
+  async findAlbumByCode(code) {
+    code = (code || "").toUpperCase();
+    return Object.values(this.data.albums).find(a => a.invite_code === code) || null;
+  }
+
+  async joinAlbumByCode(uid, code, memberName) {
+    const album = await this.findAlbumByCode(code);
+    if (!album) return { ok: false, reason: "not_found" };
+    const exists = this.data.members.find(m => m.album_id === album.id && m.user_id === uid);
+    if (!exists) {
+      this.data.members.push({ album_id: album.id, user_id: uid, member_name: memberName || "Miembro", joined_at: Date.now() });
+      this._write();
+    }
+    return { ok: true, album };
+  }
+
+  async listMembers(albumId) {
+    return this.data.members.filter(m => m.album_id === albumId);
+  }
+
+  async updateMemberName(albumId, uid, name) {
+    const m = this.data.members.find(x => x.album_id === albumId && x.user_id === uid);
+    if (m) { m.member_name = name; this._write(); }
+  }
+
+  async setSticker(albumId, code, status, count) {
+    const a = this.data.albums[albumId];
+    if (!a) return;
+    if (status === 0) delete a.stickers[code];
+    else a.stickers[code] = { s: status, c: count };
+    this._write();
+  }
+
+  async getStickers(albumId) {
+    const a = this.data.albums[albumId];
+    return a ? { ...(a.stickers || {}) } : {};
+  }
+
+  async addFriendship(a, b) {
+    if (a === b) return false;
+    const [u1, u2] = [a, b].sort();
+    const exists = this.data.friendships.find(f => f[0] === u1 && f[1] === u2);
+    if (exists) return false;
+    this.data.friendships.push([u1, u2, Date.now()]);
+    this._write();
+    return true;
+  }
+
+  async listFriendAlbums(albumId) {
+    const ids = this.data.friendships
+      .filter(f => f[0] === albumId || f[1] === albumId)
+      .map(f => f[0] === albumId ? f[1] : f[0]);
+    return ids.map(id => this.data.albums[id]).filter(Boolean);
+  }
+
   onAuthChanged(cb) {
     const uid = this.getSessionUid();
     cb(uid ? { uid } : null);
     return () => {};
   }
-
-  async ensureUser(profile) {
-    const uid = profile.uid;
-    if (!this.data.users[uid]) {
-      this.data.users[uid] = {
-        uid,
-        displayName: profile.displayName || "Sin nombre",
-        photoURL: profile.photoURL || "",
-        inviteCode: makeInviteCode(),
-        stickers: {},
-        createdAt: Date.now(),
-      };
-      this._write();
-    } else {
-      this.data.users[uid].displayName = profile.displayName || this.data.users[uid].displayName;
-      this.data.users[uid].photoURL = profile.photoURL || this.data.users[uid].photoURL;
-      this._write();
-    }
-    return this.data.users[uid];
-  }
-
-  async getProfile(uid) { return this.data.users[uid] || null; }
-
-  async setSticker(uid, code, status, count) {
-    const u = this.data.users[uid];
-    if (!u) return;
-    if (status === 0) delete u.stickers[code];
-    else u.stickers[code] = { s: status, c: count };
-    this._write();
-  }
-
-  async findUserByCode(code) {
-    code = (code || "").toUpperCase();
-    return Object.values(this.data.users).find(u => u.inviteCode === code) || null;
-  }
-
-  async addFriendship(a, b) {
-    if (a === b) return false;
-    const exists = this.data.friendships.find(f =>
-      (f[0] === a && f[1] === b) || (f[0] === b && f[1] === a)
-    );
-    if (exists) return false;
-    this.data.friendships.push([a, b, Date.now()]);
-    this._write();
-    return true;
-  }
-
-  listFriends(uid) {
-    const ids = this.data.friendships
-      .filter(f => f[0] === uid || f[1] === uid)
-      .map(f => (f[0] === uid ? f[1] : f[0]));
-    return ids.map(id => this.data.users[id]).filter(Boolean);
-  }
-
-  onUserChange(uid, cb)   { cb(this.data.users[uid] || null); return () => {}; }
-  onFriendsChange(uid, cb) { cb(this.listFriends(uid)); return () => {}; }
+  onAlbumChange(albumId, cb)   { cb(this.data.albums[albumId] || null); return () => {}; }
+  onMembersChange(albumId, cb) { cb(this.data.members.filter(m => m.album_id === albumId)); return () => {}; }
+  onFriendsChange(albumId, cb) { (async () => cb(await this.listFriendAlbums(albumId)))(); return () => {}; }
 }
 
 // ============================================================================
@@ -113,9 +133,7 @@ class LocalBackend {
 class SupabaseBackend {
   constructor() {
     this.client = null;
-    this._stickerChannel = null;
-    this._friendsChannel = null;
-    this._friendStickersChannel = null;
+    this._channels = [];
   }
 
   async init() {
@@ -131,195 +149,211 @@ class SupabaseBackend {
       options: { redirectTo: location.origin + location.pathname.replace(/index\.html$/, "") + "album.html" },
     });
     if (error) throw error;
-    // OAuth redirige, no devuelve aquí. Si redirige rápido, el siguiente await nunca corre.
     return null;
+  }
+
+  async loginAnonymously() {
+    const { data, error } = await this.client.auth.signInAnonymously();
+    if (error) throw error;
+    return data.user;
   }
 
   async logout() { await this.client.auth.signOut(); }
 
-  onAuthChanged(cb) {
-    // Dispara una vez con la sesión actual y luego escucha cambios.
-    this.client.auth.getUser().then(({ data }) => cb(data?.user || null));
-    const { data: sub } = this.client.auth.onAuthStateChange((_event, session) => {
-      cb(session?.user || null);
-    });
-    return () => sub.subscription.unsubscribe();
+  // Garantiza la fila en public.users (FK target para albums y album_members).
+  async ensureUser(uid) {
+    const { error } = await this.client
+      .from("users")
+      .upsert({ id: uid }, { onConflict: "id" });
+    if (error) throw error;
   }
 
   async _generateUniqueInviteCode() {
     for (let i = 0; i < 8; i++) {
       const code = makeInviteCode();
       const { data, error } = await this.client
-        .from("users").select("id").eq("invite_code", code).maybeSingle();
+        .from("albums").select("id").eq("invite_code", code).maybeSingle();
       if (error) throw error;
       if (!data) return code;
     }
-    return makeInviteCode(); // fallback (probabilidad de colisión ínfima)
+    return makeInviteCode();
   }
 
-  async ensureUser(profile) {
-    const uid = profile.uid;
+  async ensureDefaultAlbum(uid, displayName) {
+    // ¿Ya posee uno?
     const { data: existing, error: e1 } = await this.client
-      .from("users").select("*").eq("id", uid).maybeSingle();
+      .from("albums").select("*").eq("owner_id", uid).limit(1).maybeSingle();
     if (e1) throw e1;
-
-    if (!existing) {
-      const code = await this._generateUniqueInviteCode();
-      const { data, error } = await this.client
-        .from("users")
-        .insert({
-          id: uid,
-          display_name: profile.displayName || "Sin nombre",
-          photo_url: profile.photoURL || "",
-          invite_code: code,
-        })
-        .select().single();
-      if (error) throw error;
-      return this._mapUser(data);
-    } else {
-      const patch = {};
-      if (profile.displayName && profile.displayName !== existing.display_name) patch.display_name = profile.displayName;
-      if (profile.photoURL && profile.photoURL !== existing.photo_url) patch.photo_url = profile.photoURL;
-      if (Object.keys(patch).length) {
-        const { data, error } = await this.client
-          .from("users").update(patch).eq("id", uid).select().single();
-        if (error) throw error;
-        return this._mapUser(data);
-      }
-      return this._mapUser(existing);
+    if (existing) {
+      // Asegurar que sea miembro de su propio álbum.
+      await this.client.from("album_members")
+        .upsert({ album_id: existing.id, user_id: uid, member_name: displayName || "Yo" },
+                { onConflict: "album_id,user_id", ignoreDuplicates: true });
+      return existing;
     }
-  }
-
-  _mapUser(row) {
-    if (!row) return null;
-    return {
-      uid: row.id,
-      displayName: row.display_name || "Sin nombre",
-      photoURL: row.photo_url || "",
-      inviteCode: row.invite_code,
-      stickers: {},
-    };
-  }
-
-  async getProfile(uid) {
-    const { data, error } = await this.client.from("users").select("*").eq("id", uid).maybeSingle();
+    const code = await this._generateUniqueInviteCode();
+    const { data, error } = await this.client.from("albums")
+      .insert({ owner_id: uid, name: displayName ? `Álbum de ${displayName}` : "Mi álbum", invite_code: code })
+      .select().single();
     if (error) throw error;
-    return this._mapUser(data);
+    await this.client.from("album_members")
+      .insert({ album_id: data.id, user_id: uid, member_name: displayName || "Yo" });
+    return data;
   }
 
-  async getStickers(uid) {
-    const { data, error } = await this.client.from("stickers").select("code, status, count").eq("user_id", uid);
+  async listAlbumsForUser(uid) {
+    const { data, error } = await this.client
+      .from("album_members")
+      .select("album:albums(*)")
+      .eq("user_id", uid);
+    if (error) throw error;
+    return (data || []).map(r => r.album).filter(Boolean);
+  }
+
+  async getAlbum(albumId) {
+    const { data, error } = await this.client.from("albums").select("*").eq("id", albumId).maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+
+  async findAlbumByCode(code) {
+    code = (code || "").toUpperCase();
+    const { data, error } = await this.client.from("albums").select("*").eq("invite_code", code).maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+
+  async joinAlbumByCode(uid, code, memberName) {
+    const album = await this.findAlbumByCode(code);
+    if (!album) return { ok: false, reason: "not_found" };
+    const { error } = await this.client.from("album_members")
+      .upsert({ album_id: album.id, user_id: uid, member_name: memberName || "Miembro" },
+              { onConflict: "album_id,user_id" });
+    if (error) throw error;
+    return { ok: true, album };
+  }
+
+  async listMembers(albumId) {
+    const { data, error } = await this.client.from("album_members")
+      .select("album_id, user_id, member_name, joined_at")
+      .eq("album_id", albumId)
+      .order("joined_at", { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async updateMemberName(albumId, uid, name) {
+    const { error } = await this.client.from("album_members")
+      .update({ member_name: name }).eq("album_id", albumId).eq("user_id", uid);
+    if (error) throw error;
+  }
+
+  async getStickers(albumId) {
+    const { data, error } = await this.client.from("stickers")
+      .select("code, status, count").eq("album_id", albumId);
     if (error) throw error;
     const out = {};
-    for (const row of (data || [])) out[row.code] = { s: row.status, c: row.count || 0 };
+    for (const r of (data || [])) out[r.code] = { s: r.status, c: r.count || 0 };
     return out;
   }
 
-  async setSticker(uid, code, status, count) {
+  async setSticker(albumId, code, status, count) {
     if (status === 0) {
       const { error } = await this.client.from("stickers").delete()
-        .eq("user_id", uid).eq("code", code);
+        .eq("album_id", albumId).eq("code", code);
       if (error) throw error;
     } else {
-      const { error } = await this.client.from("stickers").upsert({
-        user_id: uid, code, status, count: count || 0,
-      }, { onConflict: "user_id,code" });
+      const { error } = await this.client.from("stickers").upsert(
+        { album_id: albumId, code, status, count: count || 0 },
+        { onConflict: "album_id,code" });
       if (error) throw error;
     }
   }
 
-  async findUserByCode(code) {
-    code = (code || "").toUpperCase();
-    const { data, error } = await this.client
-      .from("users").select("*").eq("invite_code", code).maybeSingle();
-    if (error) throw error;
-    return this._mapUser(data);
-  }
-
-  async addFriendship(a, b) {
-    if (a === b) return false;
-    const [u1, u2] = [a, b].sort();
-    const { error } = await this.client.from("friendships")
-      .insert({ user_a: u1, user_b: u2 });
+  async addFriendship(albumA, albumB) {
+    if (albumA === albumB) return false;
+    const [a, b] = [albumA, albumB].sort();
+    const { error } = await this.client.from("friendships").insert({ album_a: a, album_b: b });
     if (error) {
-      if (error.code === "23505") return false; // duplicate key
+      if (error.code === "23505") return false;
       throw error;
     }
     return true;
   }
 
-  onUserChange(uid, cb) {
-    let cancelled = false;
+  async _listFriendAlbumIds(albumId) {
+    const { data, error } = await this.client.from("friendships")
+      .select("album_a, album_b")
+      .or(`album_a.eq.${albumId},album_b.eq.${albumId}`);
+    if (error) throw error;
+    return (data || []).map(r => r.album_a === albumId ? r.album_b : r.album_a);
+  }
 
+  async listFriendAlbums(albumId) {
+    const ids = await this._listFriendAlbumIds(albumId);
+    if (!ids.length) return [];
+    const { data: albums, error: e1 } = await this.client.from("albums").select("*").in("id", ids);
+    if (e1) throw e1;
+    const { data: stickers, error: e2 } = await this.client.from("stickers")
+      .select("album_id, code, status, count").in("album_id", ids);
+    if (e2) throw e2;
+    const byAlbum = {};
+    for (const s of (stickers || [])) {
+      (byAlbum[s.album_id] ||= {})[s.code] = { s: s.status, c: s.count || 0 };
+    }
+    return (albums || []).map(a => ({ ...a, stickers: byAlbum[a.id] || {} }));
+  }
+
+  // -------- Subscripciones realtime ----------
+  onAlbumChange(albumId, cb) {
+    let cancelled = false;
     const reload = async () => {
       if (cancelled) return;
       try {
-        const profile = await this.getProfile(uid);
-        if (!profile) { cb(null); return; }
-        profile.stickers = await this.getStickers(uid);
-        cb(profile);
-      } catch (err) { console.error("onUserChange reload error", err); }
+        const album = await this.getAlbum(albumId);
+        if (!album) { cb(null); return; }
+        album.stickers = await this.getStickers(albumId);
+        cb(album);
+      } catch (err) { console.error("onAlbumChange reload error", err); }
     };
-
     reload();
-    this._stickerChannel = this.client
-      .channel("stickers:" + uid)
-      .on("postgres_changes",
-        { event: "*", schema: "public", table: "stickers", filter: `user_id=eq.${uid}` },
-        reload)
-      .on("postgres_changes",
-        { event: "*", schema: "public", table: "users", filter: `id=eq.${uid}` },
-        reload)
+    const ch = this.client
+      .channel("album:" + albumId)
+      .on("postgres_changes", { event: "*", schema: "public", table: "stickers", filter: `album_id=eq.${albumId}` }, reload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "albums",   filter: `id=eq.${albumId}` }, reload)
       .subscribe();
+    this._channels.push(ch);
+    return () => { cancelled = true; this.client.removeChannel(ch); };
+  }
 
-    return () => {
-      cancelled = true;
-      if (this._stickerChannel) this.client.removeChannel(this._stickerChannel);
-      this._stickerChannel = null;
+  onMembersChange(albumId, cb) {
+    let cancelled = false;
+    const reload = async () => {
+      if (cancelled) return;
+      try { cb(await this.listMembers(albumId)); }
+      catch (err) { console.error("onMembersChange reload error", err); }
     };
+    reload();
+    const ch = this.client
+      .channel("members:" + albumId)
+      .on("postgres_changes", { event: "*", schema: "public", table: "album_members", filter: `album_id=eq.${albumId}` }, reload)
+      .subscribe();
+    this._channels.push(ch);
+    return () => { cancelled = true; this.client.removeChannel(ch); };
   }
 
-  async _listFriendIds(uid) {
-    const { data, error } = await this.client
-      .from("friendships").select("user_a, user_b")
-      .or(`user_a.eq.${uid},user_b.eq.${uid}`);
-    if (error) throw error;
-    return (data || []).map(r => r.user_a === uid ? r.user_b : r.user_a);
-  }
-
-  async _hydrateFriends(uid) {
-    const ids = await this._listFriendIds(uid);
-    if (!ids.length) return [];
-    const { data: profiles, error: e1 } = await this.client
-      .from("users").select("*").in("id", ids);
-    if (e1) throw e1;
-    const { data: stickers, error: e2 } = await this.client
-      .from("stickers").select("user_id, code, status, count").in("user_id", ids);
-    if (e2) throw e2;
-    const byUser = {};
-    for (const s of (stickers || [])) {
-      (byUser[s.user_id] ||= {})[s.code] = { s: s.status, c: s.count || 0 };
-    }
-    return (profiles || []).map(p => {
-      const u = this._mapUser(p);
-      u.stickers = byUser[p.id] || {};
-      return u;
-    });
-  }
-
-  onFriendsChange(uid, cb) {
+  onFriendsChange(albumId, cb) {
     let cancelled = false;
     let friendIds = [];
-    let stickerChannel = null;
+    let stickerCh = null;
 
     const subscribeFriendStickers = () => {
-      if (stickerChannel) this.client.removeChannel(stickerChannel);
-      if (!friendIds.length) { stickerChannel = null; return; }
-      stickerChannel = this.client
-        .channel("friend-stickers:" + uid)
+      if (stickerCh) this.client.removeChannel(stickerCh);
+      if (!friendIds.length) { stickerCh = null; return; }
+      stickerCh = this.client
+        .channel("friend-stickers:" + albumId)
         .on("postgres_changes",
-          { event: "*", schema: "public", table: "stickers",
-            filter: `user_id=in.(${friendIds.join(",")})` },
+          { event: "*", schema: "public", table: "stickers", filter: `album_id=in.(${friendIds.join(",")})` },
           reload)
         .subscribe();
     };
@@ -327,33 +361,27 @@ class SupabaseBackend {
     const reload = async () => {
       if (cancelled) return;
       try {
-        const friends = await this._hydrateFriends(uid);
-        const newIds = friends.map(f => f.uid).sort().join(",");
-        const oldIds = friendIds.slice().sort().join(",");
-        if (newIds !== oldIds) {
-          friendIds = friends.map(f => f.uid);
-          subscribeFriendStickers();
-        }
+        const friends = await this.listFriendAlbums(albumId);
+        const ids = friends.map(f => f.id);
+        const newKey = [...ids].sort().join(",");
+        const oldKey = [...friendIds].sort().join(",");
+        if (newKey !== oldKey) { friendIds = ids; subscribeFriendStickers(); }
         cb(friends);
       } catch (err) { console.error("onFriendsChange reload error", err); }
     };
 
     reload();
-    this._friendsChannel = this.client
-      .channel("friendships:" + uid)
-      .on("postgres_changes",
-        { event: "*", schema: "public", table: "friendships", filter: `user_a=eq.${uid}` },
-        reload)
-      .on("postgres_changes",
-        { event: "*", schema: "public", table: "friendships", filter: `user_b=eq.${uid}` },
-        reload)
+    const ch = this.client
+      .channel("friendships:" + albumId)
+      .on("postgres_changes", { event: "*", schema: "public", table: "friendships", filter: `album_a=eq.${albumId}` }, reload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "friendships", filter: `album_b=eq.${albumId}` }, reload)
       .subscribe();
+    this._channels.push(ch);
 
     return () => {
       cancelled = true;
-      if (this._friendsChannel) this.client.removeChannel(this._friendsChannel);
-      if (stickerChannel) this.client.removeChannel(stickerChannel);
-      this._friendsChannel = null;
+      this.client.removeChannel(ch);
+      if (stickerCh) this.client.removeChannel(stickerCh);
     };
   }
 }

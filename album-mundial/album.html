@@ -12,11 +12,11 @@
   <header class="app-header">
     <div class="brand">
       <span class="ball-sm">⚽</span>
-      <strong>Álbum Mundial</strong>
+      <strong id="album-title">Álbum Mundial</strong>
     </div>
     <nav class="tabs" id="tabs">
       <a href="#album" class="tab active" data-tab="album">Álbum</a>
-      <a href="#amigos" class="tab" data-tab="amigos">Amigos</a>
+      <a href="#amigos" class="tab" data-tab="amigos">Miembros y Amigos</a>
       <a href="#intercambios" class="tab" data-tab="intercambios">Intercambios</a>
     </nav>
     <div class="user-chip" id="user-chip">
@@ -62,11 +62,15 @@
       </div>
     </section>
 
-    <!-- AMIGOS ----------------------------------------------------------- -->
+    <!-- AMIGOS Y MIEMBROS ------------------------------------------------ -->
     <section class="view hidden" id="view-amigos" data-view="amigos">
+
       <div class="panel">
-        <h2>Tu código de invitación</h2>
-        <p class="muted">Compártelo con familia y amigos para que se conecten a tu álbum y puedan ver sus intercambios.</p>
+        <h2>Código de tu álbum</h2>
+        <p class="muted">
+          Compártelo para que tu familia se una a este álbum (todos verán y editarán
+          las mismas láminas). El código siempre es el mismo, no cambia.
+        </p>
         <div class="invite-box">
           <code id="my-invite-code">------</code>
           <button class="btn btn-ghost" id="btn-copy-code">Copiar</button>
@@ -75,19 +79,26 @@
       </div>
 
       <div class="panel">
-        <h2>Agregar un amigo</h2>
-        <p class="muted">Pega aquí el código que te enviaron.</p>
+        <h2>Miembros del álbum</h2>
+        <p class="muted">Ustedes editan el mismo álbum.</p>
+        <ul class="friends-list" id="members-list">
+          <li class="empty">Cargando…</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h2>Conectarte con otros álbumes</h2>
+        <p class="muted">
+          Si tu vecino o tu primo tiene SU propio álbum en la app, pega aquí
+          el código de él para ver intercambios automáticos.
+        </p>
         <div class="add-friend">
           <input id="friend-code" placeholder="ABC123" maxlength="8" />
           <button class="btn btn-primary" id="btn-add-friend">Agregar</button>
         </div>
         <p class="form-msg" id="friend-msg"></p>
-      </div>
-
-      <div class="panel">
-        <h2>Mis amigos</h2>
         <ul class="friends-list" id="friends-list">
-          <li class="empty">Aún no tienes amigos conectados.</li>
+          <li class="empty">Aún no tienes álbumes conectados.</li>
         </ul>
       </div>
     </section>

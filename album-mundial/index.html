@@ -18,21 +18,49 @@
 
     <section class="login-card" id="login-card">
       <h2>Entrar</h2>
-      <p class="muted">Inicia sesión con tu cuenta de Google para sincronizar tu álbum en todos tus dispositivos.</p>
+      <p class="muted">Crea tu álbum con Google, o únete al de un familiar con un código.</p>
 
       <button class="btn btn-google" id="btn-google">
         <span class="g-icon">G</span> Continuar con Google
+      </button>
+
+      <button class="btn btn-ghost" id="btn-join">
+        🔗 Entrar a álbum familiar (con código)
       </button>
 
       <div class="divider"><span>o</span></div>
 
       <button class="btn btn-ghost" id="btn-demo">Probar en modo demo (sin login)</button>
 
-      <p class="hint" id="firebase-hint" hidden>
-        Firebase aún no está configurado. El modo demo guarda tu progreso solo en este dispositivo.
-        Sigue las instrucciones del <code>README.md</code> para activar el login real.
+      <p class="hint" id="supabase-hint" hidden>
+        Supabase aún no está configurado. El modo demo guarda tu progreso solo en este dispositivo.
       </p>
     </section>
+
+    <!-- Modal: unirse a álbum familiar -->
+    <div class="modal hidden" id="join-modal" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <h3>Entrar al álbum familiar</h3>
+        <p class="muted">
+          Pega el código de invitación que te compartió el dueño del álbum y
+          escribe el nombre con el que quieres aparecer.
+        </p>
+        <label class="field">
+          <span>Código del álbum</span>
+          <input id="join-code" placeholder="Ej: TGXUFR" maxlength="8" autocapitalize="characters" />
+        </label>
+        <label class="field">
+          <span>Tu nombre</span>
+          <input id="join-name" placeholder="Ej: Emma" maxlength="40" />
+        </label>
+        <p class="form-msg" id="join-msg"></p>
+        <div class="modal-actions">
+          <button class="btn btn-ghost"   id="btn-join-cancel">Cancelar</button>
+          <button class="btn btn-primary" id="btn-join-go">Entrar</button>
+        </div>
+        <button class="modal-close" id="btn-join-close" aria-label="Cerrar">×</button>
+      </div>
+    </div>
 
     <footer class="login-foot">
       Hecho con cariño para el álbum de la familia ⚽
