@@ -1,10 +1,11 @@
-// App principal: grid, tabs, amigos, intercambios y WhatsApp.
+// App principal: grid por secciones, tabs, amigos, intercambios y WhatsApp.
 import { isSupabaseConfigured } from "./supabase-config.js";
 import { createStore } from "./store.js";
+import { SECTIONS, STICKERS, BY_SECTION, TOTAL_STICKERS, findByCode, shortLabel } from "./album-structure.js";
 
 // ---------- Constantes y helpers ----------
 const STATUS = { MISSING: 0, OWNED: 1, DUPLICATE: 2 };
-const MAX_DUP = 6; // tope visible antes de "rotar" al ciclo
+const MAX_DUP = 6;
 
 function $(sel) { return document.querySelector(sel); }
 function $$(sel) { return Array.from(document.querySelectorAll(sel)); }
@@ -19,7 +20,6 @@ function toast(msg, ms = 1800) {
 }
 
 function compactNumberList(nums) {
-  // Convierte [1,2,3,5,7,8,9] → "1-3, 5, 7-9"
   if (!nums.length) return "—";
   const sorted = [...nums].sort((a, b) => a - b);
   const ranges = [];
@@ -33,6 +33,27 @@ function compactNumberList(nums) {
   return ranges.join(", ");
 }
 
+// Agrupa una lista de sticker objects por sección y devuelve líneas legibles
+// para WhatsApp, p.ej.: "*México:* 1, 5, 12-14".
+function groupBySectionForShare(stickers) {
+  if (!stickers.length) return ["—"];
+  const buckets = new Map(); // section_id → { name, nums }
+  // Preservar orden de SECTIONS
+  for (const s of stickers) {
+    if (!buckets.has(s.section_id)) {
+      buckets.set(s.section_id, { name: s.section_name, nums: [] });
+    }
+    buckets.get(s.section_id).nums.push(s.n);
+  }
+  const lines = [];
+  for (const sec of SECTIONS) {
+    const b = buckets.get(sec.section_id);
+    if (!b) continue;
+    lines.push(`• *${b.name}*: ${compactNumberList(b.nums)}`);
+  }
+  return lines;
+}
+
 function openWhatsApp(text, phone = "") {
   const url = phone
     ? `https://wa.me/${phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(text)}`
@@ -44,7 +65,7 @@ function openWhatsApp(text, phone = "") {
 const state = {
   store: null,
   uid: null,
-  profile: null,        // { uid, displayName, photoURL, inviteCode, stickers: { "n": {s,c} } }
+  profile: null,        // { uid, displayName, photoURL, inviteCode, stickers: { "CODE": {s,c} } }
   friends: [],
   filter: "all",
   search: "",
@@ -56,9 +77,6 @@ const state = {
   state.store = await createStore();
 
   if (state.store.mode === "supabase") {
-    // getSession espera a que el cliente termine de procesar el hash de OAuth
-    // (si venimos de un redirect de Google) antes de devolver. Sin este await,
-    // chequear el usuario aquí daría null y nos sacaría de la página.
     const { data } = await state.store.backend.client.auth.getSession();
     const session = data?.session;
     if (!session) { location.replace("./index.html"); return; }
@@ -72,7 +90,6 @@ const state = {
       photoURL: meta.avatar_url || meta.picture || "",
     });
 
-    // Sólo escuchamos eventos de signOut para volver al login.
     state.store.backend.client.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") location.replace("./index.html");
     });
@@ -90,7 +107,6 @@ const state = {
 function attachSubscriptions() {
   state.store.backend.onUserChange(state.uid, async (profile) => {
     if (!profile) return;
-    // En modo demo, los stickers ya vienen embebidos. En Firebase, también (los hidratamos).
     state.profile = { ...profile, stickers: profile.stickers || {} };
     renderUserChip();
     renderGrid();
@@ -107,15 +123,12 @@ function attachSubscriptions() {
 
 // ---------- UI Wiring ----------
 function wireUI() {
-  // Tabs
   $$(".tab").forEach(t => t.addEventListener("click", (e) => {
     e.preventDefault();
     setTab(t.dataset.tab);
   }));
-  // Permite navegación con hash (e.g., #amigos)
   if (location.hash) setTab(location.hash.slice(1));
 
-  // Filtros
   $$(".chip[data-filter]").forEach(c => c.addEventListener("click", () => {
     $$(".chip[data-filter]").forEach(x => x.classList.remove("active"));
     c.classList.add("active");
@@ -123,20 +136,23 @@ function wireUI() {
     applyFilter();
   }));
 
-  // Búsqueda
-  $("#search-input").addEventListener("input", (e) => {
-    state.search = e.target.value.trim();
-    if (!state.search) return;
-    const n = Number(state.search);
-    if (!Number.isFinite(n) || n < 1 || n > state.store.total) return;
-    const cell = document.querySelector(`.cell[data-n="${n}"]`);
+  // Búsqueda por código (MEX5, ARG3, FWC9, 00, etc.)
+  const $search = $("#search-input");
+  $search.addEventListener("input", (e) => {
+    state.search = e.target.value;
+    const sticker = findByCode(state.search);
+    if (!sticker) return;
+    const cell = document.querySelector(`.cell[data-code="${sticker.code}"]`);
     if (cell) {
+      // Asegura que la sección esté visible aunque haya filtro
+      const sec = cell.closest(".album-section");
+      if (sec) sec.style.display = "";
+      cell.style.display = "";
       cell.scrollIntoView({ behavior: "smooth", block: "center" });
       cell.classList.remove("hilite"); void cell.offsetWidth; cell.classList.add("hilite");
     }
   });
 
-  // Logout
   $("#btn-logout").addEventListener("click", async () => {
     if (state.store.mode === "supabase") {
       await state.store.backend.logout();
@@ -146,7 +162,6 @@ function wireUI() {
     location.href = "./index.html";
   });
 
-  // Amigos
   $("#btn-copy-code").addEventListener("click", () => {
     const code = state.profile?.inviteCode || "";
     navigator.clipboard.writeText(code);
@@ -162,7 +177,6 @@ function wireUI() {
     if (e.key === "Enter") addFriendFromInput();
   });
 
-  // Compartir general
   $("#btn-share-whatsapp").addEventListener("click", () => openShareModal(buildMyShareText()));
   $("#btn-share-close").addEventListener("click", closeShareModal);
   $("#btn-share-copy").addEventListener("click", async () => {
@@ -191,7 +205,6 @@ async function addFriendFromInput() {
   msg.textContent = `¡Listo! Conectaste con ${friend.displayName}.`;
   msg.classList.add("ok");
   input.value = "";
-  // El listener de friends actualizará la lista; en modo demo lo refrescamos a mano.
   if (state.store.mode === "demo") {
     state.friends = state.store.backend.listFriends(state.uid);
     renderFriends(); renderMatches();
@@ -222,30 +235,50 @@ function renderGrid() {
   const grid = $("#grid");
   if (!gridBuilt) {
     const frag = document.createDocumentFragment();
-    for (let n = 1; n <= state.store.total; n++) {
-      const cell = document.createElement("button");
-      cell.className = "cell";
-      cell.dataset.n = String(n);
-      cell.innerHTML = `<span class="num">${n}</span>`;
-      cell.addEventListener("click", () => cycleSticker(n));
-      cell.addEventListener("contextmenu", (e) => { e.preventDefault(); resetSticker(n); });
-      // Long-press para móvil
-      let timer = null;
-      cell.addEventListener("touchstart", () => {
-        timer = setTimeout(() => { resetSticker(n); timer = null; }, 550);
-      }, { passive: true });
-      cell.addEventListener("touchend", () => { if (timer) clearTimeout(timer); });
-      cell.addEventListener("touchmove", () => { if (timer) clearTimeout(timer); });
-      frag.appendChild(cell);
+    for (const section of SECTIONS) {
+      const stickers = BY_SECTION.get(section.section_id);
+      const sec = document.createElement("section");
+      sec.className = "album-section";
+      sec.dataset.section = section.section_id;
+
+      const header = document.createElement("h2");
+      header.className = "section-header";
+      const range = section.section_id === "panini"
+        ? "00"
+        : `${section.code_prefix}${section.from}–${section.code_prefix}${section.to}`;
+      header.innerHTML = `<span>${escapeHTML(section.section_name)}</span><small>${range}</small>`;
+      sec.appendChild(header);
+
+      const cells = document.createElement("div");
+      cells.className = "cells";
+      for (const s of stickers) {
+        const cell = document.createElement("button");
+        cell.className = "cell";
+        cell.dataset.code = s.code;
+        cell.title = s.code;
+        cell.innerHTML = `<span class="num">${shortLabel(s)}</span>`;
+        cell.addEventListener("click", () => cycleSticker(s.code));
+        cell.addEventListener("contextmenu", (e) => { e.preventDefault(); resetSticker(s.code); });
+        // Long-press móvil
+        let timer = null;
+        cell.addEventListener("touchstart", () => {
+          timer = setTimeout(() => { resetSticker(s.code); timer = null; }, 550);
+        }, { passive: true });
+        cell.addEventListener("touchend",  () => { if (timer) clearTimeout(timer); });
+        cell.addEventListener("touchmove", () => { if (timer) clearTimeout(timer); });
+        cells.appendChild(cell);
+      }
+      sec.appendChild(cells);
+      frag.appendChild(sec);
     }
     grid.appendChild(frag);
     gridBuilt = true;
   }
   // Pinta estados
-  const stickers = state.profile?.stickers || {};
-  for (let n = 1; n <= state.store.total; n++) {
-    const cell = grid.children[n - 1];
-    paintCell(cell, stickers[String(n)]);
+  const owned = state.profile?.stickers || {};
+  for (const s of STICKERS) {
+    const cell = document.querySelector(`.cell[data-code="${s.code}"]`);
+    if (cell) paintCell(cell, owned[s.code]);
   }
   applyFilter();
 }
@@ -271,39 +304,43 @@ function paintCell(cell, st) {
 
 function applyFilter() {
   const f = state.filter;
-  $$("#grid .cell").forEach(c => {
-    const s = c.dataset.status || "missing";
-    const show = f === "all" || s === f;
-    c.style.display = show ? "" : "none";
+  $$(".album-section").forEach(sec => {
+    let visible = 0;
+    sec.querySelectorAll(".cell").forEach(c => {
+      const s = c.dataset.status || "missing";
+      const show = f === "all" || s === f;
+      c.style.display = show ? "" : "none";
+      if (show) visible++;
+    });
+    sec.style.display = visible === 0 ? "none" : "";
   });
 }
 
-async function cycleSticker(n) {
+async function cycleSticker(code) {
   if (!state.profile) return;
-  const cur = state.profile.stickers[String(n)] || { s: 0, c: 0 };
+  const cur = state.profile.stickers[code] || { s: 0, c: 0 };
   let next;
   if (cur.s === STATUS.MISSING) next = { s: STATUS.OWNED, c: 0 };
   else if (cur.s === STATUS.OWNED) next = { s: STATUS.DUPLICATE, c: 2 };
   else if (cur.s === STATUS.DUPLICATE && (cur.c || 2) < MAX_DUP) next = { s: STATUS.DUPLICATE, c: (cur.c || 2) + 1 };
   else next = { s: STATUS.MISSING, c: 0 };
 
-  // Optimistic update
-  if (next.s === STATUS.MISSING) delete state.profile.stickers[String(n)];
-  else state.profile.stickers[String(n)] = next;
-  paintCell($(`.cell[data-n="${n}"]`), state.profile.stickers[String(n)]);
+  if (next.s === STATUS.MISSING) delete state.profile.stickers[code];
+  else state.profile.stickers[code] = next;
+  paintCell(document.querySelector(`.cell[data-code="${code}"]`), state.profile.stickers[code]);
   renderStats();
   applyFilter();
 
-  await state.store.backend.setSticker(state.uid, n, next.s, next.c);
+  await state.store.backend.setSticker(state.uid, code, next.s, next.c);
 }
 
-async function resetSticker(n) {
+async function resetSticker(code) {
   if (!state.profile) return;
-  delete state.profile.stickers[String(n)];
-  paintCell($(`.cell[data-n="${n}"]`), null);
+  delete state.profile.stickers[code];
+  paintCell(document.querySelector(`.cell[data-code="${code}"]`), null);
   renderStats();
   applyFilter();
-  await state.store.backend.setSticker(state.uid, n, 0, 0);
+  await state.store.backend.setSticker(state.uid, code, 0, 0);
 }
 
 // ---------- Render: stats ----------
@@ -315,8 +352,8 @@ function renderStats() {
     if (st.s === STATUS.OWNED) owned++;
     else if (st.s === STATUS.DUPLICATE) { owned++; dupes += Math.max(1, (st.c || 2) - 1); }
   }
-  const missing = state.store.total - owned;
-  const progress = Math.round((owned / state.store.total) * 100);
+  const missing = TOTAL_STICKERS - owned;
+  const progress = Math.round((owned / TOTAL_STICKERS) * 100);
   $("#stat-owned").textContent   = owned;
   $("#stat-missing").textContent = missing;
   $("#stat-dupes").textContent   = dupes;
@@ -341,7 +378,7 @@ function renderFriends() {
       <img alt="" ${f.photoURL ? `src="${f.photoURL}"` : ""} />
       <div class="meta">
         <span class="name">${escapeHTML(f.displayName || "Sin nombre")}</span>
-        <span class="sub">Código ${f.inviteCode || "—"} · ${countOwned(f.stickers)} / ${state.store.total} pegadas</span>
+        <span class="sub">Código ${f.inviteCode || "—"} · ${countOwned(f.stickers)} / ${TOTAL_STICKERS} pegadas</span>
       </div>
     `;
     ul.appendChild(li);
@@ -365,28 +402,30 @@ function renderMatches() {
     wrap.innerHTML = '<div class="empty">Conecta amigos para ver intercambios.</div>';
     return;
   }
-  const myStickers = state.profile?.stickers || {};
+  const my = state.profile?.stickers || {};
   let anyMatch = false;
 
   for (const f of state.friends) {
     const fSt = f.stickers || {};
-    const iCanGive = [];   // tengo repe y a él le faltan
-    const heCanGive = [];  // él tiene repe y a mí me faltan
-    for (let n = 1; n <= state.store.total; n++) {
-      const me = myStickers[String(n)];
-      const fr = fSt[String(n)];
-      const meDup    = me?.s === STATUS.DUPLICATE;
-      const meNeeds  = !me || me.s === STATUS.MISSING;
-      const frDup    = fr?.s === STATUS.DUPLICATE;
-      const frNeeds  = !fr || fr.s === STATUS.MISSING;
-      if (meDup && frNeeds) iCanGive.push(n);
-      if (frDup && meNeeds) heCanGive.push(n);
+    const iCanGive = [];   // sticker objects
+    const heCanGive = [];
+    for (const s of STICKERS) {
+      const me = my[s.code];
+      const fr = fSt[s.code];
+      const meDup   = me?.s === STATUS.DUPLICATE;
+      const meNeeds = !me || me.s === STATUS.MISSING;
+      const frDup   = fr?.s === STATUS.DUPLICATE;
+      const frNeeds = !fr || fr.s === STATUS.MISSING;
+      if (meDup && frNeeds) iCanGive.push(s);
+      if (frDup && meNeeds) heCanGive.push(s);
     }
     if (!iCanGive.length && !heCanGive.length) continue;
     anyMatch = true;
 
     const card = document.createElement("div");
     card.className = "match";
+    const give = iCanGive.length ? groupBySectionForShare(iCanGive).join("<br>") : "—";
+    const get  = heCanGive.length ? groupBySectionForShare(heCanGive).join("<br>") : "—";
     card.innerHTML = `
       <header>
         <img alt="" ${f.photoURL ? `src="${f.photoURL}"` : ""} />
@@ -394,12 +433,12 @@ function renderMatches() {
       </header>
       <div class="rows">
         <div class="row">
-          <span class="label">Le doy</span>
-          <span class="nums">${iCanGive.length ? compactNumberList(iCanGive) : "—"}</span>
+          <span class="label">Le doy (${iCanGive.length})</span>
+          <span class="nums">${give}</span>
         </div>
         <div class="row">
-          <span class="label">Me da</span>
-          <span class="nums">${heCanGive.length ? compactNumberList(heCanGive) : "—"}</span>
+          <span class="label">Me da (${heCanGive.length})</span>
+          <span class="nums">${get}</span>
         </div>
       </div>
       <div class="actions">
@@ -408,8 +447,7 @@ function renderMatches() {
       </div>
     `;
     card.querySelector('[data-act="wa"]').addEventListener("click", () => {
-      const txt = buildTradeText(f, iCanGive, heCanGive);
-      openShareModal(txt);
+      openShareModal(buildTradeText(f, iCanGive, heCanGive));
     });
     card.querySelector('[data-act="copy"]').addEventListener("click", async () => {
       await navigator.clipboard.writeText(buildTradeText(f, iCanGive, heCanGive));
@@ -424,24 +462,24 @@ function renderMatches() {
 
 // ---------- Compartir ----------
 function buildMyShareText() {
-  const stickers = state.profile?.stickers || {};
+  const owned = state.profile?.stickers || {};
   const missing = [], dupes = [];
-  for (let n = 1; n <= state.store.total; n++) {
-    const st = stickers[String(n)];
-    if (!st || st.s === STATUS.MISSING) missing.push(n);
-    else if (st.s === STATUS.DUPLICATE) dupes.push(n);
+  for (const s of STICKERS) {
+    const st = owned[s.code];
+    if (!st || st.s === STATUS.MISSING) missing.push(s);
+    else if (st.s === STATUS.DUPLICATE) dupes.push(s);
   }
-  const owned = state.store.total - missing.length;
+  const ownedCount = TOTAL_STICKERS - missing.length;
   const name = state.profile?.displayName || "Yo";
   return [
     `⚽ *Álbum Mundial 2026* — ${name}`,
-    `Llevo *${owned}/${state.store.total}* pegadas (${Math.round(owned*100/state.store.total)}%).`,
+    `Llevo *${ownedCount}/${TOTAL_STICKERS}* pegadas (${Math.round(ownedCount*100/TOTAL_STICKERS)}%).`,
     ``,
-    `🔁 *Repetidas que tengo:*`,
-    dupes.length ? compactNumberList(dupes) : "Ninguna por ahora",
+    `🔁 *Repetidas que tengo (${dupes.length}):*`,
+    ...(dupes.length ? groupBySectionForShare(dupes) : ["Ninguna por ahora"]),
     ``,
-    `🙏 *Me faltan:*`,
-    missing.length ? compactNumberList(missing) : "¡Ninguna! Álbum lleno 🏆",
+    `🙏 *Me faltan (${missing.length}):*`,
+    ...(missing.length ? groupBySectionForShare(missing) : ["¡Ninguna! Álbum lleno 🏆"]),
     ``,
     `¿Cambiamos? 🤝`,
   ].join("\n");
@@ -453,11 +491,11 @@ function buildTradeText(friend, iCanGive, heCanGive) {
     `¡Hola ${name}! ⚽`,
     `Mira los intercambios que tenemos para el álbum del Mundial 2026:`,
     ``,
-    `🔁 *Yo te doy:*`,
-    iCanGive.length ? compactNumberList(iCanGive) : "—",
+    `🔁 *Yo te doy (${iCanGive.length}):*`,
+    ...(iCanGive.length ? groupBySectionForShare(iCanGive) : ["—"]),
     ``,
-    `🤝 *Tú me das:*`,
-    heCanGive.length ? compactNumberList(heCanGive) : "—",
+    `🤝 *Tú me das (${heCanGive.length}):*`,
+    ...(heCanGive.length ? groupBySectionForShare(heCanGive) : ["—"]),
     ``,
     `¿Cuándo nos vemos para cambiar?`,
   ].join("\n");
@@ -467,7 +505,6 @@ function openShareModal(text) {
   $("#share-text").value = text;
   $("#btn-share-open").href = `https://wa.me/?text=${encodeURIComponent(text)}`;
   $("#share-modal").classList.remove("hidden");
-  // Actualiza el link en vivo al editar
   $("#share-text").oninput = () => {
     $("#btn-share-open").href = `https://wa.me/?text=${encodeURIComponent($("#share-text").value)}`;
   };
@@ -483,7 +520,6 @@ function escapeHTML(s) {
   })[c]);
 }
 
-// Hint para usuarios curiosos
 if (!isSupabaseConfigured()) {
   console.info("[Álbum] Modo demo activo. Configura Supabase para sincronizar entre dispositivos. Ver README.md");
 }

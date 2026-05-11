@@ -1,7 +1,8 @@
 // Capa de datos: Supabase si está configurado; si no, localStorage (modo demo).
 // La interfaz pública es la misma para que el resto de la app no sepa qué backend hay debajo.
 
-import { supabaseConfig, isSupabaseConfigured, TOTAL_STICKERS } from "./supabase-config.js";
+import { supabaseConfig, isSupabaseConfigured } from "./supabase-config.js";
+import { TOTAL_STICKERS } from "./album-structure.js";
 
 const LS_KEY = "album-mundial:v1";
 const DEMO_SESSION_KEY = "album-mundial:session";
@@ -71,11 +72,11 @@ class LocalBackend {
 
   async getProfile(uid) { return this.data.users[uid] || null; }
 
-  async setSticker(uid, n, status, count) {
+  async setSticker(uid, code, status, count) {
     const u = this.data.users[uid];
     if (!u) return;
-    if (status === 0) delete u.stickers[n];
-    else u.stickers[n] = { s: status, c: count };
+    if (status === 0) delete u.stickers[code];
+    else u.stickers[code] = { s: status, c: count };
     this._write();
   }
 
@@ -207,22 +208,22 @@ class SupabaseBackend {
   }
 
   async getStickers(uid) {
-    const { data, error } = await this.client.from("stickers").select("n, status, count").eq("user_id", uid);
+    const { data, error } = await this.client.from("stickers").select("code, status, count").eq("user_id", uid);
     if (error) throw error;
     const out = {};
-    for (const row of (data || [])) out[String(row.n)] = { s: row.status, c: row.count || 0 };
+    for (const row of (data || [])) out[row.code] = { s: row.status, c: row.count || 0 };
     return out;
   }
 
-  async setSticker(uid, n, status, count) {
+  async setSticker(uid, code, status, count) {
     if (status === 0) {
       const { error } = await this.client.from("stickers").delete()
-        .eq("user_id", uid).eq("n", n);
+        .eq("user_id", uid).eq("code", code);
       if (error) throw error;
     } else {
       const { error } = await this.client.from("stickers").upsert({
-        user_id: uid, n: Number(n), status, count: count || 0,
-      }, { onConflict: "user_id,n" });
+        user_id: uid, code, status, count: count || 0,
+      }, { onConflict: "user_id,code" });
       if (error) throw error;
     }
   }
@@ -293,11 +294,11 @@ class SupabaseBackend {
       .from("users").select("*").in("id", ids);
     if (e1) throw e1;
     const { data: stickers, error: e2 } = await this.client
-      .from("stickers").select("user_id, n, status, count").in("user_id", ids);
+      .from("stickers").select("user_id, code, status, count").in("user_id", ids);
     if (e2) throw e2;
     const byUser = {};
     for (const s of (stickers || [])) {
-      (byUser[s.user_id] ||= {})[String(s.n)] = { s: s.status, c: s.count || 0 };
+      (byUser[s.user_id] ||= {})[s.code] = { s: s.status, c: s.count || 0 };
     }
     return (profiles || []).map(p => {
       const u = this._mapUser(p);

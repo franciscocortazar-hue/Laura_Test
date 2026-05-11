@@ -16,13 +16,15 @@ create table if not exists public.users (
 create index if not exists users_invite_code_idx on public.users(invite_code);
 
 -- ---------- TABLA stickers ------------------------------------------------
+-- Cada lámina se identifica por su `code` textual (ej. "MEX5", "ARG12",
+-- "FWC1", "00"). La estructura completa vive en js/album-structure.js.
 create table if not exists public.stickers (
-  user_id  uuid     not null references public.users(id) on delete cascade,
-  n        int      not null check (n between 1 and 2000),
-  status   smallint not null check (status in (1, 2)), -- 1=pegada, 2=repetida
-  count    smallint not null default 0,
+  user_id    uuid        not null references public.users(id) on delete cascade,
+  code       text        not null check (char_length(code) between 1 and 16),
+  status     smallint    not null check (status in (1, 2)), -- 1=pegada, 2=repetida
+  count      smallint    not null default 0,
   updated_at timestamptz not null default now(),
-  primary key (user_id, n)
+  primary key (user_id, code)
 );
 
 create index if not exists stickers_user_idx   on public.stickers(user_id);
