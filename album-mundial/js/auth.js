@@ -11,13 +11,28 @@ if (!isSupabaseConfigured()) {
   $hint.hidden = false;
 }
 
+// Si Supabase ya tiene una sesión activa (porque venimos de un redirect de Google
+// o porque el usuario ya entró antes), saltar directo al álbum.
+(async function autoRedirectIfSignedIn() {
+  if (!isSupabaseConfigured()) return;
+  const store = await createStore();
+  const { data } = await store.backend.client.auth.getSession();
+  if (data?.session) {
+    location.replace("./album.html");
+    return;
+  }
+  store.backend.client.auth.onAuthStateChange((_event, session) => {
+    if (session) location.replace("./album.html");
+  });
+})();
+
 $google.addEventListener("click", async () => {
   $google.disabled = true;
   $google.textContent = "Abriendo Google…";
   try {
     const store = await createStore();
     await store.backend.loginWithGoogle();
-    // OAuth redirige al callback (album.html). No hace falta navegar manualmente.
+    // OAuth redirige al callback. No hace falta navegar manualmente.
   } catch (err) {
     console.error(err);
     alert("No pudimos iniciar sesión con Google: " + (err?.message || err));
