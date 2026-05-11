@@ -56,17 +56,28 @@ const state = {
   state.store = await createStore();
 
   if (state.store.mode === "supabase") {
-    state.store.backend.onAuthChanged(async (user) => {
-      if (!user) { location.href = "./index.html"; return; }
-      state.uid = user.id;
-      const meta = user.user_metadata || {};
-      await state.store.backend.ensureUser({
-        uid: user.id,
-        displayName: meta.full_name || meta.name || user.email || "Sin nombre",
-        photoURL: meta.avatar_url || meta.picture || "",
-      });
-      attachSubscriptions();
+    // getSession espera a que el cliente termine de procesar el hash de OAuth
+    // (si venimos de un redirect de Google) antes de devolver. Sin este await,
+    // chequear el usuario aquí daría null y nos sacaría de la página.
+    const { data } = await state.store.backend.client.auth.getSession();
+    const session = data?.session;
+    if (!session) { location.replace("./index.html"); return; }
+
+    const user = session.user;
+    state.uid = user.id;
+    const meta = user.user_metadata || {};
+    await state.store.backend.ensureUser({
+      uid: user.id,
+      displayName: meta.full_name || meta.name || user.email || "Sin nombre",
+      photoURL: meta.avatar_url || meta.picture || "",
     });
+
+    // Sólo escuchamos eventos de signOut para volver al login.
+    state.store.backend.client.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") location.replace("./index.html");
+    });
+
+    attachSubscriptions();
   } else {
     state.uid = state.store.backend.getSessionUid();
     if (!state.uid) { location.href = "./index.html"; return; }
