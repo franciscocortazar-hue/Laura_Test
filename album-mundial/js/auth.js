@@ -20,14 +20,29 @@ if (!isSupabaseConfigured()) {
 }
 
 // Si ya hay una sesión activa, saltar directo al álbum.
+// EXCEPCIÓN: usuarios anónimos sin álbum (sesiones huérfanas) deben quedarse
+// en login para que peguen un código.
+async function shouldAutoRedirect(store, session) {
+  if (!session) return false;
+  const user = session.user;
+  if (!user.is_anonymous) return true; // Google: siempre.
+  try {
+    const albums = await store.backend.listAlbumsForUser(user.id);
+    return albums.length > 0;
+  } catch { return false; }
+}
+
 (async function autoRedirectIfSignedIn() {
   if (!isSupabaseConfigured()) return;
   try {
     const store = await createStore();
     const { data } = await store.backend.client.auth.getSession();
-    if (data?.session) { location.replace("./album.html"); return; }
-    store.backend.client.auth.onAuthStateChange((_event, session) => {
-      if (session) location.replace("./album.html");
+    if (await shouldAutoRedirect(store, data?.session)) {
+      location.replace("./album.html");
+      return;
+    }
+    store.backend.client.auth.onAuthStateChange(async (_event, session) => {
+      if (await shouldAutoRedirect(store, session)) location.replace("./album.html");
     });
   } catch (err) { console.warn("autoRedirect skipped:", err); }
 })();
@@ -90,38 +105,42 @@ $btnGo.addEventListener("click", async () => {
 
   $btnGo.disabled = true;
   $btnGo.textContent = "Entrando…";
+  let signedInThisAttempt = false;
   try {
     const store = await createStore();
 
-    // 1) Verifica que el álbum existe antes de crear cualquier sesión.
-    //    (Puede que el cliente todavía no tenga JWT — los SELECT en albums son
-    //    públicos para authenticated, así que abajo iniciamos sesión primero
-    //    y luego buscamos.)
     let user = (await store.backend.client.auth.getUser()).data?.user;
     if (!user) {
       user = await store.backend.loginAnonymously();
+      signedInThisAttempt = true;
     }
     await store.backend.ensureUser(user.id);
 
     const result = await store.backend.joinAlbumByCode(user.id, code, name);
     if (!result.ok) {
-      // Si veníamos de un signInAnonymously recién creado, mejor cerrar sesión
-      // para no dejar huecos.
+      // Si acabamos de crear una sesión anónima sólo para este intento,
+      // ciérrala para no dejar usuarios huérfanos.
+      if (signedInThisAttempt) {
+        try { await store.backend.logout(); } catch {}
+      }
       if (result.reason === "not_found") {
         $msg.textContent = "No encontramos un álbum con ese código.";
-        $msg.classList.add("err");
-        $btnGo.disabled = false;
-        $btnGo.textContent = "Entrar";
-        return;
+      } else {
+        $msg.textContent = "No pudimos entrar: " + result.reason;
       }
-      throw new Error("join failed: " + result.reason);
+      $msg.classList.add("err");
+      $btnGo.disabled = false;
+      $btnGo.textContent = "Entrar";
+      return;
     }
 
-    // Guardar el album_id como "álbum activo" para que album.html sepa cuál cargar.
     localStorage.setItem("album-mundial:active-album", result.album.id);
     location.replace("./album.html");
   } catch (err) {
     console.error(err);
+    if (signedInThisAttempt) {
+      try { const s = await createStore(); await s.backend.logout(); } catch {}
+    }
     $msg.textContent = "Ups: " + (err?.message || err);
     $msg.classList.add("err");
     $btnGo.disabled = false;

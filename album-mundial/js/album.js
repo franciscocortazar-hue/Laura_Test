@@ -98,6 +98,7 @@ const state = {
     //  - Si no está en ninguno (es la primera vez con Google), crearle uno.
     const meta = user.user_metadata || {};
     const displayName = meta.full_name || meta.name || user.email || "Yo";
+    const isAnonymous = !!user.is_anonymous;
 
     let albumId = localStorage.getItem(ACTIVE_ALBUM_KEY);
     let memberAlbums = await state.store.backend.listAlbumsForUser(user.id);
@@ -106,8 +107,16 @@ const state = {
     if (!albumId) {
       if (memberAlbums.length) {
         albumId = memberAlbums[0].id;
+      } else if (isAnonymous) {
+        // Anónimo sin álbum: probablemente la sesión quedó huérfana de un
+        // intento fallido. NO crear álbum nuevo (eso lleva a álbumes "Yo"
+        // fantasma). Mejor cerrar sesión y mandarlo a pegar un código.
+        await state.store.backend.logout();
+        localStorage.removeItem(ACTIVE_ALBUM_KEY);
+        location.replace("./index.html");
+        return;
       } else {
-        // Usuario nuevo con Google: créale su propio álbum.
+        // Usuario Google nuevo: créale su propio álbum.
         const created = await state.store.backend.ensureDefaultAlbum(user.id, displayName);
         albumId = created.id;
       }

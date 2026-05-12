@@ -180,25 +180,29 @@ class SupabaseBackend {
   }
 
   async ensureDefaultAlbum(uid, displayName) {
-    // ¿Ya posee uno?
-    const { data: existing, error: e1 } = await this.client
-      .from("albums").select("*").eq("owner_id", uid).limit(1).maybeSingle();
-    if (e1) throw e1;
-    if (existing) {
-      // Asegurar que sea miembro de su propio álbum.
+    // Dedupe: si dos partes del boot llaman simultáneamente, comparten promesa.
+    if (this._ensureAlbumPromise) return this._ensureAlbumPromise;
+    this._ensureAlbumPromise = (async () => {
+      const { data: existing, error: e1 } = await this.client
+        .from("albums").select("*").eq("owner_id", uid).limit(1).maybeSingle();
+      if (e1) throw e1;
+      if (existing) {
+        await this.client.from("album_members")
+          .upsert({ album_id: existing.id, user_id: uid, member_name: displayName || "Yo" },
+                  { onConflict: "album_id,user_id", ignoreDuplicates: true });
+        return existing;
+      }
+      const code = await this._generateUniqueInviteCode();
+      const { data, error } = await this.client.from("albums")
+        .insert({ owner_id: uid, name: displayName ? `Álbum de ${displayName}` : "Mi álbum", invite_code: code })
+        .select().single();
+      if (error) throw error;
       await this.client.from("album_members")
-        .upsert({ album_id: existing.id, user_id: uid, member_name: displayName || "Yo" },
-                { onConflict: "album_id,user_id", ignoreDuplicates: true });
-      return existing;
-    }
-    const code = await this._generateUniqueInviteCode();
-    const { data, error } = await this.client.from("albums")
-      .insert({ owner_id: uid, name: displayName ? `Álbum de ${displayName}` : "Mi álbum", invite_code: code })
-      .select().single();
-    if (error) throw error;
-    await this.client.from("album_members")
-      .insert({ album_id: data.id, user_id: uid, member_name: displayName || "Yo" });
-    return data;
+        .insert({ album_id: data.id, user_id: uid, member_name: displayName || "Yo" });
+      return data;
+    })();
+    try { return await this._ensureAlbumPromise; }
+    finally { this._ensureAlbumPromise = null; }
   }
 
   async listAlbumsForUser(uid) {
