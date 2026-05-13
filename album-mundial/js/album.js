@@ -209,6 +209,33 @@ function wireUI() {
   $("#btn-add-friend").addEventListener("click", addFriendAlbumFromInput);
   $("#friend-code").addEventListener("keydown", (e) => { if (e.key === "Enter") addFriendAlbumFromInput(); });
 
+  $("#btn-clear-all").addEventListener("click", async () => {
+    const total = Object.keys(state.album?.stickers || {}).length;
+    if (total === 0) { toast("El álbum ya está vacío."); return; }
+    const ok = confirm(
+      `¿Borrar las ${total} láminas marcadas del álbum compartido?\n\n` +
+      `Esto afecta a TODOS los miembros y NO se puede deshacer.`
+    );
+    if (!ok) return;
+    const btn = $("#btn-clear-all");
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.textContent = "Borrando…";
+    try {
+      await state.store.backend.clearAllStickers(state.albumId);
+      // Optimistic local clear; el realtime las repintará a faltantes igualmente.
+      if (state.album) state.album.stickers = {};
+      renderGrid(); renderStats();
+      toast("Álbum reiniciado");
+    } catch (err) {
+      console.error(err);
+      alert("No pudimos borrar: " + (err?.message || err));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  });
+
   $("#btn-share-whatsapp").addEventListener("click", () => openShareModal(buildMyShareText()));
   $("#btn-share-close").addEventListener("click", closeShareModal);
   $("#btn-share-copy").addEventListener("click", async () => {

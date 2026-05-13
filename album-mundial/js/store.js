@@ -95,6 +95,13 @@ class LocalBackend {
     this._write();
   }
 
+  async clearAllStickers(albumId) {
+    const a = this.data.albums[albumId];
+    if (!a) return;
+    a.stickers = {};
+    this._write();
+  }
+
   async getStickers(albumId) {
     const a = this.data.albums[albumId];
     return a ? { ...(a.stickers || {}) } : {};
@@ -272,6 +279,11 @@ class SupabaseBackend {
         { onConflict: "album_id,code" });
       if (error) throw error;
     }
+  }
+
+  async clearAllStickers(albumId) {
+    const { error } = await this.client.from("stickers").delete().eq("album_id", albumId);
+    if (error) throw error;
   }
 
   async addFriendship(albumA, albumB) {

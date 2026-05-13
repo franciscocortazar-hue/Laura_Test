@@ -106,6 +106,19 @@ button { font: inherit; cursor: pointer; }
 }
 .btn-primary:hover { filter: brightness(1.05); }
 
+.btn-danger {
+  background: linear-gradient(180deg, #ef4444, #b91c1c);
+  color: #fff; border-color: rgba(0,0,0,.2);
+  box-shadow: 0 8px 18px -8px rgba(239,68,68,.55);
+}
+.btn-danger:hover { filter: brightness(1.05); }
+
+.panel.danger-zone {
+  border-color: rgba(239,68,68,.35);
+  background: linear-gradient(180deg, rgba(239,68,68,.06), transparent);
+}
+.panel.danger-zone h2 { color: #fca5a5; }
+
 .divider {
   position: relative; margin: 16px 0; color: var(--muted); font-size: 12px;
 }
