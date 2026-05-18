@@ -215,6 +215,9 @@ button { font: inherit; cursor: pointer; }
 .dot.missing  { background: var(--missing); }
 .dot.owned    { background: var(--owned); }
 .dot.duplicate { background: var(--duplicate); }
+.legend-tip {
+  margin-left: auto; color: var(--muted); font-size: 12px;
+}
 
 /* ====== GRID ====== */
 .grid {
@@ -289,6 +292,21 @@ button { font: inherit; cursor: pointer; }
   background: rgba(0,0,0,.35); color: #fff;
   font-size: 10px; padding: 1px 5px; border-radius: 999px;
   font-weight: 700;
+}
+.cell .del-x {
+  position: absolute; top: 2px; left: 3px;
+  width: 16px; height: 16px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: rgba(0,0,0,.4); color: #fff;
+  font-size: 10px; font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .15s ease, transform .1s ease;
+}
+.cell .del-x:hover {
+  background: var(--danger);
+  transform: scale(1.15);
 }
 .cell .num { font-variant-numeric: tabular-nums; }
 
@@ -377,9 +395,30 @@ button { font: inherit; cursor: pointer; }
 /* ====== FLOATING SHARE ====== */
 .floating-share {
   position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
-  z-index: 20; width: min(560px, calc(100% - 32px));
+  z-index: 20; width: min(640px, calc(100% - 32px));
 }
 .floating-share .btn { box-shadow: 0 16px 32px -10px rgba(0,0,0,.5); }
+.floating-share.share-multi {
+  display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 6px;
+}
+.floating-share.share-multi .btn { padding: 12px 10px; font-size: 14px; }
+
+/* Chips de selección de modo dentro del modal de compartir */
+.share-modes {
+  display: flex; gap: 6px; margin: 10px 0 0; flex-wrap: wrap;
+}
+.share-modes .chip {
+  padding: 6px 12px; font-size: 13px; border-radius: 999px;
+  background: var(--bg-3); color: var(--muted);
+  border: 1px solid var(--line); cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.share-modes .chip.active {
+  background: var(--primary); color: #04150a;
+  border-color: rgba(0,0,0,.2); font-weight: 700;
+}
+.share-modes .chip:hover { color: var(--text); }
+.share-modes .chip.active:hover { color: #04150a; }
 
 /* ====== MODAL ====== */
 .modal {

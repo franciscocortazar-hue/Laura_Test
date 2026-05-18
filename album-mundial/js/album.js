@@ -1,7 +1,7 @@
 // App principal del álbum compartido.
 import { isSupabaseConfigured } from "./supabase-config.js";
 import { createStore } from "./store.js";
-import { SECTIONS, STICKERS, BY_SECTION, TOTAL_STICKERS, findByCode, shortLabel } from "./album-structure.js";
+import { SECTIONS, STICKERS, BY_SECTION, TOTAL_STICKERS, findByCode, shortLabel, prefixEmoji } from "./album-structure.js";
 
 const STATUS = { MISSING: 0, OWNED: 1, DUPLICATE: 2 };
 const MAX_DUP = 6;
@@ -33,20 +33,30 @@ function compactNumberList(nums) {
   return ranges.join(", ");
 }
 
-function groupBySectionForShare(stickers) {
+// Agrupa por PREFIJO (estilo Figuritas App): "MEX 🇲🇽: 1, 5, 12-14".
+// Las 3 secciones FWC (intro, hosts, history) colapsan en una sola línea "FWC 📜".
+// El sticker de Panini se muestra como "Panini ⭐".
+function groupByPrefixForShare(stickers) {
   if (!stickers.length) return ["—"];
-  const buckets = new Map();
+  const order = []; // mantiene orden de aparición (= orden de álbum)
+  const buckets = new Map(); // key (prefix or "panini") → { label, emoji, nums }
   for (const s of stickers) {
-    if (!buckets.has(s.section_id)) buckets.set(s.section_id, { name: s.section_name, nums: [] });
-    buckets.get(s.section_id).nums.push(s.n);
+    const isPanini = s.section_id === "panini";
+    const key = isPanini ? "panini" : s.prefix;
+    if (!buckets.has(key)) {
+      buckets.set(key, {
+        label: isPanini ? "Panini" : s.prefix,
+        emoji: isPanini ? "⭐" : prefixEmoji(s.prefix),
+        nums: [],
+      });
+      order.push(key);
+    }
+    buckets.get(key).nums.push(s.n);
   }
-  const lines = [];
-  for (const sec of SECTIONS) {
-    const b = buckets.get(sec.section_id);
-    if (!b) continue;
-    lines.push(`• *${b.name}*: ${compactNumberList(b.nums)}`);
-  }
-  return lines;
+  return order.map(k => {
+    const b = buckets.get(k);
+    return `${b.label} ${b.emoji}: ${compactNumberList(b.nums)}`;
+  });
 }
 
 function openWhatsApp(text, phone = "") {
@@ -236,7 +246,34 @@ function wireUI() {
     }
   });
 
-  $("#btn-share-whatsapp").addEventListener("click", () => openShareModal(buildMyShareText()));
+  // Botón principal: abre modal con modo "ambos" por defecto.
+  $("#btn-share-whatsapp").addEventListener("click", () => {
+    _activeShareMode = "both";
+    openShareModal(buildMyShareText("both"), { showModes: true });
+  });
+  // Atajos directos a cada modo (faltantes / repes / ambos)
+  $("#btn-share-missing")?.addEventListener("click", () => {
+    _activeShareMode = "missing";
+    openShareModal(buildMyShareText("missing"), { showModes: true });
+  });
+  $("#btn-share-duplicates")?.addEventListener("click", () => {
+    _activeShareMode = "duplicate";
+    openShareModal(buildMyShareText("duplicate"), { showModes: true });
+  });
+
+  // Chips dentro del modal para cambiar de modo sin cerrarlo.
+  document.addEventListener("click", (e) => {
+    const chip = e.target.closest?.("#share-modes .chip");
+    if (!chip) return;
+    _activeShareMode = chip.dataset.mode || "both";
+    document.querySelectorAll("#share-modes .chip").forEach(c => {
+      c.classList.toggle("active", c === chip);
+    });
+    const text = buildMyShareText(_activeShareMode);
+    $("#share-text").value = text;
+    $("#btn-share-open").href = `https://wa.me/?text=${encodeURIComponent(text)}`;
+  });
+
   $("#btn-share-close").addEventListener("click", closeShareModal);
   $("#btn-share-copy").addEventListener("click", async () => {
     await navigator.clipboard.writeText($("#share-text").value);
@@ -347,6 +384,8 @@ function renderGrid() {
         cell.dataset.code = s.code;
         cell.title = s.code;
         cell.innerHTML = `<span class="num">${shortLabel(s)}</span>`;
+        // Click avanza estado. La X (renderizada en celdas marcadas) borra.
+        // Click-derecho y long-press móvil también borran.
         cell.addEventListener("click", () => cycleSticker(s.code));
         cell.addEventListener("contextmenu", (e) => { e.preventDefault(); resetSticker(s.code); });
         let timer = null;
@@ -374,9 +413,10 @@ function renderGrid() {
 function paintCell(cell, st) {
   cell.classList.remove("owned", "duplicate");
   cell.dataset.status = "missing";
-  const existing = cell.querySelector(".dup-badge");
-  if (existing) existing.remove();
+  cell.querySelector(".dup-badge")?.remove();
+  cell.querySelector(".del-x")?.remove();
   if (!st || st.s === STATUS.MISSING) return;
+
   if (st.s === STATUS.OWNED) {
     cell.classList.add("owned");
     cell.dataset.status = "owned";
@@ -386,8 +426,25 @@ function paintCell(cell, st) {
     const badge = document.createElement("span");
     badge.className = "dup-badge";
     badge.textContent = "x" + Math.max(2, st.c || 2);
+    badge.title = "Toca para bajar el contador";
+    badge.addEventListener("click", (e) => {
+      e.stopPropagation();
+      decrementSticker(cell.dataset.code);
+    });
     cell.appendChild(badge);
   }
+
+  // Botón ✕ para borrar (visible siempre que la celda esté marcada).
+  const del = document.createElement("span");
+  del.className = "del-x";
+  del.textContent = "✕";
+  del.setAttribute("role", "button");
+  del.setAttribute("aria-label", "Borrar lámina");
+  del.addEventListener("click", (e) => {
+    e.stopPropagation();
+    resetSticker(cell.dataset.code);
+  });
+  cell.appendChild(del);
 }
 
 function applyFilter() {
@@ -429,6 +486,23 @@ async function resetSticker(code) {
   renderStats();
   applyFilter();
   await state.store.backend.setSticker(state.albumId, code, 0, 0);
+}
+
+// Quita una repe (x3→x2, x2→pegada). Útil al intercambiar una repetida.
+async function decrementSticker(code) {
+  if (!state.album) return;
+  const cur = state.album.stickers[code];
+  if (!cur || cur.s !== STATUS.DUPLICATE) return;
+  const c = cur.c || 2;
+  let next;
+  if (c > 2) next = { s: STATUS.DUPLICATE, c: c - 1 };
+  else next = { s: STATUS.OWNED, c: 0 };
+
+  state.album.stickers[code] = next;
+  paintCell(document.querySelector(`.cell[data-code="${code}"]`), next);
+  renderStats();
+  applyFilter();
+  await state.store.backend.setSticker(state.albumId, code, next.s, next.c);
 }
 
 // ---------- Render: stats ----------
@@ -508,8 +582,8 @@ function renderMatches() {
 
     const card = document.createElement("div");
     card.className = "match";
-    const give = iCanGive.length ? groupBySectionForShare(iCanGive).join("<br>") : "—";
-    const get  = heCanGive.length ? groupBySectionForShare(heCanGive).join("<br>") : "—";
+    const give = iCanGive.length ? groupByPrefixForShare(iCanGive).join("<br>") : "—";
+    const get  = heCanGive.length ? groupByPrefixForShare(heCanGive).join("<br>") : "—";
     card.innerHTML = `
       <header>
         <img alt="" style="display:none" />
@@ -531,7 +605,7 @@ function renderMatches() {
       </div>
     `;
     card.querySelector('[data-act="wa"]').addEventListener("click", () => {
-      openShareModal(buildTradeText(a, iCanGive, heCanGive));
+      openShareModal(buildTradeText(a, iCanGive, heCanGive), { showModes: false });
     });
     card.querySelector('[data-act="copy"]').addEventListener("click", async () => {
       await navigator.clipboard.writeText(buildTradeText(a, iCanGive, heCanGive));
@@ -545,7 +619,9 @@ function renderMatches() {
 }
 
 // ---------- Compartir ----------
-function buildMyShareText() {
+// Construye uno de tres reportes: solo faltantes, solo repetidas, o ambos.
+// Formato Figuritas-style: una línea por prefijo con bandera.
+function buildMyShareText(mode /* "missing" | "duplicate" | "both" */) {
   const owned = state.album?.stickers || {};
   const missing = [], dupes = [];
   for (const s of STICKERS) {
@@ -555,18 +631,27 @@ function buildMyShareText() {
   }
   const ownedCount = TOTAL_STICKERS - missing.length;
   const name = state.album?.name || "Nuestro álbum";
-  return [
+  const header = [
     `⚽ *${name}* — Mundial 2026`,
     `Llevamos *${ownedCount}/${TOTAL_STICKERS}* pegadas (${Math.round(ownedCount*100/TOTAL_STICKERS)}%).`,
     ``,
-    `🔁 *Repetidas que tenemos (${dupes.length}):*`,
-    ...(dupes.length ? groupBySectionForShare(dupes) : ["Ninguna por ahora"]),
-    ``,
-    `🙏 *Nos faltan (${missing.length}):*`,
-    ...(missing.length ? groupBySectionForShare(missing) : ["¡Ninguna! Álbum lleno 🏆"]),
-    ``,
-    `¿Cambiamos? 🤝`,
-  ].join("\n");
+  ];
+
+  const blockMissing = () => [
+    `🙏 *Me faltan (${missing.length}):*`,
+    ...(missing.length ? groupByPrefixForShare(missing) : ["¡Ninguna! Álbum lleno 🏆"]),
+  ];
+  const blockDupes = () => [
+    `🔁 *Tengo repetidas (${dupes.length}):*`,
+    ...(dupes.length ? groupByPrefixForShare(dupes) : ["Ninguna por ahora"]),
+  ];
+
+  let body;
+  if (mode === "missing")       body = blockMissing();
+  else if (mode === "duplicate") body = blockDupes();
+  else                           body = [...blockDupes(), ``, ...blockMissing()];
+
+  return [...header, ...body, ``, `¿Cambiamos? 🤝`].join("\n");
 }
 
 function buildTradeText(friendAlbum, iCanGive, heCanGive) {
@@ -576,19 +661,38 @@ function buildTradeText(friendAlbum, iCanGive, heCanGive) {
     `Mira los intercambios que tenemos para el álbum del Mundial 2026:`,
     ``,
     `🔁 *Yo te doy (${iCanGive.length}):*`,
-    ...(iCanGive.length ? groupBySectionForShare(iCanGive) : ["—"]),
+    ...(iCanGive.length ? groupByPrefixForShare(iCanGive) : ["—"]),
     ``,
     `🤝 *Tú me das (${heCanGive.length}):*`,
-    ...(heCanGive.length ? groupBySectionForShare(heCanGive) : ["—"]),
+    ...(heCanGive.length ? groupByPrefixForShare(heCanGive) : ["—"]),
     ``,
     `¿Cuándo nos vemos para cambiar?`,
   ].join("\n");
 }
 
-function openShareModal(text) {
+// Estado del modal: qué modo está activo (afecta solo a "mi" reporte).
+let _activeShareMode = "both";
+
+function openShareModal(text, opts = {}) {
   $("#share-text").value = text;
   $("#btn-share-open").href = `https://wa.me/?text=${encodeURIComponent(text)}`;
   $("#share-modal").classList.remove("hidden");
+
+  // Mostrar / ocultar selector según el contexto. Sólo lo activamos cuando
+  // compartimos "lo mío" (no para intercambios con un amigo específico).
+  const modeRow = $("#share-modes");
+  if (modeRow) {
+    if (opts.showModes) {
+      modeRow.classList.remove("hidden");
+      // Pinta el chip activo
+      modeRow.querySelectorAll(".chip").forEach(c => {
+        c.classList.toggle("active", c.dataset.mode === _activeShareMode);
+      });
+    } else {
+      modeRow.classList.add("hidden");
+    }
+  }
+
   $("#share-text").oninput = () => {
     $("#btn-share-open").href = `https://wa.me/?text=${encodeURIComponent($("#share-text").value)}`;
   };

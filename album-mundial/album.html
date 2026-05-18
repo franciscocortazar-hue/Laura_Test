@@ -51,13 +51,20 @@
         <span><i class="dot missing"></i>Faltante</span>
         <span><i class="dot owned"></i>Pegada</span>
         <span><i class="dot duplicate"></i>Repetida (toca de nuevo para +1)</span>
+        <span class="legend-tip">💡 Toca la ✕ de una celda para borrarla.</span>
       </div>
 
       <div class="grid" id="grid" aria-live="polite"></div>
 
-      <div class="floating-share">
-        <button class="btn btn-primary" id="btn-share-whatsapp">
-          📲 Compartir mis faltantes/repes por WhatsApp
+      <div class="floating-share share-multi">
+        <button class="btn btn-ghost" id="btn-share-missing" title="Solo faltantes">
+          🙏 Faltantes
+        </button>
+        <button class="btn btn-ghost" id="btn-share-duplicates" title="Solo repetidas">
+          🔁 Repes
+        </button>
+        <button class="btn btn-primary" id="btn-share-whatsapp" title="Faltantes y repes">
+          📲 Ambos
         </button>
       </div>
     </section>
@@ -128,6 +135,11 @@
   <div class="modal hidden" id="share-modal" role="dialog" aria-modal="true">
     <div class="modal-card">
       <h3>Compartir por WhatsApp</h3>
+      <div class="share-modes hidden" id="share-modes">
+        <button class="chip" data-mode="missing">🙏 Faltantes</button>
+        <button class="chip" data-mode="duplicate">🔁 Repetidas</button>
+        <button class="chip active" data-mode="both">📲 Ambos</button>
+      </div>
       <p class="muted">Edita el mensaje si quieres, luego abre WhatsApp:</p>
       <textarea id="share-text" rows="10"></textarea>
       <div class="modal-actions">

@@ -122,3 +122,62 @@ export function shortLabel(sticker) {
   if (sticker.section_id === "panini") return "00";
   return String(sticker.n);
 }
+
+// Banderas (estilo Figuritas App) para reportes agrupados por prefijo.
+// El "00" de Panini y los FWC (intro/hosts/history) tienen su propio símbolo.
+export const PREFIX_EMOJI = {
+  "":     "⭐",      // panini
+  "FWC":  "📜",
+  "MEX":  "🇲🇽",
+  "RSA":  "🇿🇦",
+  "KOR":  "🇰🇷",
+  "CZE":  "🇨🇿",
+  "CAN":  "🇨🇦",
+  "BIH":  "🇧🇦",
+  "QAT":  "🇶🇦",
+  "SUI":  "🇨🇭",
+  "BRA":  "🇧🇷",
+  "MAR":  "🇲🇦",
+  "HAI":  "🇭🇹",
+  "SCO":  "🏴\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}",
+  "USA":  "🇺🇸",
+  "PAR":  "🇵🇾",
+  "AUS":  "🇦🇺",
+  "TUR":  "🇹🇷",
+  "GER":  "🇩🇪",
+  "CUW":  "🇨🇼",
+  "CIV":  "🇨🇮",
+  "ECU":  "🇪🇨",
+  "NED":  "🇳🇱",
+  "JPN":  "🇯🇵",
+  "SWE":  "🇸🇪",
+  "TUN":  "🇹🇳",
+  "BEL":  "🇧🇪",
+  "EGY":  "🇪🇬",
+  "IRN":  "🇮🇷",
+  "NZL":  "🇳🇿",
+  "ESP":  "🇪🇸",
+  "CPV":  "🇨🇻",
+  "KSA":  "🇸🇦",
+  "URU":  "🇺🇾",
+  "FRA":  "🇫🇷",
+  "SEN":  "🇸🇳",
+  "IRQ":  "🇮🇶",
+  "NOR":  "🇳🇴",
+  "ARG":  "🇦🇷",
+  "ALG":  "🇩🇿",
+  "AUT":  "🇦🇹",
+  "JOR":  "🇯🇴",
+  "POR":  "🇵🇹",
+  "COD":  "🇨🇩",
+  "UZB":  "🇺🇿",
+  "COL":  "🇨🇴",
+  "ENG":  "🏴\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}",
+  "CRO":  "🇭🇷",
+  "GHA":  "🇬🇭",
+  "PAN":  "🇵🇦",
+};
+
+export function prefixEmoji(prefix) {
+  return PREFIX_EMOJI[prefix] ?? "";
+}
