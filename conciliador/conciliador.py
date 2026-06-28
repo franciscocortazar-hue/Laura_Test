@@ -1150,6 +1150,86 @@ def append_log_row(control_path: Path, summary: dict) -> None:
     wb.save(str(control_path))
 
 
+def listar_faltantes(control_path: Path, log: RunLog) -> None:
+    """Lee el Excel de control y reporta las facturas sin correo recibido.
+
+    Una factura cuenta como 'faltante' si su fila tiene la col K (Conciliacion)
+    vacia, lo que significa que el script nunca proceso un correo para ese
+    NUMDOCTRA.
+
+    Genera:
+      - facturas_sin_correo.csv en la carpeta Control/
+      - Desglose por anio/mes en consola
+    """
+    import csv
+    from collections import Counter
+
+    wb = load_workbook(str(control_path), data_only=True)
+    ws = wb["Conciliación"]
+
+    faltantes: list[tuple] = []
+    total_filas = 0
+    procesadas = 0
+    for r in range(2, ws.max_row + 1):
+        numdoctra = ws.cell(row=r, column=COL["NUMDOCTRA"]).value
+        if numdoctra is None:
+            continue
+        total_filas += 1
+        conciliacion = ws.cell(row=r, column=COL["Conciliación"]).value
+        if conciliacion:
+            procesadas += 1
+            continue
+        fecha = ws.cell(row=r, column=COL["Fecha factura"]).value
+        valor = ws.cell(row=r, column=COL["Valor factura"]).value
+        faltantes.append((numdoctra, fecha, valor))
+
+    # Ordenar por fecha (string YYYY/MM/DD ordena lexicograficamente bien)
+    faltantes.sort(key=lambda x: (str(x[1]) if x[1] is not None else "0000/00/00", x[0]))
+
+    # CSV
+    csv_path = control_path.parent / "facturas_sin_correo.csv"
+    with csv_path.open("w", newline="", encoding="utf-8-sig") as f:
+        w = csv.writer(f)
+        w.writerow(["NUMDOCTRA", "Fecha", "Valor"])
+        for n, fe, va in faltantes:
+            w.writerow([n, fe, va])
+
+    # Console
+    print("\n" + "=" * 60)
+    print(f"  FACTURAS SIN CORREO RECIBIDO")
+    print("=" * 60)
+    print(f"  Total facturas en alcance (Excel):  {total_filas}")
+    print(f"  Procesadas (con conciliacion):       {procesadas}")
+    print(f"  Faltantes (sin correo):              {len(faltantes)}")
+    print(f"\n  CSV generado: {csv_path}")
+
+    # Desglose por anio/mes
+    print(f"\n  Desglose por mes (anio/mes : cantidad):")
+    months = Counter()
+    valores_mes = Counter()
+    for n, fe, va in faltantes:
+        if fe is None:
+            key = "sin_fecha"
+        else:
+            key = str(fe)[:7]  # YYYY/MM
+        months[key] += 1
+        if isinstance(va, (int, float)):
+            valores_mes[key] += va
+
+    for k in sorted(months.keys()):
+        cnt = months[k]
+        suma = valores_mes.get(k, 0)
+        bar = "▇" * min(int(cnt / 2), 50)
+        print(f"    {k}: {cnt:>4}  (${suma:>14,.0f})  {bar}")
+
+    total_valor = sum(valores_mes.values())
+    print(f"\n  Total valor de facturas faltantes: ${total_valor:,.0f}")
+    print("=" * 60)
+
+    log.info("listar_faltantes_done",
+             faltantes=len(faltantes), total=total_filas, csv=str(csv_path))
+
+
 # ============================================================
 # Pipeline principal
 # ============================================================
@@ -1284,6 +1364,9 @@ def main() -> None:
     parser.add_argument("--validate-source", action="store_true",
                         help="Solo lee y muestra el contenido de la fuente (sin Gmail ni nada). "
                              "Util para verificar que el PDF Zeus se parsea bien.")
+    parser.add_argument("--listar-faltantes", action="store_true",
+                        help="Lee el Excel de control y genera CSV con facturas "
+                             "que no tienen correo (cols G-O vacias). Muestra desglose por mes.")
     args = parser.parse_args()
 
     cfg = load_config()
@@ -1320,6 +1403,14 @@ def main() -> None:
         return
 
     control_path = cfg["control_dir"] / cfg["control_filename"]
+
+    if args.listar_faltantes:
+        if not control_path.exists():
+            log.error("control_missing_for_listing", path=str(control_path))
+            sys.exit(1)
+        listar_faltantes(control_path, log)
+        return
+
     bootstrap_control(control_path, cfg["source_excel"], log)
     expected = load_expected_numdoctras(cfg["source_excel"])
     log.info("expected_loaded", count=len(expected))
