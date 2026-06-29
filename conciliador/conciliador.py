@@ -1642,9 +1642,20 @@ def reextract_diferencias(control_path: Path, facturas_dir: Path,
             sin_files += 1
             continue
 
+        # Patron canonico: REM-FC<num>.pdf o REM-FC<num>_N.pdf
         rem_pdfs = sorted(folder.glob("REM-FC*.pdf"))
+        # Fallback: cualquier PDF que no sea el FAC-FC (carpetas viejas con
+        # nombres originales sin renombrar)
         if not rem_pdfs:
-            print(f"  [{idx}/{len(targets)}] FC{num}: ⚠ no hay REM-FC*.pdf, skip")
+            todos_pdf = sorted(folder.glob("*.pdf"))
+            fac_pdf = folder / f"FAC-FC{num}.pdf"
+            rem_pdfs = [p for p in todos_pdf if p.name != fac_pdf.name and not p.name.startswith("FAC-FC")]
+            if rem_pdfs:
+                print(f"  [{idx}/{len(targets)}] FC{num}: ℹ usando {len(rem_pdfs)} PDF(s) sin patron REM-FC: {[p.name for p in rem_pdfs[:2]]}")
+        if not rem_pdfs:
+            archivos = sorted(folder.iterdir())
+            preview = ", ".join(p.name for p in archivos[:5]) if archivos else "(vacia)"
+            print(f"  [{idx}/{len(targets)}] FC{num}: ⚠ sin remisiones extraibles, contenido: {preview}")
             sin_files += 1
             continue
 
