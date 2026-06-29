@@ -1591,12 +1591,21 @@ def _parse_fecha_safe(value) -> datetime | None:
     if isinstance(value, datetime):
         return value
     s = str(value).strip()
-    for fmt in ("%Y/%m/%d %H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y/%m/%d", "%Y-%m-%d",
-                "%d/%m/%Y %H:%M:%S", "%d/%m/%Y", "%Y/%m/%d %H:%M"):
+    # Probar formato completo primero (sin truncar)
+    for fmt in ("%Y/%m/%d %H:%M:%S", "%Y-%m-%d %H:%M:%S", "%d/%m/%Y %H:%M:%S",
+                "%Y/%m/%d %H:%M", "%Y-%m-%d %H:%M",
+                "%Y/%m/%d", "%Y-%m-%d", "%d/%m/%Y"):
         try:
-            return datetime.strptime(s[:len(fmt) if len(s) >= len(fmt) else len(s)], fmt)
-        except (ValueError, IndexError):
+            return datetime.strptime(s, fmt)
+        except ValueError:
             continue
+    # Fallback: tomar solo los primeros 10 chars (YYYY-MM-DD)
+    if len(s) >= 10:
+        for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%d/%m/%Y"):
+            try:
+                return datetime.strptime(s[:10], fmt)
+            except ValueError:
+                continue
     return None
 
 
@@ -2137,10 +2146,15 @@ def generar_informe_reclamacion(control_path: Path, facturas_dir: Path,
                 if any("," in b for b in botes_concat):
                     flags.append("⚠ Bote consolidado (factura agrupa varios tanqueos)")
                 # Flag: botes distintos entre legitimas e infladas
-                botes_leg_norm = set(str(l.get("bote") or "").strip().upper()
-                                     for l in legitimas if l.get("bote"))
-                botes_inf_norm = set(str(i.get("bote") or "").strip().upper()
-                                     for i in infladas if i.get("bote"))
+                # Normaliza: quita puntos, espacios extras, mayusculas — "L MARTI" == "L. MARTI"
+                def _norm_bote(b):
+                    if not b:
+                        return ""
+                    return re.sub(r"[\s.]+", "", str(b)).upper()
+                botes_leg_norm = set(_norm_bote(l.get("bote")) for l in legitimas if l.get("bote"))
+                botes_leg_norm.discard("")
+                botes_inf_norm = set(_norm_bote(i.get("bote")) for i in infladas if i.get("bote"))
+                botes_inf_norm.discard("")
                 if botes_leg_norm and botes_inf_norm and not (botes_leg_norm & botes_inf_norm):
                     flags.append("⚠ Botes distintos entre legitima e inflada")
                 # Flag: legitima con valor muy bajo (probable nota credito/ajuste)
