@@ -1585,14 +1585,88 @@ def update_control_row(
     return True
 
 
+def _safe_delete_folder(folder: Path, log: RunLog, num: str) -> str:
+    """Borra una carpeta con tolerancia a locks de Google Drive Desktop.
+
+    Estrategia escalonada:
+      1. shutil.rmtree con reintentos (Drive a veces libera el lock en segundos).
+      2. Si sigue fallando: borra archivo por archivo (al menos el FAC-FC*.pdf,
+         que es la "llave" de idempotencia).
+      3. Si NI siquiera el FAC-FC*.pdf se pudo borrar: log y skip (no crash).
+
+    Retorna: "deleted" | "partial" | "skipped".
+    """
+    import time
+    # Intento 1: rmtree completo con reintentos
+    for attempt in range(3):
+        try:
+            shutil.rmtree(folder)
+            log.info("folder_deleted_for_reprocess", numdoctra=num, folder=str(folder))
+            return "deleted"
+        except PermissionError as e:
+            if attempt < 2:
+                time.sleep(1.5 * (attempt + 1))  # 1.5s, 3s
+                continue
+            log.warn("folder_rmtree_locked", numdoctra=num, attempt=attempt + 1, error=str(e))
+        except FileNotFoundError:
+            return "deleted"
+
+    # Intento 2: borrar archivos individualmente. La idempotencia depende del
+    # FAC-FC*.pdf; mientras ESE archivo se borre, la factura se reprocesa.
+    fac_pdf = folder / f"FAC-FC{num}.pdf"
+    rem_glob = list(folder.glob("REM-FC*.pdf")) + list(folder.glob("remision_*.pdf"))
+    archivos = [fac_pdf] + rem_glob
+
+    fac_borrado = False
+    rem_fallos = 0
+    for f in archivos:
+        if not f.exists():
+            continue
+        ok = False
+        for attempt in range(3):
+            try:
+                f.unlink()
+                ok = True
+                break
+            except PermissionError:
+                time.sleep(1.0)
+                continue
+            except FileNotFoundError:
+                ok = True
+                break
+        if not ok:
+            if f == fac_pdf:
+                log.warn("fac_pdf_lock_skip", numdoctra=num, file=str(f))
+            else:
+                rem_fallos += 1
+
+        if f == fac_pdf and ok:
+            fac_borrado = True
+
+    if fac_borrado:
+        log.info("folder_partial_delete", numdoctra=num, rem_fallos=rem_fallos,
+                 folder=str(folder))
+        return "partial"
+
+    log.warn("folder_skip_locked", numdoctra=num, folder=str(folder),
+             hint="Cerrar Google Drive Backup&Sync o pausar la sync de esta carpeta y reintentar")
+    return "skipped"
+
+
 def reprocesar_diferencias(control_path: Path, facturas_dir: Path, log: RunLog) -> tuple[int, int]:
     """Borra las carpetas FC<num> de facturas con conciliacion 'Remision con valor diferente'.
 
     No toca el Excel; cuando el usuario corra el script normal, la idempotencia
-    detectara que la carpeta no existe y reprocesara esas facturas con el codigo
-    actualizado (que detecta multiples remisiones por archivo y filtra cedulas).
+    detectara que la carpeta no existe (o que el FAC-FC*.pdf no esta) y
+    reprocesara esas facturas con el codigo actualizado (que detecta multiples
+    remisiones por archivo, multiples paginas, y filtra cedulas).
 
-    Retorna (carpetas_borradas, total_marcados_en_excel).
+    Tolera locks de Google Drive Desktop: si una carpeta esta bloqueada,
+    intenta borrar al menos el FAC-FC*.pdf (suficiente para forzar reproceso)
+    y continua con las demas. Skipea carpetas totalmente bloqueadas con un
+    warning visible en vez de crashear todo el batch.
+
+    Retorna (carpetas_borradas_o_parciales, total_marcados_en_excel).
     """
     wb = load_workbook(str(control_path), data_only=True)
     ws = wb["Conciliación"]
@@ -1610,16 +1684,40 @@ def reprocesar_diferencias(control_path: Path, facturas_dir: Path, log: RunLog) 
             candidatos.append(num_str)
 
     deleted = 0
+    partial = 0
+    skipped = 0
+    skipped_nums: list[str] = []
     for num in candidatos:
         folder = facturas_dir / f"FC{num}"
-        if folder.exists():
-            shutil.rmtree(folder)
+        if not folder.exists():
+            continue
+        result = _safe_delete_folder(folder, log, num)
+        if result == "deleted":
             deleted += 1
-            log.info("folder_deleted_for_reprocess", numdoctra=num, folder=str(folder))
+        elif result == "partial":
+            partial += 1
+        elif result == "skipped":
+            skipped += 1
+            skipped_nums.append(num)
 
     log.info("reprocesar_diferencias_done",
-             marcados=len(candidatos), borrados=deleted)
-    return deleted, len(candidatos)
+             marcados=len(candidatos), borrados=deleted,
+             parciales=partial, bloqueados=skipped)
+
+    if skipped:
+        print("")
+        print(f"  ⚠ {skipped} carpeta(s) bloqueada(s) por Google Drive Desktop:")
+        for n in skipped_nums[:10]:
+            print(f"      - FC{n}")
+        if len(skipped_nums) > 10:
+            print(f"      ... y {len(skipped_nums) - 10} mas")
+        print("  Sugerencias para destrabar:")
+        print("    1. Pausar Google Drive Desktop (click en bandeja > Pausar sync)")
+        print("    2. Re-correr: python conciliador.py --reprocesar-diferencias")
+        print("    3. Reanudar Drive cuando termine")
+        print("")
+
+    return deleted + partial, len(candidatos)
 
 
 def _parse_fecha_safe(value) -> datetime | None:
