@@ -1588,68 +1588,85 @@ def update_control_row(
 def _safe_delete_folder(folder: Path, log: RunLog, num: str) -> str:
     """Borra una carpeta con tolerancia a locks de Google Drive Desktop.
 
-    Estrategia escalonada:
-      1. shutil.rmtree con reintentos (Drive a veces libera el lock en segundos).
-      2. Si sigue fallando: borra archivo por archivo (al menos el FAC-FC*.pdf,
-         que es la "llave" de idempotencia).
-      3. Si NI siquiera el FAC-FC*.pdf se pudo borrar: log y skip (no crash).
+    Estrategia escalonada (idempotencia depende de FAC-FC*.pdf existir):
+      1. shutil.rmtree con reintentos.
+      2. Borrar archivos individualmente con reintentos.
+      3. Si tras todo eso el FAC-FC*.pdf NO existe -> partial (basta).
+      4. Ultimo recurso: renombrar la carpeta a FC<num>.OLD-<ts>
+         (rename del dir suele pasar aunque los files esten lockeados).
+      5. Si nada funciona: log warning y continua (no crash).
 
     Retorna: "deleted" | "partial" | "skipped".
     """
     import time
+    fac_pdf = folder / f"FAC-FC{num}.pdf"
+
     # Intento 1: rmtree completo con reintentos
     for attempt in range(3):
         try:
             shutil.rmtree(folder)
             log.info("folder_deleted_for_reprocess", numdoctra=num, folder=str(folder))
             return "deleted"
+        except FileNotFoundError:
+            return "deleted"
         except PermissionError as e:
             if attempt < 2:
                 time.sleep(1.5 * (attempt + 1))  # 1.5s, 3s
                 continue
             log.warn("folder_rmtree_locked", numdoctra=num, attempt=attempt + 1, error=str(e))
-        except FileNotFoundError:
-            return "deleted"
+        except OSError as e:
+            if attempt < 2:
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            log.warn("folder_rmtree_err", numdoctra=num, attempt=attempt + 1, error=str(e))
 
-    # Intento 2: borrar archivos individualmente. La idempotencia depende del
-    # FAC-FC*.pdf; mientras ESE archivo se borre, la factura se reprocesa.
-    fac_pdf = folder / f"FAC-FC{num}.pdf"
+    # Intento 2: borrar archivos individualmente. rmtree puede haber borrado
+    # algunos antes de fallar -> chequear .exists() ANTES y DESPUES.
     rem_glob = list(folder.glob("REM-FC*.pdf")) + list(folder.glob("remision_*.pdf"))
     archivos = [fac_pdf] + rem_glob
-
-    fac_borrado = False
-    rem_fallos = 0
     for f in archivos:
         if not f.exists():
             continue
-        ok = False
         for attempt in range(3):
             try:
                 f.unlink()
-                ok = True
+                break
+            except FileNotFoundError:
                 break
             except PermissionError:
-                time.sleep(1.0)
-                continue
-            except FileNotFoundError:
-                ok = True
-                break
-        if not ok:
-            if f == fac_pdf:
-                log.warn("fac_pdf_lock_skip", numdoctra=num, file=str(f))
-            else:
-                rem_fallos += 1
+                if attempt < 2:
+                    time.sleep(1.0)
+                    continue
 
-        if f == fac_pdf and ok:
-            fac_borrado = True
-
-    if fac_borrado:
-        log.info("folder_partial_delete", numdoctra=num, rem_fallos=rem_fallos,
-                 folder=str(folder))
+    # Intento 3: si el FAC-FC*.pdf YA NO existe, la idempotencia esta rota -> OK
+    if not fac_pdf.exists():
+        rem_aun = list(folder.glob("REM-FC*.pdf")) + list(folder.glob("remision_*.pdf"))
+        if rem_aun:
+            log.info("folder_partial_delete", numdoctra=num,
+                     rem_lockeadas=len(rem_aun), folder=str(folder),
+                     warn="REM* aun lockeadas; el reproceso las sobreescribira si Drive las suelta")
+        else:
+            log.info("folder_partial_delete", numdoctra=num, folder=str(folder))
         return "partial"
 
+    # Intento 4: renombrar la carpeta (rename de dir tolera locks de files internos)
+    ts = int(time.time())
+    new_name = folder.parent / f"{folder.name}.OLD-{ts}"
+    for attempt in range(3):
+        try:
+            folder.rename(new_name)
+            log.info("folder_renamed_for_reprocess", numdoctra=num,
+                     old=str(folder), new=str(new_name))
+            return "deleted"
+        except FileNotFoundError:
+            return "deleted"
+        except (PermissionError, OSError):
+            if attempt < 2:
+                time.sleep(1.5 * (attempt + 1))
+                continue
+
     log.warn("folder_skip_locked", numdoctra=num, folder=str(folder),
-             hint="Cerrar Google Drive Backup&Sync o pausar la sync de esta carpeta y reintentar")
+             hint="Pausar Google Drive Desktop (icono bandeja > Pausar sync) y reintentar")
     return "skipped"
 
 
