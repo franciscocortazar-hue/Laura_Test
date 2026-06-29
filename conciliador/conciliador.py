@@ -1584,13 +1584,30 @@ def reprocesar_diferencias(control_path: Path, facturas_dir: Path, log: RunLog) 
     return deleted, len(candidatos)
 
 
+def _parse_fecha_safe(value) -> datetime | None:
+    """Intenta parsear una fecha en multiples formatos. Devuelve None si falla."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value
+    s = str(value).strip()
+    for fmt in ("%Y/%m/%d %H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y/%m/%d", "%Y-%m-%d",
+                "%d/%m/%Y %H:%M:%S", "%d/%m/%Y", "%Y/%m/%d %H:%M"):
+        try:
+            return datetime.strptime(s[:len(fmt) if len(s) >= len(fmt) else len(s)], fmt)
+        except (ValueError, IndexError):
+            continue
+    return None
+
+
 def generar_informe_duplicados(control_path: Path, facturas_dir: Path, log: RunLog) -> None:
     """Informe FORENSE de remisiones duplicadas (mismo numero en 2+ facturas).
 
     Para cada caso de duplicacion:
     - Lista las facturas donde aparece la misma remision_no
     - Compara valor, bote, fecha — clasifica fuerza del caso
-    - Calcula monto duplicado a recuperar
+    - Filtra reuso de consecutivo por cambio de sistema (gap temporal > 12 meses)
+    - Calcula monto duplicado a recuperar (solo casos validos)
     - Construye paths a los PDFs originales como evidencia documental
 
     Genera en la carpeta Control/:
@@ -1610,6 +1627,19 @@ def generar_informe_duplicados(control_path: Path, facturas_dir: Path, log: RunL
 
     ws = wb["Detalle Remisiones"]
 
+    # Construir indice {numdoctra: fecha_factura} desde Conciliacion
+    # Es mas confiable que fecha tanqueo (que viene de Vision) para detectar
+    # cambios de sistema.
+    cons_ws = wb["Conciliación"]
+    fecha_factura_por_num: dict = {}
+    for r in range(2, cons_ws.max_row + 1):
+        v = cons_ws.cell(row=r, column=COL["NUMDOCTRA"]).value
+        if v is None:
+            continue
+        f = cons_ws.cell(row=r, column=COL["Fecha factura"]).value
+        num_str = str(int(v) if isinstance(v, float) else v).strip()
+        fecha_factura_por_num[num_str] = f
+
     # Agrupar por remision_no
     by_rno: dict = defaultdict(list)
     for r in range(2, ws.max_row + 1):
@@ -1618,13 +1648,14 @@ def generar_informe_duplicados(control_path: Path, facturas_dir: Path, log: RunL
         if numdoctra is None or rno is None:
             continue
         bote = ws.cell(row=r, column=DETALLE_COL["Bote"]).value
-        fecha = ws.cell(row=r, column=DETALLE_COL["Fecha tanqueo"]).value
+        fecha_tanqueo = ws.cell(row=r, column=DETALLE_COL["Fecha tanqueo"]).value
         valor = ws.cell(row=r, column=DETALLE_COL["Valor remisión"]).value
         archivo = ws.cell(row=r, column=DETALLE_COL["Archivo origen"]).value
         rno_key = str(rno).strip()
         num_str = str(int(numdoctra) if isinstance(numdoctra, float) else numdoctra).strip()
         by_rno[rno_key].append({
-            "numdoctra": num_str, "bote": bote, "fecha": fecha,
+            "numdoctra": num_str, "bote": bote, "fecha_tanqueo": fecha_tanqueo,
+            "fecha_factura": fecha_factura_por_num.get(num_str),
             "valor": valor, "archivo": archivo or "",
         })
 
@@ -1634,6 +1665,10 @@ def generar_informe_duplicados(control_path: Path, facturas_dir: Path, log: RunL
         unique_numdoctras = set(o["numdoctra"] for o in occurrences)
         if len(unique_numdoctras) >= 2:
             duplicates[rno] = occurrences
+
+    # Umbral para "cambio de sistema": gap temporal entre apariciones > N dias
+    # Default 365 dias (1 año); configurable via env CONCILIADOR_GAP_SISTEMA_DIAS
+    gap_sistema_dias = int(os.environ.get("CONCILIADOR_GAP_SISTEMA_DIAS", "365"))
 
     out_dir = control_path.parent
 
@@ -1648,28 +1683,46 @@ def generar_informe_duplicados(control_path: Path, facturas_dir: Path, log: RunL
     cases = []
     for rno, occurrences in duplicates.items():
         valores = [o["valor"] for o in occurrences if isinstance(o["valor"], (int, float))]
-        botes = [o["bote"] for o in occurrences if o["bote"]]
+        botes_norm = [str(o["bote"]).strip().upper() for o in occurrences if o["bote"]]
 
         valores_iguales = len(set(valores)) <= 1 and len(valores) >= 2
-        botes_iguales = len(set(botes)) <= 1 and len(botes) >= 2
+        botes_iguales = len(set(botes_norm)) <= 1 and len(botes_norm) >= 2
 
-        if valores_iguales and botes_iguales:
-            evaluacion = "COBRO DUPLICADO CONFIRMADO"
+        # Calcular gap temporal entre las apariciones (usa fecha_factura primero,
+        # cae a fecha_tanqueo si no esta)
+        fechas_parsed = []
+        for o in occurrences:
+            f = _parse_fecha_safe(o.get("fecha_factura")) or _parse_fecha_safe(o.get("fecha_tanqueo"))
+            if f:
+                fechas_parsed.append(f)
+
+        gap_dias = None
+        if len(fechas_parsed) >= 2:
+            gap_dias = (max(fechas_parsed) - min(fechas_parsed)).days
+
+        # CASO ESPECIAL: cambio de sistema (gap > umbral)
+        # = NO ES DUPLICADO REAL, es reuso de consecutivo
+        if gap_dias is not None and gap_dias > gap_sistema_dias:
+            evaluacion = (f"NO APLICA — Reuso de consecutivo por cambio de sistema "
+                         f"(gap {gap_dias} días entre apariciones)")
+            fuerza = "no_aplica"
+            monto_duplicado = 0.0
+        elif valores_iguales and botes_iguales:
+            evaluacion = "COBRO DUPLICADO CONFIRMADO (mismo número, valor y bote)"
             fuerza = "alta"
+            monto_duplicado = valores[0] * (len(occurrences) - 1) if valores else 0.0
         elif valores_iguales:
             evaluacion = "SOSPECHA FUERTE (mismo valor, diferente bote)"
             fuerza = "alta"
+            monto_duplicado = valores[0] * (len(occurrences) - 1) if valores else 0.0
         elif botes_iguales:
             evaluacion = "SOSPECHA MEDIA (mismo bote, diferente valor)"
             fuerza = "media"
+            monto_duplicado = 0.0
         else:
             evaluacion = "REQUIERE INVESTIGACIÓN (valores y botes distintos)"
             fuerza = "baja"
-
-        # Monto duplicado: si valores iguales, sumar (N-1) veces el valor
-        monto_duplicado = 0.0
-        if valores_iguales and valores:
-            monto_duplicado = valores[0] * (len(occurrences) - 1)
+            monto_duplicado = 0.0
 
         cases.append({
             "rno": rno,
@@ -1679,10 +1732,11 @@ def generar_informe_duplicados(control_path: Path, facturas_dir: Path, log: RunL
             "monto_duplicado": monto_duplicado,
             "valores_iguales": valores_iguales,
             "botes_iguales": botes_iguales,
+            "gap_dias": gap_dias,
         })
 
     # Ordenar por fuerza (alta primero) y luego por monto duplicado desc
-    fuerza_order = {"alta": 0, "media": 1, "baja": 2}
+    fuerza_order = {"alta": 0, "media": 1, "baja": 2, "no_aplica": 3}
     cases.sort(key=lambda c: (fuerza_order[c["fuerza"]], -c["monto_duplicado"]))
 
     # Totales
@@ -1691,23 +1745,27 @@ def generar_informe_duplicados(control_path: Path, facturas_dir: Path, log: RunL
     casos_confirmados = sum(1 for c in cases if c["fuerza"] == "alta")
     casos_sospechosos = sum(1 for c in cases if c["fuerza"] == "media")
     casos_investigar = sum(1 for c in cases if c["fuerza"] == "baja")
+    casos_no_aplica = sum(1 for c in cases if c["fuerza"] == "no_aplica")
 
     # CSV plano (todas las apariciones)
     csv_path = out_dir / "informe_duplicados.csv"
     with csv_path.open("w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f)
-        w.writerow(["Remision_No", "Caso_idx", "NUMDOCTRA", "Fecha", "Bote",
-                    "Valor", "Archivo_origen", "Path_factura", "Path_remision",
-                    "Evaluacion", "Monto_duplicado_caso"])
+        w.writerow(["Remision_No", "Categoria", "NUMDOCTRA", "Fecha_factura",
+                    "Fecha_tanqueo", "Bote", "Valor", "Archivo_origen",
+                    "Path_factura", "Path_remision", "Evaluacion",
+                    "Gap_dias", "Monto_duplicado_caso"])
         for case in cases:
             for occ in case["occurrences"]:
                 path_factura = facturas_dir / f"FC{occ['numdoctra']}" / f"FAC-FC{occ['numdoctra']}.pdf"
                 path_remision = facturas_dir / f"FC{occ['numdoctra']}" / occ["archivo"]
                 w.writerow([
-                    case["rno"], case["rno"], occ["numdoctra"], occ["fecha"],
+                    case["rno"], case["fuerza"], occ["numdoctra"],
+                    occ["fecha_factura"] or "", occ["fecha_tanqueo"] or "",
                     occ["bote"] or "", occ["valor"] or "", occ["archivo"],
                     str(path_factura), str(path_remision),
-                    case["evaluacion"], case["monto_duplicado"],
+                    case["evaluacion"], case["gap_dias"] or "",
+                    case["monto_duplicado"],
                 ])
 
     # MD forense
@@ -1722,23 +1780,30 @@ def generar_informe_duplicados(control_path: Path, facturas_dir: Path, log: RunL
     L.append("## Resumen ejecutivo")
     L.append("")
     L.append("Como parte del proceso de conciliación de facturas de combustible, identificamos")
-    L.append(f"**{len(cases)} números de remisión que aparecen en más de una factura emitida por Todomar**,")
-    L.append("lo cual sugiere posibles cobros duplicados del mismo despacho físico.")
+    L.append(f"**{len(cases)} números de remisión que aparecen en más de una factura emitida por Todomar**.")
+    L.append("")
+    L.append("Cada caso fue evaluado con criterios objetivos (mismo valor, mismo bote, gap temporal")
+    L.append(f"entre apariciones) para distinguir cobros duplicados reales de reusos de consecutivo")
+    L.append(f"por cambio de sistema (gap > {gap_sistema_dias} días).")
     L.append("")
     L.append("| Métrica | Valor |")
     L.append("|---|---:|")
     L.append(f"| Números de remisión duplicados | **{len(cases)}** |")
     L.append(f"| Apariciones totales en facturas | {total_apariciones} |")
-    L.append(f"| Casos confirmados (mismo valor + bote) | {casos_confirmados} |")
-    L.append(f"| Casos con sospecha media | {casos_sospechosos} |")
-    L.append(f"| Casos por investigar | {casos_investigar} |")
+    L.append(f"| 🔴 Casos confirmados (mismo valor + bote) | {casos_confirmados} |")
+    L.append(f"| 🟠 Casos con sospecha media | {casos_sospechosos} |")
+    L.append(f"| 🟡 Casos por investigar | {casos_investigar} |")
+    L.append(f"| ✅ Casos descartados (reuso por cambio de sistema) | {casos_no_aplica} |")
     L.append(f"| **Monto total facturado en duplicado (a recuperar)** | **${total_monto_duplicado:,.0f}** |")
     L.append("")
-    L.append("Para cada caso, se presenta a continuación:")
-    L.append("- Las facturas donde aparece la misma remisión")
-    L.append("- Valor, bote y fecha de cada aparición (para verificación)")
-    L.append("- Evaluación de la evidencia")
-    L.append("- Rutas a los PDFs originales como respaldo documental")
+    L.append("**Criterios de clasificación:**")
+    L.append(f"- ✅ **NO APLICA**: gap temporal entre apariciones > {gap_sistema_dias} días → reuso de consecutivo por cambio de sistema, NO es duplicado real")
+    L.append("- 🔴 **ALTA — Confirmado**: mismo número + mismo valor + mismo bote (dentro del gap)")
+    L.append("- 🟠 **MEDIA**: mismo número + mismo valor, bote diferente (verificar)")
+    L.append("- 🟡 **BAJA**: mismo número pero valores o botes muy distintos (investigar manualmente)")
+    L.append("")
+    L.append("Para cada caso a continuación se presenta: las facturas afectadas, datos comparativos,")
+    L.append("evaluación, y rutas a los PDFs originales como respaldo documental.")
     L.append("")
     L.append("---")
     L.append("")
@@ -1747,22 +1812,27 @@ def generar_informe_duplicados(control_path: Path, facturas_dir: Path, log: RunL
     for idx, case in enumerate(cases, start=1):
         rno = case["rno"]
         occs = case["occurrences"]
-        emoji = {"alta": "🔴", "media": "🟠", "baja": "🟡"}[case["fuerza"]]
+        emoji = {"alta": "🔴", "media": "🟠", "baja": "🟡", "no_aplica": "✅"}[case["fuerza"]]
 
-        L.append(f"## Caso {idx}: Remisión No. **{rno}** — duplicada en {len(occs)} facturas {emoji}")
+        L.append(f"## Caso {idx}: Remisión No. **{rno}** — aparece en {len(occs)} facturas {emoji}")
         L.append("")
         L.append(f"**Evaluación**: {case['evaluacion']}")
+        if case["gap_dias"] is not None:
+            anios = case["gap_dias"] / 365.25
+            L.append(f"**Gap temporal entre apariciones**: {case['gap_dias']} días (~{anios:.1f} años)")
         if case["monto_duplicado"] > 0:
             L.append(f"**Monto duplicado (a recuperar)**: ${case['monto_duplicado']:,.0f}")
         L.append("")
         L.append("### Apariciones")
         L.append("")
-        L.append("| # | NUMDOCTRA | Fecha tanqueo | Bote | Valor | Archivo origen |")
-        L.append("|---|---|---|---|---:|---|")
+        L.append("| # | NUMDOCTRA | Fecha factura | Fecha tanqueo | Bote | Valor | Archivo origen |")
+        L.append("|---|---|---|---|---|---:|---|")
         for i, occ in enumerate(occs, start=1):
             valor_str = f"${occ['valor']:,.0f}" if isinstance(occ["valor"], (int, float)) else "—"
-            fecha_str = str(occ["fecha"]) if occ["fecha"] else "—"
-            L.append(f"| {i} | FC{occ['numdoctra']} | {fecha_str} | {occ['bote'] or '—'} | {valor_str} | `{occ['archivo']}` |")
+            fecha_fact_str = str(occ["fecha_factura"])[:10] if occ["fecha_factura"] else "—"
+            fecha_tanq_str = str(occ["fecha_tanqueo"])[:10] if occ["fecha_tanqueo"] else "—"
+            L.append(f"| {i} | FC{occ['numdoctra']} | {fecha_fact_str} | {fecha_tanq_str} | "
+                    f"{occ['bote'] or '—'} | {valor_str} | `{occ['archivo']}` |")
         L.append("")
 
         L.append("### Evidencia documental")
@@ -1814,8 +1884,9 @@ def generar_informe_duplicados(control_path: Path, facturas_dir: Path, log: RunL
     print(f"  🔴 Casos confirmados (alto):        {casos_confirmados}")
     print(f"  🟠 Casos sospecha media:            {casos_sospechosos}")
     print(f"  🟡 Casos por investigar:            {casos_investigar}")
+    print(f"  ✅ Descartados (cambio de sistema, >{gap_sistema_dias}d): {casos_no_aplica}")
     print("  " + "-" * 60)
-    print(f"  💰 MONTO DUPLICADO a recuperar:    ${total_monto_duplicado:>12,.0f}")
+    print(f"  💰 MONTO DUPLICADO REAL a recuperar: ${total_monto_duplicado:>12,.0f}")
     print("=" * 70)
     print(f"\n  Archivos generados en: {out_dir}")
     print(f"    • {csv_path.name}")
@@ -1823,16 +1894,23 @@ def generar_informe_duplicados(control_path: Path, facturas_dir: Path, log: RunL
     print("=" * 70)
 
     if cases:
-        print(f"\n  TOP 5 casos por monto duplicado:")
-        for c in sorted(cases, key=lambda x: -x["monto_duplicado"])[:5]:
-            print(f"    Remisión #{c['rno']:>8}  →  {len(c['occurrences'])} facturas  "
-                  f"${c['monto_duplicado']:>12,.0f}  [{c['fuerza']}]")
+        casos_relevantes = [c for c in cases if c["fuerza"] != "no_aplica"]
+        if casos_relevantes:
+            print(f"\n  TOP 5 casos relevantes (excluyendo cambio de sistema):")
+            for c in sorted(casos_relevantes, key=lambda x: -x["monto_duplicado"])[:5]:
+                gap = f"gap {c['gap_dias']}d" if c["gap_dias"] is not None else "gap ?"
+                print(f"    Remisión #{c['rno']:>8}  →  {len(c['occurrences'])} facturas  "
+                      f"${c['monto_duplicado']:>12,.0f}  [{c['fuerza']}, {gap}]")
+        else:
+            print(f"\n  ✅ Todos los duplicados se explican por cambio de sistema.")
+            print(f"     NO hay casos relevantes para reclamar.")
 
     log.info("informe_duplicados_done",
              casos=len(cases), apariciones=total_apariciones,
              monto_duplicado=total_monto_duplicado,
              confirmados=casos_confirmados, sospechosos=casos_sospechosos,
-             por_investigar=casos_investigar)
+             por_investigar=casos_investigar, no_aplica=casos_no_aplica,
+             gap_sistema_dias=gap_sistema_dias)
 
 
 def generar_informe(control_path: Path, log: RunLog) -> None:
