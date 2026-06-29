@@ -1913,6 +1913,606 @@ def generar_informe_duplicados(control_path: Path, facturas_dir: Path, log: RunL
              gap_sistema_dias=gap_sistema_dias)
 
 
+def generar_informe_reclamacion(control_path: Path, facturas_dir: Path,
+                                 tolerance: float, log: RunLog) -> None:
+    """Informe consolidado de reclamacion a Todomar.
+
+    Combina los 3 tipos de inconsistencias detectadas:
+      1. CRITICOS: factura inflada que reusa remision ya legitimamente cobrada
+         -> factura ENTERA objetable
+      2. SIN REMISION: factura llegada sin remision adjunta
+         -> objetable mientras no envien remision
+      3. SOBREFACTURA SIMPLE: factura > remision real (sin duplicacion)
+         -> solo la DIFERENCIA es objetable
+
+    Genera:
+      - INFORME_RECLAMACION_TODOMAR.md (documento formal para email)
+      - ANEXO_RECLAMACION.xlsx (Excel profesional con 4 hojas: Resumen,
+        Criticos, Sin Remision, Diferencias)
+    """
+    import csv
+    from collections import defaultdict
+
+    wb = load_workbook(str(control_path), data_only=True)
+    cons_ws = wb["Conciliación"]
+
+    # === 1) Recopilar datos por NUMDOCTRA desde Conciliacion ===
+    cons_index: dict = {}
+    for r in range(2, cons_ws.max_row + 1):
+        n = cons_ws.cell(row=r, column=COL["NUMDOCTRA"]).value
+        if n is None:
+            continue
+        num_str = str(int(n) if isinstance(n, float) else n).strip()
+        cons_index[num_str] = {
+            "numdoctra": num_str,
+            "fecha_factura": cons_ws.cell(row=r, column=COL["Fecha factura"]).value,
+            "bote": cons_ws.cell(row=r, column=COL["Nombre de Bote"]).value,
+            "valor_factura": cons_ws.cell(row=r, column=COL["Valor factura"]).value,
+            "valor_remision": cons_ws.cell(row=r, column=COL["Valor remisión"]).value,
+            "conciliacion": cons_ws.cell(row=r, column=COL["Conciliación"]).value or "",
+            "diferencia": cons_ws.cell(row=r, column=COL["Valor (diferencia)"]).value,
+            "observaciones": cons_ws.cell(row=r, column=COL["Observaciones"]).value or "",
+        }
+
+    # === 2) Detectar casos CRITICOS (mismo algoritmo que --informe-criticos) ===
+    criticos = []
+    nums_en_criticos = set()
+    if "Detalle Remisiones" in wb.sheetnames:
+        det_ws = wb["Detalle Remisiones"]
+        by_rno: dict = defaultdict(list)
+        for r in range(2, det_ws.max_row + 1):
+            numdoctra = det_ws.cell(row=r, column=DETALLE_COL["NUMDOCTRA Factura"]).value
+            rno = det_ws.cell(row=r, column=DETALLE_COL["Remisión No."]).value
+            if numdoctra is None or rno is None:
+                continue
+            num_str = str(int(numdoctra) if isinstance(numdoctra, float) else numdoctra).strip()
+            by_rno[str(rno).strip()].append({
+                "numdoctra": num_str,
+                "valor_remision_det": det_ws.cell(row=r, column=DETALLE_COL["Valor remisión"]).value,
+                "archivo": det_ws.cell(row=r, column=DETALLE_COL["Archivo origen"]).value or "",
+            })
+
+        gap_dias_max = int(os.environ.get("CONCILIADOR_GAP_SISTEMA_DIAS", "365"))
+        for rno, occs in by_rno.items():
+            if len(set(o["numdoctra"] for o in occs)) < 2:
+                continue
+            # Gap filter
+            fechas = []
+            for o in occs:
+                cd = cons_index.get(o["numdoctra"], {})
+                f = _parse_fecha_safe(cd.get("fecha_factura"))
+                if f:
+                    fechas.append(f)
+            if len(fechas) >= 2 and (max(fechas) - min(fechas)).days > gap_dias_max:
+                continue
+
+            legitimas, infladas = [], []
+            for o in occs:
+                cd = cons_index.get(o["numdoctra"], {})
+                vf = cd.get("valor_factura")
+                vrd = o.get("valor_remision_det")
+                if not isinstance(vf, (int, float)) or not isinstance(vrd, (int, float)):
+                    continue
+                if abs(vf - vrd) <= tolerance:
+                    legitimas.append({**o, **cd})
+                elif vf > vrd + tolerance:
+                    infladas.append({**o, **cd})
+
+            if legitimas and infladas:
+                vrr = min(l["valor_remision_det"] for l in legitimas)
+                for inf in infladas:
+                    nums_en_criticos.add(inf["numdoctra"])
+                criticos.append({
+                    "rno": rno, "valor_remision_real": vrr,
+                    "legitimas": legitimas, "infladas": infladas,
+                    "monto_objetable": sum(i["valor_factura"] for i in infladas),
+                })
+
+    # === 3) Facturas SIN REMISION ===
+    sin_remision = []
+    for num, d in cons_index.items():
+        if "no hay remisi" in d["conciliacion"].lower():
+            sin_remision.append(d)
+
+    # === 4) Diferencias SIMPLES (factura > remision, sin estar en criticos) ===
+    diferencias_simples = []
+    for num, d in cons_index.items():
+        if num in nums_en_criticos:
+            continue  # ya esta como critico, no duplicar
+        if "diferente" in d["conciliacion"].lower():
+            diff = d.get("diferencia")
+            if isinstance(diff, (int, float)) and diff > 0:
+                # factura > remision -> a favor de Nautiturismo
+                diferencias_simples.append(d)
+
+    # === Totales ===
+    total_criticos = sum(c["monto_objetable"] for c in criticos)
+    total_sin_rem = sum(d["valor_factura"] for d in sin_remision
+                       if isinstance(d["valor_factura"], (int, float)))
+    total_diferencias = sum(d["diferencia"] for d in diferencias_simples
+                           if isinstance(d["diferencia"], (int, float)))
+    n_facturas_infladas = sum(len(c["infladas"]) for c in criticos)
+
+    total_reclamable_total = total_criticos + total_diferencias
+    total_potencial_total = total_reclamable_total + total_sin_rem
+
+    out_dir = control_path.parent
+
+    # === Generar Excel anexo profesional ===
+    xlsx_path = out_dir / "ANEXO_RECLAMACION.xlsx"
+    _generar_excel_anexo_reclamacion(
+        xlsx_path, criticos, sin_remision, diferencias_simples,
+        total_criticos, total_sin_rem, total_diferencias,
+        total_reclamable_total, total_potencial_total,
+        n_facturas_infladas, facturas_dir,
+    )
+
+    # === Generar Markdown formal ===
+    md_path = out_dir / "INFORME_RECLAMACION_TODOMAR.md"
+    L = []
+    L.append("# Informe de Reclamación de Facturas de Combustible")
+    L.append("")
+    L.append("**De:** Nautiturismo SAS (NIT 901.459.048)")
+    L.append("**Para:** Departamento de Contabilidad — Todomar CHL S.A.S. (NIT 806.003.144)")
+    L.append(f"**Fecha del informe:** {datetime.now().strftime('%d/%m/%Y')}")
+    L.append("")
+    L.append("---")
+    L.append("")
+    L.append("## 1. Resumen ejecutivo")
+    L.append("")
+    L.append("En el marco del proceso de conciliación de las facturas de combustible emitidas por")
+    L.append("Todomar CHL S.A.S. a Nautiturismo SAS, identificamos tres tipos de inconsistencias que")
+    L.append("requieren atención y resolución por parte de su departamento contable.")
+    L.append("")
+    L.append("### Cifras consolidadas")
+    L.append("")
+    L.append("| Categoría | Facturas | Monto |")
+    L.append("|---|---:|---:|")
+    L.append(f"| 🔴 Casos críticos (remisión duplicada + sobrefactura) | {n_facturas_infladas} | ${total_criticos:,.0f} |")
+    L.append(f"| 🟡 Facturas sin remisión adjunta | {len(sin_remision)} | ${total_sin_rem:,.0f} |")
+    L.append(f"| 🔴 Diferencias factura > remisión (sobrefactura simple) | {len(diferencias_simples)} | ${total_diferencias:,.0f} |")
+    L.append(f"| **TOTAL OBJETABLE (reclamación directa)** | **{n_facturas_infladas + len(diferencias_simples)}** | **${total_reclamable_total:,.0f}** |")
+    L.append(f"| **TOTAL POTENCIAL** (incluyendo sin remisión) | **{n_facturas_infladas + len(diferencias_simples) + len(sin_remision)}** | **${total_potencial_total:,.0f}** |")
+    L.append("")
+    L.append("Toda la evidencia documental que sustenta este informe se encuentra en el archivo")
+    L.append("anexo **`ANEXO_RECLAMACION.xlsx`**, organizada en hojas por categoría con los")
+    L.append("paths a los PDFs originales de cada factura y remisión.")
+    L.append("")
+    L.append("---")
+    L.append("")
+
+    # === Sección 2: Casos críticos ===
+    L.append("## 2. Casos críticos — Remisión duplicada + sobrefactura")
+    L.append("")
+    if not criticos:
+        L.append("*No se detectaron casos críticos en el periodo analizado.*")
+        L.append("")
+    else:
+        L.append(f"Identificamos **{len(criticos)} casos** donde una misma Remisión No. fue utilizada")
+        L.append(f"como soporte de **{n_facturas_infladas} facturas distintas** con valores superiores")
+        L.append(f"al despacho real documentado. En estos casos, la factura inflada es **totalmente")
+        L.append(f"objetable** porque su soporte (la remisión) ya fue legítimamente facturado en otra factura.")
+        L.append("")
+        L.append(f"**Monto total objetable por casos críticos: ${total_criticos:,.0f}**")
+        L.append("")
+        L.append("### Detalle (TOP 10 casos por monto)")
+        L.append("")
+        L.append("| # | Remisión | Factura LEGÍTIMA | Factura INFLADA | V. real | V. cobrado | Sobrecobro |")
+        L.append("|---|---|---|---|---:|---:|---:|")
+        for idx, c in enumerate(sorted(criticos, key=lambda x: -x["monto_objetable"])[:10], start=1):
+            leg = c["legitimas"][0]
+            for inf in c["infladas"]:
+                L.append(f"| {idx} | {c['rno']} | FC{leg['numdoctra']} (${leg['valor_factura']:,.0f}) | "
+                         f"FC{inf['numdoctra']} | ${c['valor_remision_real']:,.0f} | "
+                         f"${inf['valor_factura']:,.0f} | +${inf['valor_factura'] - c['valor_remision_real']:,.0f} |")
+        if len(criticos) > 10:
+            L.append(f"| ... | y {len(criticos) - 10} casos más | | | | | |")
+        L.append("")
+        L.append("*Listado completo en hoja **Casos Críticos** del anexo Excel.*")
+        L.append("")
+    L.append("---")
+    L.append("")
+
+    # === Sección 3: Sin remisión ===
+    L.append("## 3. Facturas sin remisión adjunta")
+    L.append("")
+    if not sin_remision:
+        L.append("*No se detectaron facturas sin remisión en el periodo analizado.*")
+        L.append("")
+    else:
+        L.append(f"Las siguientes **{len(sin_remision)} facturas** fueron emitidas por Todomar y enviadas")
+        L.append("vía Facture, pero el archivo adjunto no contenía la remisión correspondiente como")
+        L.append("evidencia del despacho.")
+        L.append("")
+        L.append(f"**Monto total facturado sin soporte documental: ${total_sin_rem:,.0f}**")
+        L.append("")
+        L.append("Solicitamos comedidamente el **reenvío de las remisiones correspondientes** para")
+        L.append("soportar el despacho. En caso de que las remisiones no existan o no puedan ser")
+        L.append("provistas, se procederá a objetar el cobro de estas facturas.")
+        L.append("")
+        L.append("### Detalle (TOP 10 por valor)")
+        L.append("")
+        L.append("| NUMDOCTRA | Fecha factura | Valor facturado |")
+        L.append("|---|---|---:|")
+        sorted_sin_rem = sorted(sin_remision,
+                                key=lambda d: -(d["valor_factura"] if isinstance(d["valor_factura"], (int, float)) else 0))
+        for d in sorted_sin_rem[:10]:
+            vf = d["valor_factura"] if isinstance(d["valor_factura"], (int, float)) else 0
+            fecha_str = str(d["fecha_factura"])[:10] if d["fecha_factura"] else "—"
+            L.append(f"| FC{d['numdoctra']} | {fecha_str} | ${vf:,.0f} |")
+        if len(sin_remision) > 10:
+            L.append(f"| ... y {len(sin_remision) - 10} facturas más | | |")
+        L.append(f"| **TOTAL** | | **${total_sin_rem:,.0f}** |")
+        L.append("")
+        L.append("*Listado completo en hoja **Sin Remisión** del anexo Excel.*")
+        L.append("")
+    L.append("---")
+    L.append("")
+
+    # === Sección 4: Diferencias simples ===
+    L.append("## 4. Diferencias simples (factura > remisión, sin duplicación)")
+    L.append("")
+    if not diferencias_simples:
+        L.append("*No se detectaron diferencias simples adicionales en el periodo analizado.*")
+        L.append("")
+    else:
+        L.append(f"En las siguientes **{len(diferencias_simples)} facturas** el valor facturado supera al")
+        L.append("valor del despacho documentado en la remisión adjunta. A diferencia de los casos")
+        L.append("críticos (sección 2), aquí la remisión no está duplicada — solo el excedente es")
+        L.append("objetable.")
+        L.append("")
+        L.append(f"**Monto total a reclamar por sobrefactura simple: ${total_diferencias:,.0f}**")
+        L.append("")
+        L.append("Solicitamos la emisión de nota crédito por el valor de la diferencia en cada caso.")
+        L.append("")
+        L.append("### Detalle (TOP 10 por diferencia)")
+        L.append("")
+        L.append("| NUMDOCTRA | Fecha | Bote | V. factura | V. remisión | Diferencia |")
+        L.append("|---|---|---|---:|---:|---:|")
+        sorted_diffs = sorted(diferencias_simples,
+                              key=lambda d: -(d["diferencia"] if isinstance(d["diferencia"], (int, float)) else 0))
+        for d in sorted_diffs[:10]:
+            vf = d["valor_factura"] if isinstance(d["valor_factura"], (int, float)) else 0
+            vr = d["valor_remision"] if isinstance(d["valor_remision"], (int, float)) else 0
+            di = d["diferencia"] if isinstance(d["diferencia"], (int, float)) else 0
+            fecha_str = str(d["fecha_factura"])[:10] if d["fecha_factura"] else "—"
+            L.append(f"| FC{d['numdoctra']} | {fecha_str} | {d.get('bote') or '—'} | "
+                     f"${vf:,.0f} | ${vr:,.0f} | +${di:,.0f} |")
+        if len(diferencias_simples) > 10:
+            L.append(f"| ... y {len(diferencias_simples) - 10} facturas más | | | | | |")
+        L.append(f"| **TOTAL** | | | | | **${total_diferencias:,.0f}** |")
+        L.append("")
+        L.append("*Listado completo en hoja **Diferencias** del anexo Excel.*")
+        L.append("")
+    L.append("---")
+    L.append("")
+
+    # === Sección 5: Solicitud formal ===
+    L.append("## 5. Solicitud formal")
+    L.append("")
+    L.append("Con base en la evidencia documental anterior, **solicitamos formalmente** a Todomar CHL S.A.S.:")
+    L.append("")
+    n_solicitud = 1
+    if criticos:
+        L.append(f"{n_solicitud}. **Emisión de nota crédito por ${total_criticos:,.0f}** correspondiente al")
+        L.append(f"   monto íntegro de las {n_facturas_infladas} facturas infladas listadas en la **sección 2**")
+        L.append(f"   (casos críticos), las cuales reutilizan remisiones ya legítimamente cobradas en otras")
+        L.append(f"   facturas y carecen de soporte propio.")
+        L.append("")
+        n_solicitud += 1
+    if diferencias_simples:
+        L.append(f"{n_solicitud}. **Emisión de nota crédito por ${total_diferencias:,.0f}** correspondiente a")
+        L.append(f"   las diferencias detectadas en las {len(diferencias_simples)} facturas listadas en la")
+        L.append(f"   **sección 4**, donde el valor facturado supera al despacho real documentado.")
+        L.append("")
+        n_solicitud += 1
+    if sin_remision:
+        L.append(f"{n_solicitud}. **Reenvío de las remisiones correspondientes** a las {len(sin_remision)} facturas")
+        L.append(f"   listadas en la **sección 3** (monto total ${total_sin_rem:,.0f}). En caso de no existir")
+        L.append(f"   las remisiones, nota crédito por dicho valor.")
+        L.append("")
+        n_solicitud += 1
+    L.append(f"{n_solicitud}. **Explicación formal** sobre los procesos internos que permitieron la reutilización")
+    L.append(f"   de números de remisión como soporte de facturas distintas y las sobrefacturas detectadas.")
+    L.append("")
+    n_solicitud += 1
+    L.append(f"{n_solicitud}. **Implementación de controles** que impidan que un mismo número de remisión sea")
+    L.append(f"   adjuntado como soporte de más de una factura.")
+    L.append("")
+    n_solicitud += 1
+    L.append(f"{n_solicitud}. **Auditoría conjunta** del periodo no analizado en este informe para verificar si")
+    L.append(f"   el patrón se repite en otras facturas.")
+    L.append("")
+    L.append("---")
+    L.append("")
+    L.append("## 6. Anexos")
+    L.append("")
+    L.append("- **`INFORME_RECLAMACION_TODOMAR.md`** — este documento")
+    L.append("- **`ANEXO_RECLAMACION.xlsx`** — Excel profesional con 4 hojas:")
+    L.append("  - **Resumen** (cifras consolidadas + gráfica)")
+    L.append("  - **Casos Críticos** (cada caso con legítima vs inflada(s), montos, paths a PDFs)")
+    L.append("  - **Sin Remisión** (facturas sin soporte documental)")
+    L.append("  - **Diferencias** (sobrefactura simple, con paths a PDFs)")
+    L.append("- **PDFs originales** de las facturas y remisiones citadas (rutas indicadas en el Excel)")
+    L.append("")
+    L.append("---")
+    L.append("")
+    L.append("Quedamos atentos a su pronta respuesta para concertar reunión y dar seguimiento al")
+    L.append("proceso de conciliación.")
+    L.append("")
+    L.append("Cordialmente,")
+    L.append("")
+    L.append("Francisco Cortázar  ")
+    L.append("Nautiturismo SAS  ")
+    L.append("NIT 901.459.048")
+
+    md_path.write_text("\n".join(L), encoding="utf-8")
+
+    # === Consola ===
+    print("\n" + "=" * 72)
+    print("  INFORME DE RECLAMACIÓN — Consolidado para Todomar")
+    print("=" * 72)
+    print(f"  Periodo analizado: archivo de control actual")
+    print()
+    print(f"  🔴 Casos críticos:                 {len(criticos):>4} casos / {n_facturas_infladas:>4} facturas  ${total_criticos:>14,.0f}")
+    print(f"  🟡 Sin remisión adjunta:           {len(sin_remision):>4} facturas{'':>16}${total_sin_rem:>14,.0f}")
+    print(f"  🔴 Diferencias simples:            {len(diferencias_simples):>4} facturas{'':>16}${total_diferencias:>14,.0f}")
+    print("  " + "-" * 64)
+    print(f"  💰 TOTAL OBJETABLE (directo):                            ${total_reclamable_total:>14,.0f}")
+    print(f"  📊 TOTAL POTENCIAL (incl. sin remisión):                 ${total_potencial_total:>14,.0f}")
+    print("=" * 72)
+    print(f"\n  Archivos generados en: {out_dir}")
+    print(f"    • INFORME_RECLAMACION_TODOMAR.md  ← copiar al cuerpo del email")
+    print(f"    • ANEXO_RECLAMACION.xlsx          ← adjuntar al email")
+    print("=" * 72)
+
+    log.info("informe_reclamacion_done",
+             criticos=len(criticos), facturas_infladas=n_facturas_infladas,
+             sin_remision=len(sin_remision), diferencias=len(diferencias_simples),
+             total_criticos=total_criticos, total_sin_rem=total_sin_rem,
+             total_diferencias=total_diferencias,
+             total_reclamable=total_reclamable_total,
+             total_potencial=total_potencial_total)
+
+
+def _generar_excel_anexo_reclamacion(
+    xlsx_path: Path, criticos: list, sin_remision: list, diferencias: list,
+    tot_crit: float, tot_sin_rem: float, tot_dif: float,
+    tot_reclam: float, tot_potencial: float, n_infladas: int,
+    facturas_dir: Path,
+) -> None:
+    """Genera Excel profesional anexo con 4 hojas."""
+    wb = Workbook()
+
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    header_fill = PatternFill("solid", fgColor="305496")
+    money_font = Font(bold=True, size=12)
+    title_font = Font(bold=True, size=16, color="1F4E79")
+    total_font = Font(bold=True, size=12, color="9C0006")
+    centered = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    # =============== HOJA RESUMEN ===============
+    ws = wb.active
+    ws.title = "Resumen"
+    ws.sheet_view.showGridLines = False
+    ws.merge_cells("A1:D1")
+    ws["A1"] = "ANEXO — Reclamación a Todomar CHL S.A.S."
+    ws["A1"].font = title_font
+    ws["A1"].alignment = centered
+    ws.row_dimensions[1].height = 32
+
+    ws["A3"] = f"Fecha: {datetime.now().strftime('%d/%m/%Y')}"
+    ws["A4"] = "De: Nautiturismo SAS (NIT 901.459.048)"
+    ws["A5"] = "Para: Departamento de Contabilidad — Todomar CHL S.A.S. (NIT 806.003.144)"
+
+    # Tabla cifras
+    ws["A7"] = "Categoría"
+    ws["B7"] = "Cantidad"
+    ws["C7"] = "Monto"
+    for c in ["A7", "B7", "C7"]:
+        ws[c].font = header_font
+        ws[c].fill = header_fill
+        ws[c].alignment = centered
+        ws[c].border = THIN_BORDER
+
+    rows_resumen = [
+        ("🔴 Casos críticos (remisión duplicada + sobrefactura)", n_infladas, tot_crit, "FCE4E4"),
+        ("🟡 Facturas sin remisión adjunta", len(sin_remision), tot_sin_rem, "FFF2CC"),
+        ("🔴 Diferencias factura > remisión (sobrefactura simple)", len(diferencias), tot_dif, "FCE4E4"),
+    ]
+    for i, (label, cant, monto, color) in enumerate(rows_resumen, start=8):
+        ws.cell(row=i, column=1, value=label).fill = PatternFill("solid", fgColor=color)
+        ws.cell(row=i, column=2, value=cant).fill = PatternFill("solid", fgColor=color)
+        ws.cell(row=i, column=2).alignment = centered
+        c = ws.cell(row=i, column=3, value=monto)
+        c.number_format = MONEY_FMT
+        c.font = money_font
+        c.fill = PatternFill("solid", fgColor=color)
+        for col_letter in ["A", "B", "C"]:
+            ws[f"{col_letter}{i}"].border = THIN_BORDER
+
+    # TOTAL OBJETABLE
+    ws.cell(row=12, column=1, value="TOTAL OBJETABLE (reclamación directa)").font = total_font
+    ws.cell(row=12, column=1).fill = PatternFill("solid", fgColor="FCE4E4")
+    ws.cell(row=12, column=2, value=n_infladas + len(diferencias)).font = total_font
+    c = ws.cell(row=12, column=3, value=tot_reclam)
+    c.font = total_font
+    c.number_format = MONEY_FMT
+    c.fill = PatternFill("solid", fgColor="FCE4E4")
+    for col_letter in ["A", "B", "C"]:
+        ws[f"{col_letter}12"].border = THIN_BORDER
+
+    ws.cell(row=13, column=1, value="TOTAL POTENCIAL (incl. sin remisión)").font = Font(bold=True, size=11)
+    ws.cell(row=13, column=2, value=n_infladas + len(diferencias) + len(sin_remision)).font = Font(bold=True)
+    c = ws.cell(row=13, column=3, value=tot_potencial)
+    c.font = Font(bold=True, size=11)
+    c.number_format = MONEY_FMT
+    for col_letter in ["A", "B", "C"]:
+        ws[f"{col_letter}13"].border = THIN_BORDER
+
+    ws.column_dimensions["A"].width = 55
+    ws.column_dimensions["B"].width = 12
+    ws.column_dimensions["C"].width = 22
+
+    # Nota
+    ws.merge_cells("A15:D15")
+    ws["A15"] = "Las hojas siguientes contienen el detalle por categoría con paths a los PDFs originales."
+    ws["A15"].font = Font(italic=True, size=10, color="595959")
+
+    # =============== HOJA CASOS CRÍTICOS ===============
+    ws2 = wb.create_sheet("Casos Críticos")
+    headers_crit = ["Remisión No.", "Factura LEGÍTIMA", "Fecha legítima", "Bote legítima",
+                    "V. factura legítima", "V. remisión real",
+                    "Factura INFLADA", "Fecha inflada", "Bote inflada",
+                    "V. factura inflada", "Sobrecobro", "Monto objetable",
+                    "PDF Factura inflada", "PDF Remisión inflada"]
+    for i, h in enumerate(headers_crit, start=1):
+        c = ws2.cell(row=1, column=i, value=h)
+        c.font = header_font
+        c.fill = header_fill
+        c.alignment = centered
+        c.border = THIN_BORDER
+    ws2.row_dimensions[1].height = 32
+    ws2.freeze_panes = "A2"
+
+    row = 2
+    for c in sorted(criticos, key=lambda x: -x["monto_objetable"]):
+        leg = c["legitimas"][0]
+        for inf in c["infladas"]:
+            ws2.cell(row=row, column=1, value=c["rno"])
+            ws2.cell(row=row, column=2, value=f"FC{leg['numdoctra']}")
+            ws2.cell(row=row, column=3, value=str(leg.get("fecha_factura") or "")[:10])
+            ws2.cell(row=row, column=4, value=leg.get("bote") or "")
+            cf_leg = ws2.cell(row=row, column=5, value=leg.get("valor_factura"))
+            cf_leg.number_format = MONEY_FMT
+            cr = ws2.cell(row=row, column=6, value=c["valor_remision_real"])
+            cr.number_format = MONEY_FMT
+            ws2.cell(row=row, column=7, value=f"FC{inf['numdoctra']}")
+            ws2.cell(row=row, column=8, value=str(inf.get("fecha_factura") or "")[:10])
+            ws2.cell(row=row, column=9, value=inf.get("bote") or "")
+            cf_inf = ws2.cell(row=row, column=10, value=inf["valor_factura"])
+            cf_inf.number_format = MONEY_FMT
+            cs = ws2.cell(row=row, column=11, value=inf["valor_factura"] - c["valor_remision_real"])
+            cs.number_format = MONEY_FMT
+            co = ws2.cell(row=row, column=12, value=inf["valor_factura"])
+            co.number_format = MONEY_FMT
+            co.font = Font(bold=True, color="9C0006")
+            # Hyperlinks a los PDFs
+            path_fac = facturas_dir / f"FC{inf['numdoctra']}" / f"FAC-FC{inf['numdoctra']}.pdf"
+            path_rem = facturas_dir / f"FC{inf['numdoctra']}" / inf.get("archivo", "")
+            set_hyperlink_cell(ws2.cell(row=row, column=13), path_fac, f"FAC-FC{inf['numdoctra']}.pdf")
+            set_hyperlink_cell(ws2.cell(row=row, column=14), path_rem, inf.get("archivo", ""))
+            for col_idx in range(1, 15):
+                ws2.cell(row=row, column=col_idx).border = THIN_BORDER
+                if row % 2 == 0:
+                    ws2.cell(row=row, column=col_idx).fill = ZEBRA_FILL
+            row += 1
+
+    # Total row
+    ws2.cell(row=row, column=11, value="TOTAL OBJETABLE:").font = total_font
+    ct = ws2.cell(row=row, column=12, value=tot_crit)
+    ct.number_format = MONEY_FMT
+    ct.font = total_font
+    for col_letter in ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]:
+        ws2[f"{col_letter}{row}"].fill = PatternFill("solid", fgColor="FCE4E4")
+
+    widths_crit = {"A": 14, "B": 14, "C": 13, "D": 16, "E": 18, "F": 16, "G": 14,
+                   "H": 13, "I": 16, "J": 18, "K": 16, "L": 18, "M": 22, "N": 30}
+    for letter, w in widths_crit.items():
+        ws2.column_dimensions[letter].width = w
+    ws2.auto_filter.ref = f"A1:N{row-1}"
+
+    # =============== HOJA SIN REMISIÓN ===============
+    ws3 = wb.create_sheet("Sin Remisión")
+    headers_sr = ["NUMDOCTRA", "Fecha factura", "Valor facturado", "PDF Factura"]
+    for i, h in enumerate(headers_sr, start=1):
+        c = ws3.cell(row=1, column=i, value=h)
+        c.font = header_font
+        c.fill = header_fill
+        c.alignment = centered
+        c.border = THIN_BORDER
+    ws3.row_dimensions[1].height = 28
+    ws3.freeze_panes = "A2"
+
+    sorted_sr = sorted(sin_remision,
+                       key=lambda d: -(d["valor_factura"] if isinstance(d["valor_factura"], (int, float)) else 0))
+    row = 2
+    for d in sorted_sr:
+        ws3.cell(row=row, column=1, value=f"FC{d['numdoctra']}")
+        ws3.cell(row=row, column=2, value=str(d["fecha_factura"])[:10] if d["fecha_factura"] else "")
+        cv = ws3.cell(row=row, column=3, value=d["valor_factura"])
+        cv.number_format = MONEY_FMT
+        path_fac = facturas_dir / f"FC{d['numdoctra']}" / f"FAC-FC{d['numdoctra']}.pdf"
+        set_hyperlink_cell(ws3.cell(row=row, column=4), path_fac, f"FAC-FC{d['numdoctra']}.pdf")
+        for col_idx in range(1, 5):
+            ws3.cell(row=row, column=col_idx).border = THIN_BORDER
+            if row % 2 == 0:
+                ws3.cell(row=row, column=col_idx).fill = ZEBRA_FILL
+        row += 1
+    # Total
+    ws3.cell(row=row, column=2, value="TOTAL:").font = total_font
+    ct = ws3.cell(row=row, column=3, value=tot_sin_rem)
+    ct.number_format = MONEY_FMT
+    ct.font = total_font
+    for col_letter in ["A", "B", "C", "D"]:
+        ws3[f"{col_letter}{row}"].fill = PatternFill("solid", fgColor="FFF2CC")
+    ws3.column_dimensions["A"].width = 14
+    ws3.column_dimensions["B"].width = 14
+    ws3.column_dimensions["C"].width = 20
+    ws3.column_dimensions["D"].width = 32
+    ws3.auto_filter.ref = f"A1:D{row-1}"
+
+    # =============== HOJA DIFERENCIAS ===============
+    ws4 = wb.create_sheet("Diferencias")
+    headers_df = ["NUMDOCTRA", "Fecha factura", "Bote", "V. factura", "V. remisión",
+                  "Diferencia (a reclamar)", "PDF Factura", "PDF Remisión"]
+    for i, h in enumerate(headers_df, start=1):
+        c = ws4.cell(row=1, column=i, value=h)
+        c.font = header_font
+        c.fill = header_fill
+        c.alignment = centered
+        c.border = THIN_BORDER
+    ws4.row_dimensions[1].height = 28
+    ws4.freeze_panes = "A2"
+
+    sorted_df = sorted(diferencias,
+                       key=lambda d: -(d["diferencia"] if isinstance(d["diferencia"], (int, float)) else 0))
+    row = 2
+    for d in sorted_df:
+        ws4.cell(row=row, column=1, value=f"FC{d['numdoctra']}")
+        ws4.cell(row=row, column=2, value=str(d["fecha_factura"])[:10] if d["fecha_factura"] else "")
+        ws4.cell(row=row, column=3, value=d.get("bote") or "")
+        cf = ws4.cell(row=row, column=4, value=d["valor_factura"])
+        cf.number_format = MONEY_FMT
+        cr = ws4.cell(row=row, column=5, value=d["valor_remision"])
+        cr.number_format = MONEY_FMT
+        cd = ws4.cell(row=row, column=6, value=d["diferencia"])
+        cd.number_format = MONEY_FMT
+        cd.font = Font(bold=True, color="9C0006")
+        path_fac = facturas_dir / f"FC{d['numdoctra']}" / f"FAC-FC{d['numdoctra']}.pdf"
+        path_rem = facturas_dir / f"FC{d['numdoctra']}" / f"REM-FC{d['numdoctra']}.pdf"
+        set_hyperlink_cell(ws4.cell(row=row, column=7), path_fac, f"FAC-FC{d['numdoctra']}.pdf")
+        set_hyperlink_cell(ws4.cell(row=row, column=8), path_rem, f"REM-FC{d['numdoctra']}.pdf")
+        for col_idx in range(1, 9):
+            ws4.cell(row=row, column=col_idx).border = THIN_BORDER
+            if row % 2 == 0:
+                ws4.cell(row=row, column=col_idx).fill = ZEBRA_FILL
+        row += 1
+    # Total
+    ws4.cell(row=row, column=5, value="TOTAL A RECLAMAR:").font = total_font
+    ct = ws4.cell(row=row, column=6, value=tot_dif)
+    ct.number_format = MONEY_FMT
+    ct.font = total_font
+    for col_letter in ["A", "B", "C", "D", "E", "F", "G", "H"]:
+        ws4[f"{col_letter}{row}"].fill = PatternFill("solid", fgColor="FCE4E4")
+    widths_df = {"A": 14, "B": 14, "C": 16, "D": 16, "E": 16, "F": 22, "G": 22, "H": 24}
+    for letter, w in widths_df.items():
+        ws4.column_dimensions[letter].width = w
+    ws4.auto_filter.ref = f"A1:H{row-1}"
+
+    wb.save(str(xlsx_path))
+
+
 def generar_informe_criticos(control_path: Path, facturas_dir: Path,
                               tolerance: float, log: RunLog) -> None:
     """Informe CRITICO: detecta el patron forense mas fuerte =
@@ -3216,6 +3816,11 @@ def main() -> None:
                              "identifica la factura legitima vs la(s) inflada(s), "
                              "calcula el monto total objetable, y arma argumentacion "
                              "formal lista para reclamacion.")
+    parser.add_argument("--informe-reclamacion", action="store_true",
+                        help="Informe CONSOLIDADO de reclamacion a Todomar. Combina "
+                             "los 3 casos: criticos (duplicada+inflada), sin remision, "
+                             "y diferencias simples. Genera MD profesional + Excel "
+                             "anexo con 4 hojas, listo para presentar a la contadora.")
     args = parser.parse_args()
 
     cfg = load_config()
@@ -3307,6 +3912,14 @@ def main() -> None:
             sys.exit(1)
         generar_informe_criticos(control_path, cfg["facturas_dir"],
                                   cfg["tolerance_pesos"], log)
+        return
+
+    if args.informe_reclamacion:
+        if not control_path.exists():
+            log.error("control_missing_for_informe_reclam", path=str(control_path))
+            sys.exit(1)
+        generar_informe_reclamacion(control_path, cfg["facturas_dir"],
+                                     cfg["tolerance_pesos"], log)
         return
 
     if args.rebuild_resumen:
