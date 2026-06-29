@@ -2289,6 +2289,7 @@ def generar_informe_reclamacion(control_path: Path, facturas_dir: Path,
         total_reclamable_total, total_potencial_total,
         n_facturas_infladas, facturas_dir,
         total_solido=total_solido, total_verificar=total_verificar,
+        cons_index=cons_index, detalle_por_factura=detalle_por_factura,
     )
 
     # === Generar Markdown formal ===
@@ -2525,6 +2526,8 @@ def _generar_excel_anexo_reclamacion(
     tot_reclam: float, tot_potencial: float, n_infladas: int,
     facturas_dir: Path,
     total_solido: float = 0, total_verificar: float = 0,
+    cons_index: dict | None = None,
+    detalle_por_factura: dict | None = None,
 ) -> None:
     """Genera Excel profesional anexo con 4 hojas."""
     wb = Workbook()
@@ -2802,6 +2805,151 @@ def _generar_excel_anexo_reclamacion(
     for letter, w in widths_df.items():
         ws4.column_dimensions[letter].width = w
     ws4.auto_filter.ref = f"A1:K{row-1}"
+
+    # =============== HOJA UNIVERSO COMPLETO ===============
+    if cons_index:
+        ws5 = wb.create_sheet("Universo Completo")
+        headers_uni = ["NUMDOCTRA", "Fecha factura", "Bote", "Valor factura",
+                       "Valor remisión", "# Remisiones", "Conciliación",
+                       "Diferencia", "Observaciones", "PDF Factura", "PDF Remisión"]
+        for i, h in enumerate(headers_uni, start=1):
+            c = ws5.cell(row=1, column=i, value=h)
+            c.font = header_font
+            c.fill = header_fill
+            c.alignment = centered
+            c.border = THIN_BORDER
+        ws5.row_dimensions[1].height = 32
+        ws5.freeze_panes = "A2"
+
+        # Fills por estado
+        fill_ok = PatternFill("solid", fgColor="E2F0D9")
+        fill_amarillo = PatternFill("solid", fgColor="FFF2CC")
+        fill_rojo = PatternFill("solid", fgColor="FCE4E4")
+        fill_naranja = PatternFill("solid", fgColor="FCE6C9")
+        fill_sin_correo = PatternFill("solid", fgColor="FFE699")
+
+        # Ordenar por NUMDOCTRA (numérico)
+        def _sort_key(num_str):
+            try:
+                return int(num_str)
+            except (ValueError, TypeError):
+                return 0
+        sorted_nums = sorted(cons_index.keys(), key=_sort_key)
+
+        # Contadores para el resumen al final
+        contadores = {"OK": 0, "Sin remisión": 0, "Diferente": 0,
+                     "Pendiente": 0, "Sin correo": 0, "Otro": 0}
+        montos = {"OK": 0.0, "Sin remisión": 0.0, "Diferente": 0.0,
+                 "Pendiente": 0.0, "Sin correo": 0.0, "Otro": 0.0}
+
+        row = 2
+        for num in sorted_nums:
+            d = cons_index[num]
+            conc = str(d.get("conciliacion") or "")
+            obs = str(d.get("observaciones") or "")
+            vf = d.get("valor_factura") if isinstance(d.get("valor_factura"), (int, float)) else 0
+
+            # Determinar fill + categoria
+            fill = None
+            cat = "Otro"
+            if "OK" in conc and "Pendiente" not in conc:
+                fill, cat = fill_ok, "OK"
+            elif "No hay remisi" in conc.lower():
+                fill, cat = fill_amarillo, "Sin remisión"
+            elif "diferente" in conc.lower():
+                fill, cat = fill_rojo, "Diferente"
+            elif "Pendiente" in conc:
+                fill, cat = fill_naranja, "Pendiente"
+            elif "No se encontró" in obs or "No se encontro" in obs:
+                fill, cat = fill_sin_correo, "Sin correo"
+            contadores[cat] += 1
+            montos[cat] += vf
+
+            # # remisiones
+            n_rem = len(detalle_por_factura.get(num, [])) if detalle_por_factura else 0
+
+            ws5.cell(row=row, column=1, value=f"FC{num}")
+            ws5.cell(row=row, column=2, value=str(d.get("fecha_factura") or "")[:10])
+            ws5.cell(row=row, column=3, value=d.get("bote") or "")
+            c_vf = ws5.cell(row=row, column=4, value=d.get("valor_factura"))
+            if isinstance(d.get("valor_factura"), (int, float)):
+                c_vf.number_format = MONEY_FMT
+            c_vr = ws5.cell(row=row, column=5, value=d.get("valor_remision"))
+            if isinstance(d.get("valor_remision"), (int, float)):
+                c_vr.number_format = MONEY_FMT
+            ws5.cell(row=row, column=6, value=n_rem)
+            ws5.cell(row=row, column=7, value=conc)
+            c_dif = ws5.cell(row=row, column=8, value=d.get("diferencia"))
+            if isinstance(d.get("diferencia"), (int, float)):
+                c_dif.number_format = MONEY_FMT
+            c_obs = ws5.cell(row=row, column=9, value=obs)
+            c_obs.alignment = Alignment(wrap_text=True, vertical="center")
+            # Hyperlinks
+            path_fac = facturas_dir / f"FC{num}" / f"FAC-FC{num}.pdf"
+            path_rem = facturas_dir / f"FC{num}" / f"REM-FC{num}.pdf"
+            if path_fac.exists() or cat != "Sin correo":
+                set_hyperlink_cell(ws5.cell(row=row, column=10), path_fac, f"FAC-FC{num}.pdf")
+            if path_rem.exists() or cat in ("OK", "Diferente", "Pendiente"):
+                set_hyperlink_cell(ws5.cell(row=row, column=11), path_rem, f"REM-FC{num}.pdf")
+            # Aplicar fill
+            if fill:
+                for col_idx in range(1, 12):
+                    ws5.cell(row=row, column=col_idx).fill = fill
+                    ws5.cell(row=row, column=col_idx).border = THIN_BORDER
+            row += 1
+
+        # Fila TOTAL al final
+        ws5.cell(row=row, column=3, value="TOTAL UNIVERSO:").font = total_font
+        ws5.cell(row=row, column=4, value=sum(montos.values())).number_format = MONEY_FMT
+        ws5.cell(row=row, column=4).font = total_font
+        for letter in ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"]:
+            ws5[f"{letter}{row}"].fill = PatternFill("solid", fgColor="D9E1F2")
+
+        # Resumen al lado (cols M-O), 2 filas por estado
+        ws5.cell(row=1, column=13, value="RESUMEN POR ESTADO").font = Font(bold=True, size=12)
+        ws5.cell(row=1, column=13).fill = header_fill
+        ws5.cell(row=1, column=13).font = Font(bold=True, color="FFFFFF", size=12)
+        for letter in ["M", "N", "O"]:
+            ws5[f"{letter}1"].fill = header_fill
+        ws5.cell(row=2, column=13, value="Estado")
+        ws5.cell(row=2, column=14, value="Cantidad")
+        ws5.cell(row=2, column=15, value="Monto facturado")
+        for c_letter in ["M2", "N2", "O2"]:
+            ws5[c_letter].font = Font(bold=True)
+            ws5[c_letter].fill = PatternFill("solid", fgColor="D9E1F2")
+        emoji_map = {"OK": "🟢 OK", "Sin remisión": "🟡 Sin remisión",
+                     "Diferente": "🔴 Diferente", "Pendiente": "🟠 Pendiente",
+                     "Sin correo": "📭 Sin correo", "Otro": "❓ Otro"}
+        fill_map = {"OK": fill_ok, "Sin remisión": fill_amarillo,
+                   "Diferente": fill_rojo, "Pendiente": fill_naranja,
+                   "Sin correo": fill_sin_correo, "Otro": None}
+        rr = 3
+        for cat in ["OK", "Sin remisión", "Diferente", "Pendiente", "Sin correo", "Otro"]:
+            if contadores[cat] == 0 and cat == "Otro":
+                continue
+            ws5.cell(row=rr, column=13, value=emoji_map[cat])
+            ws5.cell(row=rr, column=14, value=contadores[cat])
+            cm = ws5.cell(row=rr, column=15, value=montos[cat])
+            cm.number_format = MONEY_FMT
+            if fill_map[cat]:
+                for letter in ["M", "N", "O"]:
+                    ws5[f"{letter}{rr}"].fill = fill_map[cat]
+            rr += 1
+        # Total resumen
+        ws5.cell(row=rr, column=13, value="TOTAL").font = total_font
+        ws5.cell(row=rr, column=14, value=sum(contadores.values())).font = total_font
+        ct = ws5.cell(row=rr, column=15, value=sum(montos.values()))
+        ct.number_format = MONEY_FMT
+        ct.font = total_font
+        for letter in ["M", "N", "O"]:
+            ws5[f"{letter}{rr}"].fill = PatternFill("solid", fgColor="D9E1F2")
+
+        widths_uni = {"A": 12, "B": 12, "C": 22, "D": 16, "E": 16, "F": 10,
+                      "G": 32, "H": 14, "I": 40, "J": 22, "K": 22,
+                      "M": 22, "N": 12, "O": 18}
+        for letter, w in widths_uni.items():
+            ws5.column_dimensions[letter].width = w
+        ws5.auto_filter.ref = f"A1:K{row-1}"
 
     wb.save(str(xlsx_path))
 
