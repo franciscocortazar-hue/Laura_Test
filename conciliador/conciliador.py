@@ -627,9 +627,15 @@ def vision_extract_remision(pdf_path: Path, api_key: str, log: "RunLog | None" =
         return _empty_vision_result(pdf_path, "pdf_render_failed")
 
     img_b64 = base64.b64encode(png_bytes).decode()
-    client = anthropic.Anthropic(api_key=api_key)
-    model = os.environ.get("ANTHROPIC_VISION_MODEL", "claude-sonnet-4-6")
-    max_retries = int(os.environ.get("ANTHROPIC_MAX_RETRIES", "4"))
+    # Timeout duro: 60s por llamada para evitar cuelgues indefinidos.
+    # Configurable via env var ANTHROPIC_TIMEOUT (default 60).
+    timeout_sec = float(os.environ.get("ANTHROPIC_TIMEOUT", "60"))
+    client = anthropic.Anthropic(api_key=api_key, timeout=timeout_sec)
+    # Cambio: default a Haiku 4.5 (5x mas rapido, ~10x mas barato).
+    # Sonnet 4.6 sigue disponible via ANTHROPIC_VISION_MODEL=claude-sonnet-4-6
+    model = os.environ.get("ANTHROPIC_VISION_MODEL", "claude-haiku-4-5-20251001")
+    # Cambio: max retries 4 -> 2 para que un fallo no congele 30s+
+    max_retries = int(os.environ.get("ANTHROPIC_MAX_RETRIES", "2"))
 
     def _call_vision():
         return client.messages.create(
