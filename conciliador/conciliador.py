@@ -3561,6 +3561,279 @@ def mark_missing_facturas(control_path: Path, log: RunLog) -> int:
     return marked
 
 
+def agregar_hallazgos_a_resumen(control_path: Path, facturas_dir: Path,
+                                 tolerance: float, log: RunLog) -> None:
+    """Agrega al final de la hoja Resumen una seccion con HALLAZGOS FORENSES:
+    - Casos criticos (remision duplicada + sobrefactura)
+    - Diferencias a favor Nautiturismo vs Todomar
+    - Detalles por patron sospechoso
+    - Total objetable consolidado para reclamacion
+    """
+    from collections import defaultdict
+
+    wb = load_workbook(str(control_path))
+    if "Resumen" not in wb.sheetnames or "Conciliación" not in wb.sheetnames:
+        wb.close()
+        return
+
+    # === Leer datos ===
+    cons_ws = wb["Conciliación"]
+    cons_index: dict = {}
+    for r in range(2, cons_ws.max_row + 1):
+        n = cons_ws.cell(row=r, column=COL["NUMDOCTRA"]).value
+        if n is None:
+            continue
+        num_str = str(int(n) if isinstance(n, float) else n).strip()
+        cons_index[num_str] = {
+            "fecha_factura": cons_ws.cell(row=r, column=COL["Fecha factura"]).value,
+            "bote": cons_ws.cell(row=r, column=COL["Nombre de Bote"]).value,
+            "valor_factura": cons_ws.cell(row=r, column=COL["Valor factura"]).value,
+            "valor_remision": cons_ws.cell(row=r, column=COL["Valor remisión"]).value,
+            "conciliacion": cons_ws.cell(row=r, column=COL["Conciliación"]).value or "",
+            "diferencia": cons_ws.cell(row=r, column=COL["Valor (diferencia)"]).value,
+            "observaciones": cons_ws.cell(row=r, column=COL["Observaciones"]).value or "",
+        }
+
+    # === Detectar casos criticos (mismo algoritmo que --informe-criticos) ===
+    criticos = []
+    nums_en_criticos = set()
+    if "Detalle Remisiones" in wb.sheetnames:
+        det_ws = wb["Detalle Remisiones"]
+        by_rno: dict = defaultdict(list)
+        for r in range(2, det_ws.max_row + 1):
+            numdoctra = det_ws.cell(row=r, column=DETALLE_COL["NUMDOCTRA Factura"]).value
+            rno = det_ws.cell(row=r, column=DETALLE_COL["Remisión No."]).value
+            if numdoctra is None or rno is None:
+                continue
+            num_str = str(int(numdoctra) if isinstance(numdoctra, float) else numdoctra).strip()
+            by_rno[str(rno).strip()].append({
+                "numdoctra": num_str,
+                "valor_remision_det": det_ws.cell(row=r, column=DETALLE_COL["Valor remisión"]).value,
+            })
+        gap_max = int(os.environ.get("CONCILIADOR_GAP_SISTEMA_DIAS", "365"))
+        for rno, occs in by_rno.items():
+            if len(set(o["numdoctra"] for o in occs)) < 2:
+                continue
+            fechas = []
+            for o in occs:
+                cd = cons_index.get(o["numdoctra"], {})
+                f = _parse_fecha_safe(cd.get("fecha_factura"))
+                if f:
+                    fechas.append(f)
+            if len(fechas) >= 2 and (max(fechas) - min(fechas)).days > gap_max:
+                continue
+            legitimas, infladas = [], []
+            for o in occs:
+                cd = cons_index.get(o["numdoctra"], {})
+                vf = cd.get("valor_factura")
+                vrd = o.get("valor_remision_det")
+                if not isinstance(vf, (int, float)) or not isinstance(vrd, (int, float)):
+                    continue
+                if abs(vf - vrd) <= tolerance:
+                    legitimas.append({**o, **cd})
+                elif vf > vrd + tolerance:
+                    infladas.append({**o, **cd})
+            if legitimas and infladas:
+                for inf in infladas:
+                    nums_en_criticos.add(inf["numdoctra"])
+                criticos.append({
+                    "monto_objetable": sum(i["valor_factura"] for i in infladas),
+                    "n_infladas": len(infladas),
+                })
+
+    # === Diferencias simples (excluyendo criticos) ===
+    diff_pos = 0.0  # a favor Nautiturismo (factura > remision)
+    diff_neg = 0.0  # a favor Todomar (factura < remision)
+    n_diff_pos = n_diff_neg = 0
+    consolidadas_n = consolidadas_monto = 0
+    diff_recurrente_n = diff_recurrente_monto = 0
+    sin_remision_n = sin_remision_monto = 0
+    sin_correo_n = sin_correo_monto = 0
+    pendiente_n = pendiente_monto = 0
+
+    diff_counts: dict = defaultdict(int)
+    for num, d in cons_index.items():
+        if num in nums_en_criticos:
+            continue
+        if "diferente" in d["conciliacion"].lower():
+            df = d.get("diferencia")
+            if isinstance(df, (int, float)) and df > 0:
+                diff_counts[round(df)] += 1
+
+    for num, d in cons_index.items():
+        if num in nums_en_criticos:
+            continue
+        conc = d["conciliacion"].lower()
+        obs = d["observaciones"].lower()
+        vf = d.get("valor_factura") if isinstance(d.get("valor_factura"), (int, float)) else 0
+        df = d.get("diferencia") if isinstance(d.get("diferencia"), (int, float)) else 0
+        bote = str(d.get("bote") or "")
+
+        if "no hay remisi" in conc:
+            sin_remision_n += 1
+            sin_remision_monto += vf
+        elif "pendiente" in conc:
+            pendiente_n += 1
+            pendiente_monto += vf
+        elif "diferente" in conc:
+            if df > 0:
+                n_diff_pos += 1
+                diff_pos += df
+                if "," in bote:
+                    consolidadas_n += 1
+                    consolidadas_monto += df
+                if diff_counts.get(round(df), 0) >= 3:
+                    diff_recurrente_n += 1
+                    diff_recurrente_monto += df
+            elif df < 0:
+                n_diff_neg += 1
+                diff_neg += abs(df)
+        elif "no se encontró" in obs or "no se encontro" in obs:
+            sin_correo_n += 1
+            sin_correo_monto += vf
+
+    total_criticos_monto = sum(c["monto_objetable"] for c in criticos)
+    total_criticos_facturas = sum(c["n_infladas"] for c in criticos)
+
+    # === Escribir en Resumen ===
+    res = wb["Resumen"]
+    # Encontrar la siguiente fila libre despues del desglose mensual
+    start_row = max(res.max_row, 33) + 4
+
+    section_font = Font(bold=True, size=13, color="FFFFFF")
+    section_fill = PatternFill("solid", fgColor="305496")
+    bold_font = Font(bold=True, size=11)
+    money_font = Font(bold=True, size=12, color="1F4E79")
+    total_font_local = Font(bold=True, size=14, color="9C0006")
+    centered = Alignment(horizontal="center", vertical="center")
+    left_aligned = Alignment(horizontal="left", vertical="center", indent=1)
+    right_aligned = Alignment(horizontal="right", vertical="center", indent=1)
+    fill_rojo = PatternFill("solid", fgColor="FCE4E4")
+    fill_amarillo = PatternFill("solid", fgColor="FFF2CC")
+    fill_naranja = PatternFill("solid", fgColor="FCE6C9")
+
+    # Header de seccion
+    res.merge_cells(start_row=start_row, start_column=1, end_row=start_row, end_column=4)
+    res.cell(row=start_row, column=1, value="🔎 HALLAZGOS FORENSES — RESUMEN PARA RECLAMACIÓN")
+    res.cell(row=start_row, column=1).font = section_font
+    res.cell(row=start_row, column=1).fill = section_fill
+    res.cell(row=start_row, column=1).alignment = centered
+    res.row_dimensions[start_row].height = 24
+
+    # Tabla
+    headers = ["Categoría", "Facturas", "Monto", "Acción"]
+    r = start_row + 2
+    for i, h in enumerate(headers, 1):
+        c = res.cell(row=r, column=i, value=h)
+        c.font = bold_font
+        c.fill = PatternFill("solid", fgColor="D9E1F2")
+        c.alignment = centered
+        c.border = THIN_BORDER
+    r += 1
+
+    rows_data = [
+        ("🔴 Casos críticos (remisión duplicada + sobrefactura)",
+         total_criticos_facturas, total_criticos_monto,
+         "Reclamar nota crédito por monto íntegro", fill_rojo),
+        ("🔴 Diferencias a favor Nautiturismo (Todomar cobró de más)",
+         n_diff_pos, diff_pos,
+         "Reclamar nota crédito por la diferencia", fill_rojo),
+        ("🟠 Diferencias a favor Todomar (despacharon de más)",
+         n_diff_neg, diff_neg,
+         "Por transparencia, mencionar en informe", fill_naranja),
+        ("🟡 Facturas sin remisión adjunta",
+         sin_remision_n, sin_remision_monto,
+         "Solicitar reenvío de remisiones", fill_amarillo),
+        ("🟠 Facturas pendiente revisión manual",
+         pendiente_n, pendiente_monto,
+         "Verificar PDF y completar manual", fill_naranja),
+        ("📭 Facturas sin correo recibido",
+         sin_correo_n, sin_correo_monto,
+         "Solicitar reenvío de factura completa", fill_amarillo),
+    ]
+    for label, cant, monto, accion, fill in rows_data:
+        res.cell(row=r, column=1, value=label).alignment = left_aligned
+        res.cell(row=r, column=2, value=cant).alignment = centered
+        cmonto = res.cell(row=r, column=3, value=monto)
+        cmonto.number_format = MONEY_FMT
+        cmonto.font = money_font
+        cmonto.alignment = right_aligned
+        res.cell(row=r, column=4, value=accion).alignment = left_aligned
+        for col_idx in range(1, 5):
+            res.cell(row=r, column=col_idx).fill = fill
+            res.cell(row=r, column=col_idx).border = THIN_BORDER
+        r += 1
+
+    # Subseccion: patrones detectados (sospechosos)
+    r += 1
+    res.merge_cells(start_row=r, start_column=1, end_row=r, end_column=4)
+    res.cell(row=r, column=1, value="⚠ PATRONES SOSPECHOSOS DENTRO DE DIFERENCIAS (revisar antes de reclamar)")
+    res.cell(row=r, column=1).font = Font(bold=True, size=11, color="9C5700")
+    res.cell(row=r, column=1).fill = PatternFill("solid", fgColor="FFF2CC")
+    res.cell(row=r, column=1).alignment = centered
+    r += 1
+    sospecha_data = [
+        ("Bote consolidado (factura agrupa varios tanqueos)",
+         consolidadas_n, consolidadas_monto,
+         "Verificar manualmente — riesgo alto"),
+        ("Diferencia idéntica recurrente (probable cargo fijo)",
+         diff_recurrente_n, diff_recurrente_monto,
+         "Excluir si es cargo sistemático"),
+    ]
+    for label, cant, monto, accion in sospecha_data:
+        res.cell(row=r, column=1, value=label).alignment = left_aligned
+        res.cell(row=r, column=2, value=cant).alignment = centered
+        cmonto = res.cell(row=r, column=3, value=monto)
+        cmonto.number_format = MONEY_FMT
+        cmonto.alignment = right_aligned
+        res.cell(row=r, column=4, value=accion).alignment = left_aligned
+        for col_idx in range(1, 5):
+            res.cell(row=r, column=col_idx).border = THIN_BORDER
+            res.cell(row=r, column=col_idx).fill = PatternFill("solid", fgColor="FFF8E1")
+        r += 1
+
+    # Total consolidado a reclamar
+    r += 1
+    total_reclamable = total_criticos_monto + diff_pos
+    total_potencial = total_reclamable + sin_remision_monto + sin_correo_monto
+
+    res.merge_cells(start_row=r, start_column=1, end_row=r, end_column=4)
+    res.cell(row=r, column=1, value="💰 TOTALES A RECLAMAR A TODOMAR")
+    res.cell(row=r, column=1).font = section_font
+    res.cell(row=r, column=1).fill = section_fill
+    res.cell(row=r, column=1).alignment = centered
+    res.row_dimensions[r].height = 24
+    r += 2
+
+    res.cell(row=r, column=1, value="✅ Total OBJETABLE DIRECTO (críticos + diferencias a favor)").font = total_font_local
+    cm = res.cell(row=r, column=3, value=total_reclamable)
+    cm.number_format = MONEY_FMT
+    cm.font = total_font_local
+    cm.alignment = right_aligned
+    for col_idx in range(1, 5):
+        res.cell(row=r, column=col_idx).fill = fill_rojo
+        res.cell(row=r, column=col_idx).border = THIN_BORDER
+    r += 1
+    res.cell(row=r, column=1, value="📊 Total POTENCIAL (incl. sin remisión y sin correo)").font = bold_font
+    cm = res.cell(row=r, column=3, value=total_potencial)
+    cm.number_format = MONEY_FMT
+    cm.font = bold_font
+    cm.alignment = right_aligned
+    for col_idx in range(1, 5):
+        res.cell(row=r, column=col_idx).fill = fill_amarillo
+        res.cell(row=r, column=col_idx).border = THIN_BORDER
+
+    # Ajustar anchos
+    res.column_dimensions["D"].width = 42
+
+    wb.save(str(control_path))
+    log.info("hallazgos_agregados_a_resumen",
+             criticos=total_criticos_facturas, monto_criticos=total_criticos_monto,
+             diferencias=n_diff_pos, monto_diferencias=diff_pos,
+             sin_remision=sin_remision_n, total_reclamable=total_reclamable,
+             total_potencial=total_potencial)
+
+
 def update_faltantes_breakdown_in_resumen(control_path: Path, log: RunLog) -> None:
     """Actualiza la hoja Resumen con un desglose por mes de las facturas
     faltantes (sin correo recibido), mostrando cantidad y total facturado.
@@ -4384,21 +4657,21 @@ def main() -> None:
             log.error("control_missing_for_rebuild_resumen", path=str(control_path))
             sys.exit(1)
         wb = load_workbook(str(control_path))
-        # Determinar last_data_row de Conciliación
         cons = wb["Conciliación"]
         last_data_row = cons.max_row
-        # Borrar Resumen vieja y crear nueva
         if "Resumen" in wb.sheetnames:
             del wb["Resumen"]
         _build_resumen_sheet(wb, last_data_row)
-        # Mover la nueva Resumen al inicio
         idx_resumen = wb.sheetnames.index("Resumen")
         wb.move_sheet("Resumen", offset=-idx_resumen + 1)
         wb.save(str(control_path))
         log.info("resumen_rebuilt", last_data_row=last_data_row)
         print(f"\n  ✓ Hoja Resumen regenerada con labels actuales")
-        # Tambien actualizar el desglose mensual
+        # Desglose mensual de faltantes
         update_faltantes_breakdown_in_resumen(control_path, log)
+        # Hallazgos forenses (casos criticos, etc.)
+        agregar_hallazgos_a_resumen(control_path, cfg["facturas_dir"],
+                                     cfg["tolerance_pesos"], log)
         return
 
     bootstrap_control(control_path, cfg["source_excel"], log)
