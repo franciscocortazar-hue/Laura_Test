@@ -1248,6 +1248,43 @@ def update_control_row(
     return True
 
 
+def reprocesar_diferencias(control_path: Path, facturas_dir: Path, log: RunLog) -> tuple[int, int]:
+    """Borra las carpetas FC<num> de facturas con conciliacion 'Remision con valor diferente'.
+
+    No toca el Excel; cuando el usuario corra el script normal, la idempotencia
+    detectara que la carpeta no existe y reprocesara esas facturas con el codigo
+    actualizado (que detecta multiples remisiones por archivo y filtra cedulas).
+
+    Retorna (carpetas_borradas, total_marcados_en_excel).
+    """
+    wb = load_workbook(str(control_path), data_only=True)
+    ws = wb["Conciliación"]
+
+    candidatos: list[str] = []
+    for r in range(2, ws.max_row + 1):
+        conc = ws.cell(row=r, column=COL["Conciliación"]).value
+        if not conc:
+            continue
+        if "diferente" in str(conc).lower():
+            numdoctra = ws.cell(row=r, column=COL["NUMDOCTRA"]).value
+            if numdoctra is None:
+                continue
+            num_str = str(int(numdoctra) if isinstance(numdoctra, float) else numdoctra).strip()
+            candidatos.append(num_str)
+
+    deleted = 0
+    for num in candidatos:
+        folder = facturas_dir / f"FC{num}"
+        if folder.exists():
+            shutil.rmtree(folder)
+            deleted += 1
+            log.info("folder_deleted_for_reprocess", numdoctra=num, folder=str(folder))
+
+    log.info("reprocesar_diferencias_done",
+             marcados=len(candidatos), borrados=deleted)
+    return deleted, len(candidatos)
+
+
 def mark_missing_facturas(control_path: Path, log: RunLog) -> int:
     """Marca en col Observaciones las facturas del control que NO tienen correo
     recibido (col K Conciliacion vacia). Util para identificar visualmente las
@@ -1554,6 +1591,10 @@ def main() -> None:
                         help="Escribe 'No se encontro factura' en col Observaciones "
                              "para todas las filas sin conciliacion. Util para Excels "
                              "creados antes de que el script lo hiciera automaticamente.")
+    parser.add_argument("--reprocesar-diferencias", action="store_true",
+                        help="Borra las carpetas FC<num> de facturas marcadas como "
+                             "'Remision con valor diferente'. Despues corres "
+                             "'python conciliador.py' normalmente para reprocesarlas.")
     args = parser.parse_args()
 
     cfg = load_config()
@@ -1604,6 +1645,16 @@ def main() -> None:
             sys.exit(1)
         n = mark_missing_facturas(control_path, log)
         print(f"\n  ✓ {n} filas marcadas con 'No se encontró factura' en col Observaciones")
+        return
+
+    if args.reprocesar_diferencias:
+        if not control_path.exists():
+            log.error("control_missing_for_reprocess", path=str(control_path))
+            sys.exit(1)
+        deleted, marcados = reprocesar_diferencias(control_path, cfg["facturas_dir"], log)
+        print(f"\n  ✓ {marcados} facturas con 'Remisión con valor diferente' encontradas")
+        print(f"  ✓ {deleted} carpetas FC<num> borradas (listas para reprocesar)")
+        print(f"\n  Ahora corre: python conciliador.py  (o con --since/--until)")
         return
 
     bootstrap_control(control_path, cfg["source_excel"], log)
