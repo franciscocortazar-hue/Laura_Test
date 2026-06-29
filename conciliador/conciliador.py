@@ -589,7 +589,7 @@ def _add_duplicate_red_rule(ws, range_str: str, obs_col_letter: str, row_start: 
 
 
 def render_pdf_first_page_to_png(pdf_path: Path, scale: float = 3.0) -> bytes:
-    """Renderiza la primera pagina del PDF como PNG bytes."""
+    """Renderiza la primera pagina del PDF como PNG bytes (compat legacy)."""
     pdf = pdfium.PdfDocument(str(pdf_path))
     try:
         page = pdf[0]
@@ -597,6 +597,29 @@ def render_pdf_first_page_to_png(pdf_path: Path, scale: float = 3.0) -> bytes:
         buf = BytesIO()
         pil_image.save(buf, format="PNG")
         return buf.getvalue()
+    finally:
+        pdf.close()
+
+
+def render_pdf_all_pages_to_pngs(pdf_path: Path, scale: float = 3.0,
+                                  max_pages: int = 20) -> list[bytes]:
+    """Renderiza TODAS las paginas del PDF como PNG bytes (lista).
+
+    Util para remisiones multi-pagina donde cada pagina puede contener una
+    o mas remisiones. Anthropic acepta hasta ~20 imagenes por mensaje, asi
+    que limitamos a max_pages para seguridad.
+    """
+    pdf = pdfium.PdfDocument(str(pdf_path))
+    try:
+        n_pages = min(len(pdf), max_pages)
+        pages_bytes = []
+        for i in range(n_pages):
+            page = pdf[i]
+            pil_image = page.render(scale=scale).to_pil()
+            buf = BytesIO()
+            pil_image.save(buf, format="PNG")
+            pages_bytes.append(buf.getvalue())
+        return pages_bytes
     finally:
         pdf.close()
 
@@ -621,41 +644,56 @@ def vision_extract_remision(pdf_path: Path, api_key: str, log: "RunLog | None" =
     if not HAS_ANTHROPIC:
         return _empty_vision_result(pdf_path, "anthropic_not_installed")
     try:
-        png_bytes = render_pdf_first_page_to_png(pdf_path)
+        # FIX: rendir TODAS las paginas del PDF (no solo la primera).
+        # Un PDF de remision puede tener varias hojas, cada una con N remisiones.
+        pages_pngs = render_pdf_all_pages_to_pngs(pdf_path)
     except Exception as e:
         if log is not None:
             log.warn("pdf_render_failed", file=pdf_path.name, err=str(e))
         return _empty_vision_result(pdf_path, "pdf_render_failed")
 
-    img_b64 = base64.b64encode(png_bytes).decode()
-    # Timeout duro: 60s por llamada para evitar cuelgues indefinidos.
-    # Configurable via env var ANTHROPIC_TIMEOUT (default 60).
+    if not pages_pngs:
+        return _empty_vision_result(pdf_path, "no_pages")
+
+    n_pages = len(pages_pngs)
+    if log is not None and n_pages > 1:
+        log.info("multi_page_remision", file=pdf_path.name, pages=n_pages)
+
     timeout_sec = float(os.environ.get("ANTHROPIC_TIMEOUT", "60"))
     client = anthropic.Anthropic(api_key=api_key, timeout=timeout_sec)
-    # Cambio: default a Haiku 4.5 (5x mas rapido, ~10x mas barato).
-    # Sonnet 4.6 sigue disponible via ANTHROPIC_VISION_MODEL=claude-sonnet-4-6
     model = os.environ.get("ANTHROPIC_VISION_MODEL", "claude-haiku-4-5-20251001")
-    # Cambio: max retries 4 -> 2 para que un fallo no congele 30s+
     max_retries = int(os.environ.get("ANTHROPIC_MAX_RETRIES", "2"))
+
+    # Construir mensaje con N imagenes + prompt
+    content = []
+    for i, png_bytes in enumerate(pages_pngs):
+        img_b64 = base64.b64encode(png_bytes).decode()
+        content.append({
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": "image/png",
+                "data": img_b64,
+            },
+        })
+    # Si hay varias paginas, ajustar el prompt para mencionarlo
+    prompt_actual = VISION_PROMPT
+    if n_pages > 1:
+        prompt_actual = (
+            f"⚠️ NOTA: este PDF tiene {n_pages} PÁGINAS. Cada página puede contener "
+            f"una o varias remisiones. Extrae TODAS las remisiones de TODAS las páginas.\n\n"
+            + VISION_PROMPT
+        )
+    content.append({"type": "text", "text": prompt_actual})
+
+    # max_tokens escala con paginas (mas remisiones = mas tokens necesarios)
+    max_tokens_call = min(4096, max(1024, n_pages * 600))
 
     def _call_vision():
         return client.messages.create(
             model=model,
-            max_tokens=1024,  # mas tokens por si la imagen tiene varias remisiones
-            messages=[{
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": "image/png",
-                            "data": img_b64,
-                        },
-                    },
-                    {"type": "text", "text": VISION_PROMPT},
-                ],
-            }],
+            max_tokens=max_tokens_call,
+            messages=[{"role": "user", "content": content}],
         )
 
     response_text = None
