@@ -1913,6 +1913,341 @@ def generar_informe_duplicados(control_path: Path, facturas_dir: Path, log: RunL
              gap_sistema_dias=gap_sistema_dias)
 
 
+def generar_informe_criticos(control_path: Path, facturas_dir: Path,
+                              tolerance: float, log: RunLog) -> None:
+    """Informe CRITICO: detecta el patron forense mas fuerte =
+    remision duplicada + sobrefactura (factura inflada que reusa una
+    remision ya legitimamente facturada).
+
+    Para cada remision_no con apariciones multiples:
+    1. Si gap temporal > 365 dias -> descartar (cambio de sistema)
+    2. Identificar 'legitima(s)': factura value ≈ remision value (dentro de tolerancia)
+    3. Identificar 'inflada(s)': factura value > remision value + tolerancia
+    4. Si HAY ambas (legitima + inflada) = caso critico
+       La inflada es totalmente objetable: usa una remision ya cobrada como soporte
+
+    Output:
+      - informe_criticos.csv (lineas planas por caso)
+      - INFORME_CRITICOS.md (caso por caso, presentable a contadora de Todomar)
+    """
+    import csv
+    from collections import defaultdict
+
+    wb = load_workbook(str(control_path), data_only=True)
+    if "Detalle Remisiones" not in wb.sheetnames:
+        print("\n  ⚠ Hoja 'Detalle Remisiones' no existe. Reprocesa con la version actual.")
+        return
+
+    # 1) Indice de Conciliacion: numdoctra -> datos completos
+    cons_ws = wb["Conciliación"]
+    cons_index: dict = {}
+    for r in range(2, cons_ws.max_row + 1):
+        n = cons_ws.cell(row=r, column=COL["NUMDOCTRA"]).value
+        if n is None:
+            continue
+        num_str = str(int(n) if isinstance(n, float) else n).strip()
+        cons_index[num_str] = {
+            "fecha_factura": cons_ws.cell(row=r, column=COL["Fecha factura"]).value,
+            "bote": cons_ws.cell(row=r, column=COL["Nombre de Bote"]).value,
+            "valor_factura": cons_ws.cell(row=r, column=COL["Valor factura"]).value,
+            "valor_remision": cons_ws.cell(row=r, column=COL["Valor remisión"]).value,
+            "n_remisiones": cons_ws.cell(row=r, column=COL["# Remisiones"]).value,
+            "conciliacion": cons_ws.cell(row=r, column=COL["Conciliación"]).value or "",
+            "diferencia": cons_ws.cell(row=r, column=COL["Valor (diferencia)"]).value,
+        }
+
+    # 2) Agrupar Detalle Remisiones por remision_no
+    det_ws = wb["Detalle Remisiones"]
+    by_rno: dict = defaultdict(list)
+    for r in range(2, det_ws.max_row + 1):
+        numdoctra = det_ws.cell(row=r, column=DETALLE_COL["NUMDOCTRA Factura"]).value
+        rno = det_ws.cell(row=r, column=DETALLE_COL["Remisión No."]).value
+        if numdoctra is None or rno is None:
+            continue
+        num_str = str(int(numdoctra) if isinstance(numdoctra, float) else numdoctra).strip()
+        by_rno[str(rno).strip()].append({
+            "numdoctra": num_str,
+            "bote_det": det_ws.cell(row=r, column=DETALLE_COL["Bote"]).value,
+            "fecha_tanqueo": det_ws.cell(row=r, column=DETALLE_COL["Fecha tanqueo"]).value,
+            "valor_remision_det": det_ws.cell(row=r, column=DETALLE_COL["Valor remisión"]).value,
+            "archivo": det_ws.cell(row=r, column=DETALLE_COL["Archivo origen"]).value or "",
+        })
+
+    gap_sistema_dias = int(os.environ.get("CONCILIADOR_GAP_SISTEMA_DIAS", "365"))
+
+    # 3) Detectar casos criticos
+    criticos = []
+    for rno, occurrences in by_rno.items():
+        unique_nums = set(o["numdoctra"] for o in occurrences)
+        if len(unique_nums) < 2:
+            continue
+
+        # Filtro gap sistema
+        fechas = []
+        for o in occurrences:
+            cdata = cons_index.get(o["numdoctra"], {})
+            f = _parse_fecha_safe(cdata.get("fecha_factura")) or _parse_fecha_safe(o.get("fecha_tanqueo"))
+            if f:
+                fechas.append(f)
+        if len(fechas) >= 2:
+            gap = (max(fechas) - min(fechas)).days
+            if gap > gap_sistema_dias:
+                continue  # cambio de sistema, no es caso real
+
+        # Clasificar cada aparicion: legitima / inflada
+        legitimas = []
+        infladas = []
+        sin_clasificar = []
+        for o in occurrences:
+            cdata = cons_index.get(o["numdoctra"], {})
+            vf = cdata.get("valor_factura")
+            vr_det = o.get("valor_remision_det")  # valor leido de la remision en esta factura
+            if not isinstance(vf, (int, float)) or not isinstance(vr_det, (int, float)):
+                sin_clasificar.append({**o, **cdata})
+                continue
+            if abs(vf - vr_det) <= tolerance:
+                legitimas.append({**o, **cdata})
+            elif vf > vr_det + tolerance:
+                infladas.append({**o, **cdata})
+            else:
+                # vf < vr_det: factura menor que remision (raro), agregar a sin_clasificar
+                sin_clasificar.append({**o, **cdata})
+
+        if not legitimas or not infladas:
+            continue  # no es caso critico (no hay duplicacion + inflado conjunto)
+
+        # Es caso critico
+        # La remision real tiene valor = min legitimo (o promedio si varios)
+        valor_remision_real = min(l.get("valor_remision_det", 0) for l in legitimas)
+
+        monto_objetable = sum(i["valor_factura"] for i in infladas)
+        monto_duplicado = valor_remision_real * len(infladas)
+        monto_sobrefactura = monto_objetable - monto_duplicado
+
+        criticos.append({
+            "rno": rno,
+            "valor_remision_real": valor_remision_real,
+            "legitimas": legitimas,
+            "infladas": infladas,
+            "sin_clasificar": sin_clasificar,
+            "monto_objetable": monto_objetable,
+            "monto_duplicado": monto_duplicado,
+            "monto_sobrefactura": monto_sobrefactura,
+            "n_infladas": len(infladas),
+        })
+
+    out_dir = control_path.parent
+
+    # Sort by monto_objetable desc
+    criticos.sort(key=lambda c: -c["monto_objetable"])
+
+    total_objetable = sum(c["monto_objetable"] for c in criticos)
+    total_duplicado = sum(c["monto_duplicado"] for c in criticos)
+    total_sobrefactura = sum(c["monto_sobrefactura"] for c in criticos)
+    total_facturas_infladas = sum(c["n_infladas"] for c in criticos)
+
+    # CSV
+    csv_path = out_dir / "informe_criticos.csv"
+    with csv_path.open("w", newline="", encoding="utf-8-sig") as f:
+        w = csv.writer(f)
+        w.writerow([
+            "Remision_No", "Valor_remision_real",
+            "Factura_legitima", "Fecha_legitima", "Bote_legitima", "Valor_factura_legitima",
+            "Factura_inflada", "Fecha_inflada", "Bote_inflada", "Valor_factura_inflada",
+            "Monto_duplicado", "Monto_sobrefactura", "Monto_objetable_total",
+            "Path_factura_inflada", "Path_remision_inflada",
+        ])
+        for c in criticos:
+            leg = c["legitimas"][0]  # primera legitima como referencia
+            for inf in c["infladas"]:
+                path_fac = facturas_dir / f"FC{inf['numdoctra']}" / f"FAC-FC{inf['numdoctra']}.pdf"
+                path_rem = facturas_dir / f"FC{inf['numdoctra']}" / inf.get("archivo", "")
+                w.writerow([
+                    c["rno"], c["valor_remision_real"],
+                    f"FC{leg['numdoctra']}", str(leg.get("fecha_factura") or "")[:10],
+                    leg.get("bote") or "", leg.get("valor_factura") or "",
+                    f"FC{inf['numdoctra']}", str(inf.get("fecha_factura") or "")[:10],
+                    inf.get("bote") or "", inf.get("valor_factura") or "",
+                    c["valor_remision_real"],
+                    inf["valor_factura"] - c["valor_remision_real"],
+                    inf["valor_factura"],
+                    str(path_fac), str(path_rem),
+                ])
+
+    # MD para contadora de Todomar
+    md_path = out_dir / "INFORME_CRITICOS.md"
+    L = []
+    L.append("# Informe Forense de Cobros Objetables")
+    L.append("## Remisiones reutilizadas como soporte de facturas infladas")
+    L.append("")
+    L.append("**De:** Nautiturismo SAS (NIT 901.459.048)")
+    L.append("**Para:** Departamento de Contabilidad — Todomar CHL S.A.S. (NIT 806.003.144)")
+    L.append(f"**Fecha del informe:** {datetime.now().strftime('%d/%m/%Y')}")
+    L.append("")
+    L.append("## 1. Resumen ejecutivo")
+    L.append("")
+    L.append("En el proceso de conciliación de las facturas de combustible emitidas por Todomar")
+    L.append("a Nautiturismo en el periodo analizado, identificamos un patrón sistemático de")
+    L.append("**reutilización de números de remisión como soporte de facturas infladas**:")
+    L.append("")
+    L.append("Para una misma Remisión No. (un único despacho físico real), encontramos:")
+    L.append("- **Una factura LEGÍTIMA** donde el valor facturado coincide con el valor del despacho")
+    L.append("  documentado en la remisión.")
+    L.append("- **Una o más facturas INFLADAS** donde se adjunta como soporte la MISMA remisión,")
+    L.append("  pero el valor facturado es significativamente mayor al despacho real.")
+    L.append("")
+    L.append("Estas facturas infladas son **totalmente objetables** porque:")
+    L.append("- El despacho documentado en su remisión-soporte ya fue facturado en otra factura legítima")
+    L.append("- La diferencia entre lo facturado y la remisión NO tiene NINGÚN respaldo documental")
+    L.append("")
+    L.append("### Cifras consolidadas")
+    L.append("")
+    L.append("| Concepto | Valor |")
+    L.append("|---|---:|")
+    L.append(f"| Casos críticos detectados | **{len(criticos)}** |")
+    L.append(f"| Facturas infladas (objetables) | **{total_facturas_infladas}** |")
+    L.append(f"| Monto duplicado (remisiones ya cobradas) | ${total_duplicado:,.0f} |")
+    L.append(f"| Sobrefactura sin soporte documental | ${total_sobrefactura:,.0f} |")
+    L.append(f"| **MONTO TOTAL OBJETABLE (a reembolsar)** | **${total_objetable:,.0f}** |")
+    L.append("")
+    L.append("Se solicita la emisión de nota crédito por **${:,.0f}** correspondiente al valor".format(total_objetable))
+    L.append("total de las facturas infladas listadas a continuación.")
+    L.append("")
+    L.append("---")
+    L.append("")
+
+    if not criticos:
+        L.append("## ✅ No se detectaron casos críticos")
+        L.append("")
+        L.append("Tras el análisis cruzado entre la hoja Detalle Remisiones y la hoja Conciliación")
+        L.append("del archivo de control, **no se encontraron casos donde una misma remisión soporte")
+        L.append("una factura legítima y simultáneamente una factura inflada**.")
+        L.append("")
+        L.append("Los duplicados de número de remisión detectados se explican por reuso de consecutivo")
+        L.append(f"por cambio de sistema (gap temporal > {gap_sistema_dias} días entre apariciones).")
+    else:
+        L.append("## 2. Detalle caso por caso")
+        L.append("")
+        for idx, c in enumerate(criticos, start=1):
+            rno = c["rno"]
+            leg = c["legitimas"][0]
+            L.append(f"### Caso {idx}: Remisión No. **{rno}** — Despacho real: ${c['valor_remision_real']:,.0f}")
+            L.append("")
+
+            # Factura legítima (referencia)
+            L.append("**✅ Factura LEGÍTIMA (referencia del despacho real):**")
+            L.append("")
+            L.append("| Factura | Fecha | Bote | Valor facturado | Valor remisión | Estado |")
+            L.append("|---|---|---|---:|---:|---|")
+            fecha_str = str(leg.get("fecha_factura") or "")[:10]
+            vf = leg.get("valor_factura") or 0
+            vr = leg.get("valor_remision_det") or 0
+            L.append(f"| **FC{leg['numdoctra']}** | {fecha_str} | {leg.get('bote') or '—'} | "
+                     f"${vf:,.0f} | ${vr:,.0f} | ✓ Cuadra |")
+            L.append("")
+
+            # Facturas infladas (objetables)
+            L.append(f"**❌ Factura{'s' if len(c['infladas']) > 1 else ''} INFLADA{'S' if len(c['infladas']) > 1 else ''} (objetable{'s' if len(c['infladas']) > 1 else ''}):**")
+            L.append("")
+            L.append("| Factura | Fecha | Bote | Valor facturado | Valor real (remisión) | Sobrefactura |")
+            L.append("|---|---|---|---:|---:|---:|")
+            for inf in c["infladas"]:
+                fecha_str = str(inf.get("fecha_factura") or "")[:10]
+                vfi = inf["valor_factura"]
+                sobref = vfi - c["valor_remision_real"]
+                L.append(f"| **FC{inf['numdoctra']}** | {fecha_str} | {inf.get('bote') or '—'} | "
+                         f"${vfi:,.0f} | ${c['valor_remision_real']:,.0f} | +${sobref:,.0f} |")
+            L.append("")
+
+            L.append(f"**Argumentación del caso {idx}:**")
+            L.append("")
+            L.append(f"- La Remisión No. {rno} documenta un despacho real por ${c['valor_remision_real']:,.0f}, "
+                     f"correctamente facturado en su factura **FC{leg['numdoctra']}**.")
+            for inf in c["infladas"]:
+                L.append(f"- En la factura **FC{inf['numdoctra']}** (${inf['valor_factura']:,.0f}), "
+                         f"ustedes adjuntaron como soporte la **MISMA Remisión No. {rno}** (${c['valor_remision_real']:,.0f}), "
+                         f"lo cual implica una duplicación del cobro del despacho documentado.")
+                L.append(f"  Adicionalmente, la diferencia de **${inf['valor_factura'] - c['valor_remision_real']:,.0f}** "
+                         f"entre lo facturado y el valor de la remisión no cuenta con ningún soporte documental adicional.")
+            L.append(f"- En consecuencia, la(s) factura(s) inflada(s) son **totalmente objetable(s)** "
+                     f"por un monto total de **${sum(i['valor_factura'] for i in c['infladas']):,.0f}**.")
+            L.append("")
+
+            L.append(f"**Evidencia documental (archivos en G:\\):**")
+            L.append("")
+            L.append(f"- Factura legítima FC{leg['numdoctra']}: `G:\\Mi unidad\\...\\Facturas\\FC{leg['numdoctra']}\\FAC-FC{leg['numdoctra']}.pdf` "
+                     f"+ remisión soporte `{leg.get('archivo', '')}`")
+            for inf in c["infladas"]:
+                L.append(f"- Factura inflada FC{inf['numdoctra']}: `G:\\Mi unidad\\...\\Facturas\\FC{inf['numdoctra']}\\FAC-FC{inf['numdoctra']}.pdf` "
+                         f"+ remisión soporte (duplicada) `{inf.get('archivo', '')}`")
+            L.append("")
+            L.append("---")
+            L.append("")
+
+        L.append("## 3. Solicitud formal")
+        L.append("")
+        L.append(f"Con base en la evidencia documental anterior, **solicitamos formalmente** a Todomar CHL S.A.S.:")
+        L.append("")
+        L.append(f"1. La **emisión de nota crédito por valor total de ${total_objetable:,.0f}**, correspondiente")
+        L.append(f"   al monto íntegro de las {total_facturas_infladas} factura(s) inflada(s) listada(s),")
+        L.append(f"   las cuales reutilizan remisiones ya legítimamente facturadas y carecen de soporte propio.")
+        L.append("")
+        L.append("2. Una **explicación formal** sobre el proceso interno que permitió la reutilización de números")
+        L.append("   de remisión como soporte de facturas distintas.")
+        L.append("")
+        L.append("3. La **implementación de controles** que impidan que un mismo número de remisión sea")
+        L.append("   adjuntado como soporte de más de una factura.")
+        L.append("")
+        L.append("4. Una **auditoría conjunta** del periodo no analizado en este informe, para verificar")
+        L.append("   si el patrón se repite en otras facturas.")
+        L.append("")
+        L.append("## 4. Anexos")
+        L.append("")
+        L.append(f"- `INFORME_CRITICOS.md` — este documento")
+        L.append(f"- `informe_criticos.csv` — datos en formato tabular para análisis")
+        L.append(f"- PDFs originales de las {total_facturas_infladas + len(criticos)} facturas y sus remisiones soporte")
+        L.append("  (rutas indicadas en cada caso)")
+        L.append("")
+        L.append("Quedamos atentos a su pronta respuesta para concertar reunión y dar seguimiento.")
+        L.append("")
+        L.append("Cordialmente,")
+        L.append("")
+        L.append("Francisco Cortázar  ")
+        L.append("Nautiturismo SAS  ")
+        L.append("NIT 901.459.048")
+
+    md_path.write_text("\n".join(L), encoding="utf-8")
+
+    # Consola
+    print("\n" + "=" * 72)
+    print("  INFORME CRÍTICOS — Remisiones duplicadas + Sobrefactura")
+    print("=" * 72)
+    print(f"  Casos críticos detectados:           {len(criticos)}")
+    print(f"  Facturas infladas (objetables):      {total_facturas_infladas}")
+    print(f"  Monto duplicado:                     ${total_duplicado:>14,.0f}")
+    print(f"  Sobrefactura sin soporte:            ${total_sobrefactura:>14,.0f}")
+    print("  " + "-" * 64)
+    print(f"  💰 MONTO TOTAL OBJETABLE:            ${total_objetable:>14,.0f}")
+    print("=" * 72)
+    print(f"\n  Archivos generados en: {out_dir}")
+    print(f"    • {csv_path.name}")
+    print(f"    • {md_path.name}  ← informe para contadora Todomar")
+    print("=" * 72)
+
+    if criticos:
+        print(f"\n  TOP 5 casos por monto objetable:")
+        for c in criticos[:5]:
+            print(f"    Remisión #{c['rno']:>8}  →  Legítima FC{c['legitimas'][0]['numdoctra']} "
+                  f"+ {c['n_infladas']} inflada(s)  →  ${c['monto_objetable']:>12,.0f}")
+
+    log.info("informe_criticos_done",
+             casos_criticos=len(criticos),
+             facturas_infladas=total_facturas_infladas,
+             monto_objetable=total_objetable,
+             monto_duplicado=total_duplicado,
+             monto_sobrefactura=total_sobrefactura)
+
+
 def generar_informe(control_path: Path, log: RunLog) -> None:
     """Genera 4 CSVs y un Markdown con todo lo necesario para el informe a Todomar.
 
@@ -2874,6 +3209,13 @@ def main() -> None:
                              "evidencia documental caso por caso, paths a los PDFs, "
                              "y clasificacion de la fuerza de cada caso. Ideal para "
                              "soportar reclamacion formal por cobros duplicados.")
+    parser.add_argument("--informe-criticos", action="store_true",
+                        help="Informe CRITICO presentable a la contadora de Todomar: "
+                             "detecta remisiones reutilizadas como soporte de facturas "
+                             "infladas (patron forense mas fuerte). Por cada caso, "
+                             "identifica la factura legitima vs la(s) inflada(s), "
+                             "calcula el monto total objetable, y arma argumentacion "
+                             "formal lista para reclamacion.")
     args = parser.parse_args()
 
     cfg = load_config()
@@ -2957,6 +3299,14 @@ def main() -> None:
             log.error("control_missing_for_informe_dup", path=str(control_path))
             sys.exit(1)
         generar_informe_duplicados(control_path, cfg["facturas_dir"], log)
+        return
+
+    if args.informe_criticos:
+        if not control_path.exists():
+            log.error("control_missing_for_informe_crit", path=str(control_path))
+            sys.exit(1)
+        generar_informe_criticos(control_path, cfg["facturas_dir"],
+                                  cfg["tolerance_pesos"], log)
         return
 
     if args.rebuild_resumen:
