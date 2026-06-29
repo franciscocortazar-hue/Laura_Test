@@ -1913,6 +1913,120 @@ def generar_informe_duplicados(control_path: Path, facturas_dir: Path, log: RunL
              gap_sistema_dias=gap_sistema_dias)
 
 
+def enviar_informe_email(control_path: Path, to_emails: list[str], cfg: dict,
+                          log: RunLog) -> None:
+    """Envia el informe + Excel anexo por email usando Gmail API.
+
+    Reusa el mismo OAuth (scope gmail.modify ya incluye send).
+    Asunto incluye 'BORRADOR' para que sea claro que es para revision interna.
+    """
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.base import MIMEBase
+    from email.mime.text import MIMEText
+    from email import encoders as email_encoders
+
+    md_path = control_path.parent / "INFORME_RECLAMACION_TODOMAR.md"
+    xlsx_path = control_path.parent / "ANEXO_RECLAMACION.xlsx"
+
+    if not md_path.exists() or not xlsx_path.exists():
+        log.error("informe_files_missing",
+                  md_exists=md_path.exists(), xlsx_exists=xlsx_path.exists())
+        print("\n  ⚠ No se encontraron los archivos del informe.")
+        print("  Primero corre: python conciliador.py --informe-reclamacion")
+        return
+
+    log.info("enviando_email", to=to_emails)
+    service = get_gmail_service(cfg, log)
+
+    md_content = md_path.read_text(encoding="utf-8")
+    # Extraer resumen ejecutivo del MD para el cuerpo del email
+    body_intro = f"""Buen día,
+
+Adjunto encontrarán el BORRADOR del informe de reclamación de facturas de
+combustible para Todomar CHL S.A.S., generado a partir de la conciliación
+automatizada del periodo analizado.
+
+Por favor revisar:
+
+1. INFORME_RECLAMACION_TODOMAR.md
+   Documento formal con la argumentación caso por caso, listo para
+   enviar a la contadora de Todomar (después de su aprobación).
+
+2. ANEXO_RECLAMACION.xlsx
+   Excel profesional con 4 hojas (Resumen, Casos Críticos, Sin Remisión,
+   Diferencias). Las celdas de "PDF Factura" y "PDF Remisión" tienen
+   hipervínculos clicables a los archivos originales en Drive para
+   verificación visual de cada caso.
+
+═══════════════════════════════════════════════════════════════════
+                    EXTRACTO DEL INFORME
+═══════════════════════════════════════════════════════════════════
+
+"""
+    # Tomar las primeras ~100 líneas del MD como preview
+    md_preview = "\n".join(md_content.split("\n")[:80])
+    body_intro += md_preview
+    body_intro += "\n\n[...continúa en el archivo adjunto INFORME_RECLAMACION_TODOMAR.md...]"
+    body_intro += "\n\n———\nGenerado automáticamente por el conciliador de combustible\n"
+    body_intro += f"Fecha de generación: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+
+    msg = MIMEMultipart("mixed")
+    msg["Subject"] = (f"BORRADOR — Reclamación facturas combustible Todomar "
+                      f"({datetime.now().strftime('%d/%m/%Y')})")
+    msg["From"] = cfg["gmail_user"]
+    msg["To"] = ", ".join(to_emails)
+
+    msg.attach(MIMEText(body_intro, "plain", "utf-8"))
+
+    # Adjuntar MD
+    with md_path.open("rb") as f:
+        part = MIMEBase("text", "markdown")
+        part.set_payload(f.read())
+        email_encoders.encode_base64(part)
+        part.add_header("Content-Disposition",
+                       f'attachment; filename="{md_path.name}"')
+        msg.attach(part)
+
+    # Adjuntar XLSX
+    with xlsx_path.open("rb") as f:
+        part = MIMEBase("application",
+                       "vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        part.set_payload(f.read())
+        email_encoders.encode_base64(part)
+        part.add_header("Content-Disposition",
+                       f'attachment; filename="{xlsx_path.name}"')
+        msg.attach(part)
+
+    # Enviar via Gmail API
+    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+    try:
+        sent = service.users().messages().send(
+            userId="me", body={"raw": raw}
+        ).execute()
+    except Exception as e:
+        log.error("email_send_failed", err=str(e))
+        print(f"\n  ❌ Error al enviar email: {e}")
+        return
+
+    log.info("email_sent", to=to_emails, message_id=sent.get("id"),
+             thread_id=sent.get("threadId"))
+
+    print("\n" + "=" * 72)
+    print("  EMAIL ENVIADO")
+    print("=" * 72)
+    print(f"  De:        {cfg['gmail_user']}")
+    print(f"  Para:      {', '.join(to_emails)}")
+    print(f"  Asunto:    BORRADOR — Reclamación facturas combustible Todomar "
+          f"({datetime.now().strftime('%d/%m/%Y')})")
+    print(f"  Adjuntos:  {md_path.name}")
+    print(f"             {xlsx_path.name}")
+    print(f"  Message ID: {sent.get('id')}")
+    print("=" * 72)
+    print(f"\n  Revisa tu Gmail. El email tambien queda en 'Enviados' del")
+    print(f"  remitente ({cfg['gmail_user']}).")
+    print("=" * 72)
+
+
 def generar_informe_reclamacion(control_path: Path, facturas_dir: Path,
                                  tolerance: float, log: RunLog) -> None:
     """Informe consolidado de reclamacion a Todomar.
@@ -3821,6 +3935,11 @@ def main() -> None:
                              "los 3 casos: criticos (duplicada+inflada), sin remision, "
                              "y diferencias simples. Genera MD profesional + Excel "
                              "anexo con 4 hojas, listo para presentar a la contadora.")
+    parser.add_argument("--enviar-email-revision",
+                        help="Envia el informe + Excel anexo por email a la(s) "
+                             "direccion(es) indicada(s) (separar por coma) usando "
+                             "Gmail OAuth. Asunto incluye 'BORRADOR' para indicar "
+                             "que es para revision interna previa al envio a Todomar.")
     args = parser.parse_args()
 
     cfg = load_config()
@@ -3920,6 +4039,17 @@ def main() -> None:
             sys.exit(1)
         generar_informe_reclamacion(control_path, cfg["facturas_dir"],
                                      cfg["tolerance_pesos"], log)
+        return
+
+    if args.enviar_email_revision:
+        if not control_path.exists():
+            log.error("control_missing_for_email", path=str(control_path))
+            sys.exit(1)
+        to_emails = [e.strip() for e in args.enviar_email_revision.split(",") if e.strip()]
+        if not to_emails:
+            print("ERROR: pasa al menos una direccion separada por coma")
+            sys.exit(1)
+        enviar_informe_email(control_path, to_emails, cfg, log)
         return
 
     if args.rebuild_resumen:
