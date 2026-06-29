@@ -1585,6 +1585,204 @@ def update_control_row(
     return True
 
 
+def redownload_diferencias(control_path: Path, cfg: dict, log: RunLog) -> None:
+    """Re-baja de Gmail las facturas marcadas como 'diferente' (sin filtro de fecha).
+
+    Cuando las carpetas locales estan vacias o corruptas (Drive sync borrando
+    accidentalmente), este flag busca cada FC<num> diferente en Gmail por
+    subject que contenga el numero, baja el ZIP, extrae, clasifica, renombra
+    y re-extrae con Vision multi-pagina. Bypasea expected_numdoctras.
+
+    NO filtra por fecha — busca historicamente en Gmail por numdoctra.
+    """
+    wb = load_workbook(str(control_path), data_only=True)
+    ws = wb["Conciliación"]
+
+    targets: list[str] = []
+    for r in range(2, ws.max_row + 1):
+        conc = ws.cell(row=r, column=COL["Conciliación"]).value
+        if not conc or "diferente" not in str(conc).lower():
+            continue
+        numdoctra = ws.cell(row=r, column=COL["NUMDOCTRA"]).value
+        if numdoctra is None:
+            continue
+        num_str = str(int(numdoctra) if isinstance(numdoctra, float) else numdoctra).strip()
+        targets.append(num_str)
+    wb.close()
+
+    if not targets:
+        print("\n  No hay facturas marcadas como 'diferente'.")
+        return
+
+    print(f"\n  ► {len(targets)} facturas a re-bajar de Gmail.")
+    print(f"    (Bypass de date range y expected_numdoctras — busca por NUMDOCTRA en subject)\n")
+
+    service = get_gmail_service(cfg, log)
+    remision_no_index = load_remision_no_index(control_path)
+    api_key = cfg.get("anthropic_api_key")
+
+    bajadas = 0
+    ok_ahora = 0
+    sigue_dif = 0
+    no_encontradas: list[str] = []
+    sin_zip: list[str] = []
+    errores: list[str] = []
+
+    for idx, num in enumerate(targets, start=1):
+        query = f'from:{cfg["from_filter"]} subject:"FC{num}"'
+        try:
+            resp = service.users().messages().list(
+                userId="me", q=query, maxResults=10,
+            ).execute()
+        except HttpError as e:
+            print(f"  [{idx}/{len(targets)}] FC{num}: ✗ Gmail error: {e}")
+            errores.append(num)
+            continue
+
+        msgs = resp.get("messages", [])
+        if not msgs:
+            print(f"  [{idx}/{len(targets)}] FC{num}: ⚠ no encontrada en Gmail")
+            no_encontradas.append(num)
+            continue
+
+        msg_id = msgs[0]["id"]
+        try:
+            msg = fetch_message(service, msg_id)
+        except HttpError as e:
+            print(f"  [{idx}/{len(targets)}] FC{num}: ✗ error fetch: {e}")
+            errores.append(num)
+            continue
+
+        subject = decode_subject(msg.get("Subject", ""))
+        if extract_numdoctra(subject) != num:
+            print(f"  [{idx}/{len(targets)}] FC{num}: ⚠ subject no match: {subject[:50]}")
+            no_encontradas.append(num)
+            continue
+
+        attach = extract_zip_attachment(msg)
+        if not attach:
+            print(f"  [{idx}/{len(targets)}] FC{num}: ⚠ email sin ZIP adjunto")
+            sin_zip.append(num)
+            continue
+
+        zip_name, zip_bytes = attach
+        folder = cfg["facturas_dir"] / f"FC{num}"
+        folder.mkdir(parents=True, exist_ok=True)
+
+        try:
+            extracted = unzip_to(folder, zip_bytes)
+        except zipfile.BadZipFile:
+            print(f"  [{idx}/{len(targets)}] FC{num}: ✗ ZIP corrupto")
+            errores.append(num)
+            continue
+
+        pdfs = [p for p in extracted if p.suffix.lower() == ".pdf"]
+        if not pdfs:
+            print(f"  [{idx}/{len(targets)}] FC{num}: ⚠ ZIP sin PDFs")
+            errores.append(num)
+            continue
+
+        factura_path, remisiones_paths = classify_pdfs(pdfs)
+        factura_path, remisiones_paths = rename_classified(
+            folder, factura_path, remisiones_paths, num,
+        )
+
+        if not factura_path:
+            print(f"  [{idx}/{len(targets)}] FC{num}: ✗ no se identifico el PDF de factura")
+            errores.append(num)
+            continue
+
+        factura_data = extract_factura_data(factura_path)
+        if factura_data.get("valor") is None:
+            print(f"  [{idx}/{len(targets)}] FC{num}: ⚠ no se pudo leer valor de factura")
+            errores.append(num)
+            continue
+
+        remisiones_per_file = [
+            extract_remision_data(p, api_key, log) for p in remisiones_paths
+        ]
+        all_remisiones = []
+        file_name_per_remision = []
+        for fd in remisiones_per_file:
+            for rr in fd.get("remisiones", []):
+                all_remisiones.append(rr)
+                file_name_per_remision.append(fd.get("file_name", ""))
+
+        conc, diff = conciliate(
+            factura_data["valor"], all_remisiones, cfg["tolerance_pesos"],
+        )
+
+        obs_parts = []
+        for fd in remisiones_per_file:
+            n_in_file = len(fd.get("remisiones", []))
+            if n_in_file > 1:
+                obs_parts.append(f"{fd['file_name']}: {n_in_file} remisiones consolidadas")
+        for rr in all_remisiones:
+            v = rr.get("valor")
+            if v is not None and v > VALOR_REMISION_SUSPICIOUS_THRESHOLD:
+                obs_parts.append(
+                    f"⚠ Valor inusualmente alto (${v:,.0f}) - posible C.C./NIT - revisar"
+                )
+
+        clear_detalle_rows_for_factura(control_path, num)
+        duplicate_msgs = append_detalle_remisiones(
+            control_path, num, all_remisiones,
+            file_name_per_remision, remision_no_index,
+        )
+        obs_parts.extend(duplicate_msgs)
+        observaciones = " | ".join(obs_parts) if obs_parts else None
+
+        update_control_row(
+            control_path, num,
+            factura_data, all_remisiones, conc, diff,
+            factura_path, remisiones_paths, log,
+            observaciones=observaciones,
+        )
+
+        bajadas += 1
+        suma = sum(r.get("valor") or 0 for r in all_remisiones)
+        n_rem = len(all_remisiones)
+        n_files = len(remisiones_paths)
+        multi = sum(1 for fd in remisiones_per_file if len(fd.get("remisiones", [])) > 1)
+
+        if conc == "OK":
+            ok_ahora += 1
+            print(f"  [{idx}/{len(targets)}] FC{num}: ✓ OK ahora — "
+                  f"{n_rem} rem en {n_files} files (multi={multi}), suma=${suma:,.0f}")
+        else:
+            sigue_dif += 1
+            print(f"  [{idx}/{len(targets)}] FC{num}: → diferente — "
+                  f"factura=${factura_data['valor']:,.0f} suma=${suma:,.0f} diff=${diff:,.0f} ({n_rem} rem)")
+
+        log.info("redownload_diferencias_row",
+                 numdoctra=num, conciliacion=conc, diferencia=diff,
+                 n_rem=n_rem, n_files=n_files, multi_files=multi)
+
+    print(f"\n  ════════════════════════════════════════════════════════════")
+    print(f"  Re-bajadas: {bajadas}/{len(targets)}")
+    print(f"  ✓ Pasaron a OK: {ok_ahora}")
+    print(f"  ✗ Siguen diferentes: {sigue_dif}")
+    if no_encontradas:
+        print(f"  ⚠ No encontradas en Gmail: {len(no_encontradas)}")
+        for n in no_encontradas[:10]:
+            print(f"      - FC{n}")
+    if sin_zip:
+        print(f"  ⚠ Email sin ZIP: {len(sin_zip)}")
+        for n in sin_zip[:5]:
+            print(f"      - FC{n}")
+    if errores:
+        print(f"  ✗ Errores: {len(errores)}")
+        for n in errores[:5]:
+            print(f"      - FC{n}")
+    print(f"  ════════════════════════════════════════════════════════════")
+    print(f"\n  Siguiente: python conciliador.py --informe-reclamacion")
+
+    log.info("redownload_diferencias_done",
+             bajadas=bajadas, ok_ahora=ok_ahora, sigue_diferente=sigue_dif,
+             no_encontradas=len(no_encontradas), sin_zip=len(sin_zip),
+             errores=len(errores))
+
+
 def reextract_diferencias(control_path: Path, facturas_dir: Path,
                            tolerance: float, api_key: str | None,
                            log: RunLog) -> tuple[int, int, int]:
@@ -4827,6 +5025,13 @@ def main() -> None:
                              "actualiza el Excel. Util cuando Google Drive Desktop "
                              "lockea las carpetas y --reprocesar-diferencias no puede "
                              "borrarlas. Es mucho mas rapido (no descarga de Gmail).")
+    parser.add_argument("--redownload-diferencias", action="store_true",
+                        help="Re-baja de Gmail las facturas marcadas como 'diferente' "
+                             "(sin filtro de fecha, sin necesidad de --source-pdf). "
+                             "Busca cada NUMDOCTRA en Gmail por subject, baja el ZIP, "
+                             "extrae, clasifica y re-conciliate. Util cuando las "
+                             "carpetas locales fueron borradas/corrompidas y necesitas "
+                             "reconstruir desde la fuente.")
     parser.add_argument("--detectar-duplicados", action="store_true",
                         help="Escanea la hoja Detalle Remisiones del Excel y marca "
                              "como duplicado todas las remisiones cuyo numero aparece "
@@ -4934,6 +5139,13 @@ def main() -> None:
             cfg["tolerance_pesos"], cfg.get("anthropic_api_key"),
             log,
         )
+        return
+
+    if args.redownload_diferencias:
+        if not control_path.exists():
+            log.error("control_missing_for_redownload", path=str(control_path))
+            sys.exit(1)
+        redownload_diferencias(control_path, cfg, log)
         return
 
     if args.detectar_duplicados:
