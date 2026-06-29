@@ -484,6 +484,7 @@ def extract_remision_data(pdf_path: Path, api_key: str | None = None, log: "RunL
         return {
             "file_name": pdf_path.name,
             "remisiones": [{
+                "remision_no": None,  # regex no extrae numero de remision
                 "valor": valor,
                 "bote": bote,
                 "fecha_hora": fecha,
@@ -500,6 +501,7 @@ def extract_remision_data(pdf_path: Path, api_key: str | None = None, log: "RunL
     return {
         "file_name": pdf_path.name,
         "remisiones": [{
+            "remision_no": None,
             "valor": None,
             "bote": bote,
             "fecha_hora": fecha,
@@ -516,6 +518,7 @@ fotografiados juntos, o múltiples páginas). REVISA CUIDADOSAMENTE si hay más 
 una remisión en la imagen. Cada recibo POS tiene su propio TOTAL, PLACA, FECHA.
 
 Para CADA remisión que encuentres extrae:
+- remision_no (número de la remisión, suele aparecer en la parte superior como "REMISION No. 1946", "REM No. 56201", "Orden de Venta: 68831". Ej: "1946")
 - valor (TOTAL del despacho, número entero en pesos colombianos, sin $ ni puntos. Ej: 685940)
 - bote (identificador del bote/embarcación, aparece como CLIENTE, PLACA, EMBARCACION, BOTE. Ej: "B-10", "Le Marie")
 - fecha_hora (string formato YYYY-MM-DD HH:MM:SS. Ej: "2026-01-02 08:05:30")
@@ -541,13 +544,14 @@ Responde SOLO con JSON válido, sin markdown, sin explicación:
 
 {
   "remisiones": [
-    {"valor": 685940, "bote": "Le Marie", "fecha_hora": "2026-02-15 00:00:00"},
-    {"valor": 234567, "bote": "B-5", "fecha_hora": "2026-01-02 09:15:00"}
+    {"remision_no": "1946", "valor": 685940, "bote": "Le Marie", "fecha_hora": "2026-02-15 00:00:00"},
+    {"remision_no": "1947", "valor": 234567, "bote": "B-5", "fecha_hora": "2026-01-02 09:15:00"}
   ]
 }
 
 Si solo hay UNA remisión en la imagen, el array tendrá 1 elemento.
-Si hay varias remisiones, una entrada por cada una."""
+Si hay varias remisiones, una entrada por cada una.
+Si remision_no no es visible, usa null para ese campo."""
 
 # Si el valor extraido supera este threshold, loggea alerta (probable cedula u otro identificador)
 VALOR_REMISION_SUSPICIOUS_THRESHOLD = 5_000_000  # $5M COP por remision es muy alto
@@ -571,7 +575,7 @@ def _empty_vision_result(pdf_path: Path, reason: str) -> dict:
     return {
         "file_name": pdf_path.name,
         "remisiones": [{
-            "valor": None, "bote": None, "fecha_hora": None,
+            "remision_no": None, "valor": None, "bote": None, "fecha_hora": None,
         }],
         "source": f"vision_failed:{reason}",
     }
@@ -698,7 +702,11 @@ def vision_extract_remision(pdf_path: Path, api_key: str, log: "RunLog | None" =
                 valor = float(valor)
             except (TypeError, ValueError):
                 valor = None
+        rno = r.get("remision_no")
+        if rno is not None:
+            rno = str(rno).strip() or None
         remisiones.append({
+            "remision_no": rno,
             "valor": valor,
             "bote": r.get("bote"),
             "fecha_hora": r.get("fecha_hora"),
@@ -794,6 +802,13 @@ CONTROL_HEADERS = [
     "Valor remisión", "# Remisiones", "Conciliación", "Valor (diferencia)",
     "Link factura", "Link remisión(es)", "Última actualización", "Observaciones",
 ]
+
+# Hoja "Detalle Remisiones": una fila por remision individual encontrada
+DETALLE_HEADERS = [
+    "NUMDOCTRA Factura", "Remisión No.", "Bote", "Fecha tanqueo",
+    "Valor remisión", "Archivo origen", "Observaciones",
+]
+DETALLE_COL = {h: i + 1 for i, h in enumerate(DETALLE_HEADERS)}
 COL = {h: i + 1 for i, h in enumerate(CONTROL_HEADERS)}
 MONEY_FMT = '"$"#,##0;[Red]-"$"#,##0'
 HYPERLINK_FONT = Font(color="0563C1", underline="single")
@@ -1033,6 +1048,7 @@ def bootstrap_control(control_path: Path, source: Path, log: RunLog) -> None:
 
     _build_resumen_sheet(wb, last_row)
     _build_log_sheet(wb)
+    _build_detalle_remisiones_sheet(wb)
 
     control_path.parent.mkdir(parents=True, exist_ok=True)
     wb.save(str(control_path))
@@ -1167,6 +1183,191 @@ def _build_log_sheet(wb: Workbook) -> None:
     widths = [22, 14, 16, 16, 16, 10, 24, 60]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
+
+
+def _build_detalle_remisiones_sheet(wb: Workbook) -> None:
+    """Hoja 'Detalle Remisiones': una fila por cada remision individual.
+
+    Permite ver TODAS las remisiones (incluso las que estan agrupadas en
+    un mismo archivo) con su numero, bote, valor, y origen. Tambien
+    detecta numeros de remision duplicados (mismo numero en 2 facturas).
+    """
+    ws = wb.create_sheet("Detalle Remisiones")
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    header_fill = PatternFill("solid", fgColor="305496")
+    for i, h in enumerate(DETALLE_HEADERS, start=1):
+        c = ws.cell(row=1, column=i, value=h)
+        c.font = header_font
+        c.fill = header_fill
+        c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        c.border = THIN_BORDER
+    ws.row_dimensions[1].height = 28
+    widths = {"A": 16, "B": 14, "C": 18, "D": 22, "E": 18, "F": 32, "G": 50}
+    for letter, w in widths.items():
+        ws.column_dimensions[letter].width = w
+    ws.freeze_panes = "A2"
+
+
+def _ensure_detalle_sheet(wb: Workbook) -> None:
+    """Si el Excel fue creado antes de que existiera 'Detalle Remisiones', la agrega."""
+    if "Detalle Remisiones" not in wb.sheetnames:
+        _build_detalle_remisiones_sheet(wb)
+
+
+def load_remision_no_index(control_path: Path) -> dict:
+    """Carga del Excel un indice {remision_no: NUMDOCTRA_factura} para detectar
+    duplicados cuando se procesen nuevas remisiones."""
+    index: dict = {}
+    if not control_path.exists():
+        return index
+    try:
+        wb = load_workbook(str(control_path), data_only=True, read_only=True)
+        if "Detalle Remisiones" not in wb.sheetnames:
+            wb.close()
+            return index
+        ws = wb["Detalle Remisiones"]
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if not row or len(row) < 2:
+                continue
+            numdoctra = row[0]
+            remision_no = row[1]
+            if numdoctra is None or remision_no is None:
+                continue
+            key = str(remision_no).strip()
+            if not key:
+                continue
+            index[key] = str(int(numdoctra) if isinstance(numdoctra, float) else numdoctra).strip()
+        wb.close()
+    except Exception:
+        pass
+    return index
+
+
+def clear_detalle_rows_for_factura(control_path: Path, numdoctra: str) -> None:
+    """Borra del Detalle todas las filas asociadas a una NUMDOCTRA (para
+    reprocesar limpio)."""
+    if not control_path.exists():
+        return
+    wb = load_workbook(str(control_path))
+    if "Detalle Remisiones" not in wb.sheetnames:
+        wb.close()
+        return
+    ws = wb["Detalle Remisiones"]
+    target = str(numdoctra).strip()
+    rows_to_delete = []
+    for r in range(2, ws.max_row + 1):
+        v = ws.cell(row=r, column=1).value
+        if v is None:
+            continue
+        if str(int(v) if isinstance(v, float) else v).strip() == target:
+            rows_to_delete.append(r)
+    # Borrar de abajo hacia arriba para no perder indices
+    for r in reversed(rows_to_delete):
+        ws.delete_rows(r)
+    wb.save(str(control_path))
+
+
+def append_detalle_remisiones(
+    control_path: Path,
+    numdoctra: str,
+    remisiones: list[dict],
+    file_name_per_remision: list[str],
+    remision_no_index: dict,
+) -> list[str]:
+    """Agrega filas al Detalle Remisiones para cada remision encontrada.
+
+    Detecta duplicados: si una remision_no ya fue vista en otra factura, lo nota.
+    Modifica remision_no_index agregando las nuevas.
+
+    Retorna lista de mensajes de duplicado (vacia si no hubo).
+    """
+    wb = load_workbook(str(control_path))
+    _ensure_detalle_sheet(wb)
+    ws = wb["Detalle Remisiones"]
+    next_row = ws.max_row + 1
+    if next_row == 2 and ws.cell(row=2, column=1).value is None:
+        next_row = 2
+
+    duplicate_msgs: list[str] = []
+    money_fmt = MONEY_FMT
+
+    for r, file_name in zip(remisiones, file_name_per_remision):
+        rno = r.get("remision_no")
+        obs = ""
+        if rno:
+            rno_key = str(rno).strip()
+            if rno_key in remision_no_index and remision_no_index[rno_key] != str(numdoctra).strip():
+                msg = f"⚠ Remisión No. {rno_key} ya usada en factura FC{remision_no_index[rno_key]}"
+                obs = msg
+                duplicate_msgs.append(msg)
+            else:
+                remision_no_index[rno_key] = str(numdoctra).strip()
+
+        ws.cell(row=next_row, column=DETALLE_COL["NUMDOCTRA Factura"], value=numdoctra)
+        ws.cell(row=next_row, column=DETALLE_COL["Remisión No."], value=rno)
+        ws.cell(row=next_row, column=DETALLE_COL["Bote"], value=r.get("bote"))
+        ws.cell(row=next_row, column=DETALLE_COL["Fecha tanqueo"], value=r.get("fecha_hora"))
+        c_val = ws.cell(row=next_row, column=DETALLE_COL["Valor remisión"], value=r.get("valor"))
+        if r.get("valor") is not None:
+            c_val.number_format = money_fmt
+        ws.cell(row=next_row, column=DETALLE_COL["Archivo origen"], value=file_name)
+        ws.cell(row=next_row, column=DETALLE_COL["Observaciones"], value=obs or None)
+
+        next_row += 1
+
+    wb.save(str(control_path))
+    return duplicate_msgs
+
+
+def detectar_duplicados_remisiones(control_path: Path, log: RunLog) -> int:
+    """Escanea la hoja Detalle Remisiones completa y marca duplicados.
+
+    Una remision esta duplicada si su numero aparece en mas de una NUMDOCTRA
+    distinta. Marca todas las apariciones con la observacion correspondiente.
+
+    Util si se cargo Detalle antes de tener la deteccion en tiempo real.
+    Retorna cuantas filas se marcaron como duplicado.
+    """
+    wb = load_workbook(str(control_path))
+    if "Detalle Remisiones" not in wb.sheetnames:
+        log.warn("detalle_sheet_missing")
+        return 0
+    ws = wb["Detalle Remisiones"]
+
+    # Indice: remision_no -> lista de (row, numdoctra)
+    from collections import defaultdict
+    by_rno: dict = defaultdict(list)
+    for r in range(2, ws.max_row + 1):
+        numdoctra = ws.cell(row=r, column=DETALLE_COL["NUMDOCTRA Factura"]).value
+        rno = ws.cell(row=r, column=DETALLE_COL["Remisión No."]).value
+        if numdoctra is None or rno is None:
+            continue
+        rno_key = str(rno).strip()
+        num_str = str(int(numdoctra) if isinstance(numdoctra, float) else numdoctra).strip()
+        by_rno[rno_key].append((r, num_str))
+
+    marked = 0
+    for rno, occurrences in by_rno.items():
+        if len(occurrences) <= 1:
+            continue
+        unique_numdoctras = sorted(set(num for _, num in occurrences))
+        if len(unique_numdoctras) <= 1:
+            continue  # mismo NUMDOCTRA repetido no es duplicado (es reprocesamiento)
+        # Hay duplicado real
+        for row_num, my_numdoctra in occurrences:
+            others = [n for n in unique_numdoctras if n != my_numdoctra]
+            msg = f"⚠ Remisión No. {rno} duplicada en facturas: FC{', FC'.join(others)}"
+            cell = ws.cell(row=row_num, column=DETALLE_COL["Observaciones"])
+            existing = cell.value or ""
+            if "duplicada" not in existing.lower():
+                cell.value = (existing + " | " if existing else "") + msg
+            marked += 1
+
+    wb.save(str(control_path))
+    log.info("detectar_duplicados_done", filas_marcadas=marked, numeros_duplicados=len(
+        [k for k, v in by_rno.items() if len(set(n for _, n in v)) > 1]
+    ))
+    return marked
 
 
 def find_row_by_numdoctra(ws, numdoctra: int | str) -> int | None:
@@ -1426,6 +1627,7 @@ def process_one_email(
     log: RunLog,
     summary: dict,
     service,
+    remision_no_index: dict | None = None,
 ) -> None:
     subject = decode_subject(msg.get("Subject", ""))
     numdoctra = extract_numdoctra(subject)
@@ -1501,10 +1703,13 @@ def process_one_email(
 
     # Aplanar para conciliacion: cada remision (incluso si estan agrupadas en
     # un mismo archivo) cuenta individualmente para sumar valores.
+    # Tambien trackeamos el file_name de cada remision para el Detalle.
     all_remisiones = []
+    file_name_per_remision = []
     for fd in remisiones_per_file:
         for r in fd.get("remisiones", []):
             all_remisiones.append(r)
+            file_name_per_remision.append(fd.get("file_name", ""))
 
     if factura_data.get("valor") is None:
         log.warn("factura_value_not_extracted", numdoctra=numdoctra,
@@ -1538,10 +1743,24 @@ def process_one_email(
                 f"⚠ Valor inusualmente alto (${v:,.0f}) - posible confusion con C.C./NIT - revisar manualmente"
             )
 
+    control_path_for_write = cfg["control_dir"] / cfg["control_filename"]
+
+    # Detalle Remisiones: borra las viejas (si reprocesando) y escribe las nuevas.
+    # Detecta duplicados de Remision No. contra otras facturas.
+    clear_detalle_rows_for_factura(control_path_for_write, numdoctra)
+    if remision_no_index is None:
+        remision_no_index = {}
+    duplicate_msgs = append_detalle_remisiones(
+        control_path_for_write, numdoctra, all_remisiones,
+        file_name_per_remision, remision_no_index,
+    )
+    for dm in duplicate_msgs:
+        obs_parts.append(dm)
+
     observaciones = " | ".join(obs_parts) if obs_parts else None
 
     ok = update_control_row(
-        cfg["control_dir"] / cfg["control_filename"],
+        control_path_for_write,
         numdoctra, factura_data, all_remisiones, conc, diff,
         factura_path, remisiones_paths, log,
         observaciones=observaciones,
@@ -1555,6 +1774,7 @@ def process_one_email(
             valor_remision=sum(valores_rem) if valores_rem else 0,
             n_remisiones=n_detectadas, n_archivos=len(remisiones_per_file),
             n_esperadas=n_esperadas, conciliacion=conc, diferencia=diff,
+            duplicados=len(duplicate_msgs),
         )
 
 
@@ -1595,6 +1815,10 @@ def main() -> None:
                         help="Borra las carpetas FC<num> de facturas marcadas como "
                              "'Remision con valor diferente'. Despues corres "
                              "'python conciliador.py' normalmente para reprocesarlas.")
+    parser.add_argument("--detectar-duplicados", action="store_true",
+                        help="Escanea la hoja Detalle Remisiones del Excel y marca "
+                             "como duplicado todas las remisiones cuyo numero aparece "
+                             "en mas de una factura.")
     args = parser.parse_args()
 
     cfg = load_config()
@@ -1657,6 +1881,15 @@ def main() -> None:
         print(f"\n  Ahora corre: python conciliador.py  (o con --since/--until)")
         return
 
+    if args.detectar_duplicados:
+        if not control_path.exists():
+            log.error("control_missing_for_dedup", path=str(control_path))
+            sys.exit(1)
+        n = detectar_duplicados_remisiones(control_path, log)
+        print(f"\n  ✓ {n} filas marcadas como duplicado en hoja 'Detalle Remisiones'")
+        print(f"  Abre el Excel y mira la columna Observaciones para ver los detalles.")
+        return
+
     bootstrap_control(control_path, cfg["source_excel"], log)
     expected = load_expected_numdoctras(cfg["source_excel"])
     log.info("expected_loaded", count=len(expected))
@@ -1694,9 +1927,15 @@ def main() -> None:
         log.info("dry_run_done")
         return
 
+    # Cargar indice de remision_no de procesamientos anteriores para detectar
+    # duplicados al vuelo (mismo numero de remision usado en 2 facturas)
+    remision_no_index = load_remision_no_index(control_path)
+    log.info("remision_no_index_loaded", count=len(remision_no_index))
+
     for mid, _dt, m in meta:
         try:
-            process_one_email(cfg, mid, m, expected, log, summary, service)
+            process_one_email(cfg, mid, m, expected, log, summary, service,
+                              remision_no_index=remision_no_index)
         except Exception as e:
             log.error("process_failed", msg_id=mid, err=str(e))
             summary["errors"] += 1
