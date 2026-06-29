@@ -516,25 +516,41 @@ fotografiados juntos, o múltiples páginas). REVISA CUIDADOSAMENTE si hay más 
 una remisión en la imagen. Cada recibo POS tiene su propio TOTAL, PLACA, FECHA.
 
 Para CADA remisión que encuentres extrae:
-- valor (TOTAL del despacho, número entero en pesos colombianos, sin $ ni puntos. Ej: 685948)
-- bote (identificador del bote/embarcación, aparece como PLACA, EMBARCACION, BOTE. Ej: "B-10")
+- valor (TOTAL del despacho, número entero en pesos colombianos, sin $ ni puntos. Ej: 685940)
+- bote (identificador del bote/embarcación, aparece como CLIENTE, PLACA, EMBARCACION, BOTE. Ej: "B-10", "Le Marie")
 - fecha_hora (string formato YYYY-MM-DD HH:MM:SS. Ej: "2026-01-02 08:05:30")
+
+⚠️ CUIDADO con el TOTAL — esto NO es el TOTAL:
+- Números de **cédula (C.C.) o NIT** del cliente o de quien firma (suelen ser 7-10 dígitos: ej. "1.047.451.897")
+- **Firmas** o números escritos a mano en el área de OBSERVACIONES
+- **Número de remisión** (ej. "REMISION No. 1946")
+- **Cantidad** de combustible (galones, ej. 42)
+- **Precio unitario / VR.UNIDAD** (precio por galón, ej. 16.320)
+
+El TOTAL es el resultado de cantidad × precio_unitario, suele aparecer en
+el área del recibo etiquetada como "TOTAL" o como el monto principal en el
+cuerpo. Para un tanqueo típico va de $50.000 a $2.000.000 pesos. Si vieras
+un número de 9-10 dígitos (>$10M), probablemente es una cédula, NO el TOTAL.
 
 REVISA CON CUIDADO los dígitos del TOTAL — algunos recibos tienen tinta clara o
 resolución baja, verifica cada cifra antes de responder. Si no estás 100% seguro
-de un campo, devuelve null para ese campo (es preferible null a un valor inventado).
+de un campo, devuelve null para ese campo (es preferible null a un valor inventado
+o un número que es otra cosa).
 
 Responde SOLO con JSON válido, sin markdown, sin explicación:
 
 {
   "remisiones": [
-    {"valor": 685948, "bote": "B-10", "fecha_hora": "2026-01-02 08:05:30"},
+    {"valor": 685940, "bote": "Le Marie", "fecha_hora": "2026-02-15 00:00:00"},
     {"valor": 234567, "bote": "B-5", "fecha_hora": "2026-01-02 09:15:00"}
   ]
 }
 
 Si solo hay UNA remisión en la imagen, el array tendrá 1 elemento.
 Si hay varias remisiones, una entrada por cada una."""
+
+# Si el valor extraido supera este threshold, loggea alerta (probable cedula u otro identificador)
+VALOR_REMISION_SUSPICIOUS_THRESHOLD = 5_000_000  # $5M COP por remision es muy alto
 
 
 def render_pdf_first_page_to_png(pdf_path: Path, scale: float = 3.0) -> bytes:
@@ -1232,6 +1248,38 @@ def update_control_row(
     return True
 
 
+def mark_missing_facturas(control_path: Path, log: RunLog) -> int:
+    """Marca en col Observaciones las facturas del control que NO tienen correo
+    recibido (col K Conciliacion vacia). Util para identificar visualmente las
+    facturas sin email para reclamar a Nautiturismo.
+
+    Si la celda Observaciones ya tiene algo (no vacia), no la sobrescribe.
+
+    Retorna cuantas se marcaron.
+    """
+    wb = load_workbook(str(control_path))
+    ws = wb["Conciliación"]
+    _ensure_observaciones_header(ws)
+
+    marked = 0
+    for r in range(2, ws.max_row + 1):
+        numdoctra = ws.cell(row=r, column=COL["NUMDOCTRA"]).value
+        if numdoctra is None:
+            continue
+        conciliacion = ws.cell(row=r, column=COL["Conciliación"]).value
+        if conciliacion:
+            continue  # ya conciliada, no es faltante
+        obs_cell = ws.cell(row=r, column=COL["Observaciones"])
+        if obs_cell.value:
+            continue  # ya tiene observacion (no pisar)
+        obs_cell.value = "No se encontró factura"
+        marked += 1
+
+    wb.save(str(control_path))
+    log.info("missing_marked", count=marked)
+    return marked
+
+
 def append_log_row(control_path: Path, summary: dict) -> None:
     wb = load_workbook(str(control_path))
     ws = wb["Log"]
@@ -1445,6 +1493,14 @@ def process_one_email(
             f"⚠ Factura indica {n_esperadas} remisiones, se detectaron {n_detectadas}"
         )
 
+    # Sanity check: valor sospechosamente alto (probable confusion con cedula)
+    for r in all_remisiones:
+        v = r.get("valor")
+        if v is not None and v > VALOR_REMISION_SUSPICIOUS_THRESHOLD:
+            obs_parts.append(
+                f"⚠ Valor inusualmente alto (${v:,.0f}) - posible confusion con C.C./NIT - revisar manualmente"
+            )
+
     observaciones = " | ".join(obs_parts) if obs_parts else None
 
     ok = update_control_row(
@@ -1494,6 +1550,10 @@ def main() -> None:
     parser.add_argument("--listar-faltantes", action="store_true",
                         help="Lee el Excel de control y genera CSV con facturas "
                              "que no tienen correo (cols G-O vacias). Muestra desglose por mes.")
+    parser.add_argument("--marcar-faltantes", action="store_true",
+                        help="Escribe 'No se encontro factura' en col Observaciones "
+                             "para todas las filas sin conciliacion. Util para Excels "
+                             "creados antes de que el script lo hiciera automaticamente.")
     args = parser.parse_args()
 
     cfg = load_config()
@@ -1536,6 +1596,14 @@ def main() -> None:
             log.error("control_missing_for_listing", path=str(control_path))
             sys.exit(1)
         listar_faltantes(control_path, log)
+        return
+
+    if args.marcar_faltantes:
+        if not control_path.exists():
+            log.error("control_missing_for_marking", path=str(control_path))
+            sys.exit(1)
+        n = mark_missing_facturas(control_path, log)
+        print(f"\n  ✓ {n} filas marcadas con 'No se encontró factura' en col Observaciones")
         return
 
     bootstrap_control(control_path, cfg["source_excel"], log)
@@ -1583,6 +1651,10 @@ def main() -> None:
             summary["errors"] += 1
 
     append_log_row(control_path, summary)
+    # Marcar las filas del control sin correo recibido con "No se encontró factura"
+    # en la columna Observaciones
+    n_missing = mark_missing_facturas(control_path, log)
+    summary["missing_marked"] = n_missing
     log.info("done", **summary)
 
 
