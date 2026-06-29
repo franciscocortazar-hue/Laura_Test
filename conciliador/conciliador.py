@@ -422,8 +422,32 @@ def extract_factura_data(pdf_path: Path) -> dict:
             "GRAN TOTAL", "TOTAL", "Total"
         ]),
         "nit_emisor": _find_nit(text),
+        "n_remisiones_esperadas": _find_remisiones_count(text),
         "raw_text_sample": text[:200],
     }
+
+
+def _find_remisiones_count(text: str) -> int | None:
+    """Busca cuantas remisiones se mencionan en las observaciones de la factura.
+
+    Patrones tipicos en facturas viejas que agrupan varios tanqueos:
+      'OBSERVACIONES: 3 remisiones'
+      'remisiones: 5'
+      'Numero de remisiones: 2'
+      'incluye 4 remisiones'
+    Tambien acepta lista de numeros de remision separados por coma.
+    """
+    if not text:
+        return None
+    # Patron 1: numero seguido de 'remisi'
+    m = re.search(r"(\d{1,3})\s*remisi", text, re.IGNORECASE)
+    if m:
+        return int(m.group(1))
+    # Patron 2: 'remisiones' seguido de numero
+    m = re.search(r"remisi[oó]n(?:es)?\s*[:\-=]?\s*(\d{1,3})", text, re.IGNORECASE)
+    if m:
+        return int(m.group(1))
+    return None
 
 
 def _find_nit(text: str) -> str | None:
@@ -434,20 +458,37 @@ def _find_nit(text: str) -> str | None:
 
 
 def extract_remision_data(pdf_path: Path, api_key: str | None = None, log: "RunLog | None" = None) -> dict:
-    """Extrae datos de la remision. Si pdfplumber no logra extraer el valor
-    (PDF escaneado), cae a Claude Vision API si esta configurada."""
+    """Extrae datos de una remision (puede contener varias remisiones internas).
+
+    Retorna dict con estructura:
+      {
+        "file_name": "REM-FC74783.pdf",
+        "remisiones": [
+          {"valor": 685948, "bote": "B-10", "fecha_hora": "..."},
+          ...
+        ],
+        "source": "regex" | "vision" | "empty",
+      }
+
+    Si pdfplumber no logra extraer el valor (PDF escaneado), cae a Claude
+    Vision API si esta configurada. Vision puede detectar MULTIPLES remisiones
+    en una sola imagen.
+    """
     text = pdf_text(pdf_path)
     valor = find_money_after(text, ["TOTAL", "VALOR TOTAL", "Total"]) if text else None
     bote = _find_bote(text) if text else None
     fecha = _find_fecha_hora(text) if text else None
 
     if valor is not None:
-        # Extraccion clasica funciono
+        # Extraccion clasica funciono (1 remision por archivo, asume regex)
         return {
-            "valor": valor,
-            "bote": bote,
-            "fecha_hora": fecha,
-            "raw_text_sample": text[:300] if text else "",
+            "file_name": pdf_path.name,
+            "remisiones": [{
+                "valor": valor,
+                "bote": bote,
+                "fecha_hora": fecha,
+            }],
+            "source": "regex",
         }
 
     # Sin valor extraido por regex -> intentar Vision si configurada
@@ -457,29 +498,43 @@ def extract_remision_data(pdf_path: Path, api_key: str | None = None, log: "RunL
         return vision_extract_remision(pdf_path, api_key, log)
 
     return {
-        "valor": None,
-        "bote": bote,
-        "fecha_hora": fecha,
-        "raw_text_sample": text[:300] if text else "",
+        "file_name": pdf_path.name,
+        "remisiones": [{
+            "valor": None,
+            "bote": bote,
+            "fecha_hora": fecha,
+        }],
+        "source": "empty",
     }
 
 
-VISION_PROMPT = """Esta es una remisión (recibo POS) de una estación de servicio de combustible para un bote.
+VISION_PROMPT = """Esta es una imagen con UNA O MÁS remisiones (recibos POS) de una estación de
+servicio de combustible para botes.
 
-Extrae los siguientes datos. **REVISA CON CUIDADO los dígitos del TOTAL** — algunos
-recibos tienen tinta clara o resolución baja, así que verifica cada cifra antes de
-responder. Si no estás 100% seguro de un campo, devuelve null para ese campo (es
-preferible null a un valor inventado o leído mal).
+⚠️ IMPORTANTE: un solo archivo puede contener VARIAS remisiones (varios recibos
+fotografiados juntos, o múltiples páginas). REVISA CUIDADOSAMENTE si hay más de
+una remisión en la imagen. Cada recibo POS tiene su propio TOTAL, PLACA, FECHA.
+
+Para CADA remisión que encuentres extrae:
+- valor (TOTAL del despacho, número entero en pesos colombianos, sin $ ni puntos. Ej: 685948)
+- bote (identificador del bote/embarcación, aparece como PLACA, EMBARCACION, BOTE. Ej: "B-10")
+- fecha_hora (string formato YYYY-MM-DD HH:MM:SS. Ej: "2026-01-02 08:05:30")
+
+REVISA CON CUIDADO los dígitos del TOTAL — algunos recibos tienen tinta clara o
+resolución baja, verifica cada cifra antes de responder. Si no estás 100% seguro
+de un campo, devuelve null para ese campo (es preferible null a un valor inventado).
 
 Responde SOLO con JSON válido, sin markdown, sin explicación:
 
 {
-  "valor": <numero entero, el TOTAL del despacho en pesos colombianos, sin signo $ ni puntos de miles. Ejemplo: 685948>,
-  "bote": <string con el identificador del bote/embarcacion. Suele aparecer como PLACA, EMBARCACION, BOTE. Ejemplo: "B-10">,
-  "fecha_hora": <string formato YYYY-MM-DD HH:MM:SS. Ejemplo: "2026-01-02 08:05:30">
+  "remisiones": [
+    {"valor": 685948, "bote": "B-10", "fecha_hora": "2026-01-02 08:05:30"},
+    {"valor": 234567, "bote": "B-5", "fecha_hora": "2026-01-02 09:15:00"}
+  ]
 }
 
-Si un campo no es legible o no estás seguro, usa null."""
+Si solo hay UNA remisión en la imagen, el array tendrá 1 elemento.
+Si hay varias remisiones, una entrada por cada una."""
 
 
 def render_pdf_first_page_to_png(pdf_path: Path, scale: float = 3.0) -> bytes:
@@ -495,22 +550,31 @@ def render_pdf_first_page_to_png(pdf_path: Path, scale: float = 3.0) -> bytes:
         pdf.close()
 
 
-def vision_extract_remision(pdf_path: Path, api_key: str, log: "RunLog | None" = None) -> dict:
-    """Usa Claude Vision (Haiku) para extraer datos de una remision escaneada."""
-    if not HAS_ANTHROPIC:
-        return {
+def _empty_vision_result(pdf_path: Path, reason: str) -> dict:
+    """Genera dict vacio compatible con el esquema esperado."""
+    return {
+        "file_name": pdf_path.name,
+        "remisiones": [{
             "valor": None, "bote": None, "fecha_hora": None,
-            "raw_text_sample": "anthropic_not_installed",
-        }
+        }],
+        "source": f"vision_failed:{reason}",
+    }
+
+
+def vision_extract_remision(pdf_path: Path, api_key: str, log: "RunLog | None" = None) -> dict:
+    """Usa Claude Vision (Sonnet) para extraer datos de una imagen de remisiones.
+
+    Retorna dict con clave 'remisiones' que es una lista de 1 o mas remisiones
+    detectadas en la imagen (un solo archivo puede tener varios recibos POS).
+    """
+    if not HAS_ANTHROPIC:
+        return _empty_vision_result(pdf_path, "anthropic_not_installed")
     try:
         png_bytes = render_pdf_first_page_to_png(pdf_path)
     except Exception as e:
         if log is not None:
             log.warn("pdf_render_failed", file=pdf_path.name, err=str(e))
-        return {
-            "valor": None, "bote": None, "fecha_hora": None,
-            "raw_text_sample": f"pdf_render_failed: {e}",
-        }
+        return _empty_vision_result(pdf_path, "pdf_render_failed")
 
     img_b64 = base64.b64encode(png_bytes).decode()
     client = anthropic.Anthropic(api_key=api_key)
@@ -520,7 +584,7 @@ def vision_extract_remision(pdf_path: Path, api_key: str, log: "RunLog | None" =
     def _call_vision():
         return client.messages.create(
             model=model,
-            max_tokens=512,
+            max_tokens=1024,  # mas tokens por si la imagen tiene varias remisiones
             messages=[{
                 "role": "user",
                 "content": [
@@ -561,10 +625,7 @@ def vision_extract_remision(pdf_path: Path, api_key: str, log: "RunLog | None" =
                 if log is not None:
                     log.warn("vision_api_failed", file=pdf_path.name,
                              attempt=attempt + 1, err=f"{err_name}: {err_msg[:200]}")
-                return {
-                    "valor": None, "bote": None, "fecha_hora": None,
-                    "raw_text_sample": f"vision_api_failed: {err_name}",
-                }
+                return _empty_vision_result(pdf_path, f"api_failed:{err_name}")
             wait = (2 ** attempt) * 2  # 2s, 4s, 8s, 16s
             if log is not None:
                 log.warn("vision_retry", file=pdf_path.name,
@@ -572,10 +633,8 @@ def vision_extract_remision(pdf_path: Path, api_key: str, log: "RunLog | None" =
             time.sleep(wait)
 
     if response_text is None:
-        return {
-            "valor": None, "bote": None, "fecha_hora": None,
-            "raw_text_sample": f"vision_api_failed: {type(last_err).__name__ if last_err else 'unknown'}",
-        }
+        return _empty_vision_result(pdf_path,
+                                    f"api_failed:{type(last_err).__name__ if last_err else 'unknown'}")
 
     # Strip code fences si los hay
     if response_text.startswith("```"):
@@ -586,10 +645,8 @@ def vision_extract_remision(pdf_path: Path, api_key: str, log: "RunLog | None" =
         response_text = "\n".join(lines[1:end])
 
     # Si la respuesta tiene texto antes/despues del JSON, extraer solo el bloque {...}
-    # (Sonnet a veces ignora "responde solo JSON" y escribe explicacion antes del JSON)
     json_text = response_text.strip()
     if not json_text.startswith("{"):
-        # Buscar el primer { y el ultimo } para extraer el bloque JSON
         first_brace = json_text.find("{")
         last_brace = json_text.rfind("}")
         if first_brace >= 0 and last_brace > first_brace:
@@ -601,23 +658,47 @@ def vision_extract_remision(pdf_path: Path, api_key: str, log: "RunLog | None" =
         if log is not None:
             log.warn("vision_response_not_json", file=pdf_path.name,
                      response=response_text[:500])
-        return {
-            "valor": None, "bote": None, "fecha_hora": None,
-            "raw_text_sample": f"not_json: {response_text[:200]}",
-        }
+        return _empty_vision_result(pdf_path, "not_json")
 
-    valor = data.get("valor")
-    if valor is not None:
-        try:
-            valor = float(valor)
-        except (TypeError, ValueError):
-            valor = None
+    # Esquema esperado: {"remisiones": [{...}, {...}]}
+    # Backwards compat: si viene como {"valor": ..., "bote": ..., "fecha_hora": ...} (1 sola), wrappearlo
+    if "remisiones" in data and isinstance(data["remisiones"], list):
+        raw_remisiones = data["remisiones"]
+    elif "valor" in data or "bote" in data or "fecha_hora" in data:
+        # Esquema legacy de 1 remision suelta
+        raw_remisiones = [data]
+    else:
+        if log is not None:
+            log.warn("vision_unexpected_schema", file=pdf_path.name, keys=list(data.keys()))
+        return _empty_vision_result(pdf_path, "unexpected_schema")
+
+    remisiones = []
+    for r in raw_remisiones:
+        if not isinstance(r, dict):
+            continue
+        valor = r.get("valor")
+        if valor is not None:
+            try:
+                valor = float(valor)
+            except (TypeError, ValueError):
+                valor = None
+        remisiones.append({
+            "valor": valor,
+            "bote": r.get("bote"),
+            "fecha_hora": r.get("fecha_hora"),
+        })
+
+    if not remisiones:
+        return _empty_vision_result(pdf_path, "no_remisiones_in_response")
+
+    if log is not None and len(remisiones) > 1:
+        log.info("multiple_remisiones_in_file",
+                 file=pdf_path.name, count=len(remisiones))
 
     return {
-        "valor": valor,
-        "bote": data.get("bote"),
-        "fecha_hora": data.get("fecha_hora"),
-        "raw_text_sample": "vision",
+        "file_name": pdf_path.name,
+        "remisiones": remisiones,
+        "source": "vision",
     }
 
 
@@ -695,7 +776,7 @@ CONTROL_HEADERS = [
     "NUMDOCTRA", "Fecha factura", "Razón social", "NIT", "Tipo doc",
     "Valor factura", "Nombre de Bote", "Fecha y hora de tanqueo",
     "Valor remisión", "# Remisiones", "Conciliación", "Valor (diferencia)",
-    "Link factura", "Link remisión(es)", "Última actualización",
+    "Link factura", "Link remisión(es)", "Última actualización", "Observaciones",
 ]
 COL = {h: i + 1 for i, h in enumerate(CONTROL_HEADERS)}
 MONEY_FMT = '"$"#,##0;[Red]-"$"#,##0'
@@ -929,7 +1010,8 @@ def bootstrap_control(control_path: Path, source: Path, log: RunLog) -> None:
     )
 
     widths = {"A": 12, "B": 13, "C": 22, "D": 14, "E": 8, "F": 16, "G": 18,
-              "H": 22, "I": 16, "J": 8, "K": 42, "L": 16, "M": 28, "N": 32, "O": 20}
+              "H": 22, "I": 16, "J": 8, "K": 42, "L": 16, "M": 28, "N": 32, "O": 20,
+              "P": 50}
     for letter, w in widths.items():
         ws.column_dimensions[letter].width = w
 
@@ -1082,6 +1164,20 @@ def find_row_by_numdoctra(ws, numdoctra: int | str) -> int | None:
     return None
 
 
+def _ensure_observaciones_header(ws) -> None:
+    """Si el Excel fue creado antes de que existiera col Observaciones, agrega
+    el header para que las nuevas escrituras a esa col tengan etiqueta."""
+    col_idx = COL["Observaciones"]
+    cell = ws.cell(row=1, column=col_idx)
+    if cell.value != "Observaciones":
+        cell.value = "Observaciones"
+        cell.font = Font(bold=True, color="FFFFFF", size=11)
+        cell.fill = PatternFill("solid", fgColor="305496")
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = THIN_BORDER
+        ws.column_dimensions[get_column_letter(col_idx)].width = 50
+
+
 def update_control_row(
     control_path: Path,
     numdoctra: str,
@@ -1092,9 +1188,11 @@ def update_control_row(
     factura_link: Path | None,
     remision_links: list[Path],
     log: RunLog,
+    observaciones: str | None = None,
 ) -> bool:
     wb = load_workbook(str(control_path))
     ws = wb["Conciliación"]
+    _ensure_observaciones_header(ws)
     row = find_row_by_numdoctra(ws, numdoctra)
     if row is None:
         log.warn("numdoctra_not_in_control", numdoctra=numdoctra)
@@ -1128,6 +1226,7 @@ def update_control_row(
         set_hyperlink_cell(c_n, folder_path, f"Carpeta ({len(remision_links)} remisiones)")
 
     ws.cell(row=row, column=COL["Última actualización"], value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    ws.cell(row=row, column=COL["Observaciones"], value=observaciones)
 
     wb.save(str(control_path))
     return True
@@ -1308,10 +1407,19 @@ def process_one_email(
         summary["facturas_skipped"] += 1
         return
 
-    remisiones_data = [
+    # Cada archivo de remision retorna un dict con clave 'remisiones' (list)
+    # porque un archivo puede contener varias remisiones (Vision detecta cuantas).
+    remisiones_per_file = [
         extract_remision_data(p, cfg.get("anthropic_api_key"), log)
         for p in remisiones_paths
     ]
+
+    # Aplanar para conciliacion: cada remision (incluso si estan agrupadas en
+    # un mismo archivo) cuenta individualmente para sumar valores.
+    all_remisiones = []
+    for fd in remisiones_per_file:
+        for r in fd.get("remisiones", []):
+            all_remisiones.append(r)
 
     if factura_data.get("valor") is None:
         log.warn("factura_value_not_extracted", numdoctra=numdoctra,
@@ -1319,13 +1427,31 @@ def process_one_email(
         summary["errors"] += 1
         return
 
-    conc, diff = conciliate(factura_data["valor"], remisiones_data, cfg["tolerance_pesos"])
-    valores_rem = [r["valor"] for r in remisiones_data if r.get("valor") is not None]
+    conc, diff = conciliate(factura_data["valor"], all_remisiones, cfg["tolerance_pesos"])
+    valores_rem = [r["valor"] for r in all_remisiones if r.get("valor") is not None]
+
+    # Construir texto de observaciones
+    obs_parts = []
+    for fd in remisiones_per_file:
+        n_in_file = len(fd.get("remisiones", []))
+        if n_in_file > 1:
+            obs_parts.append(f"{fd['file_name']}: {n_in_file} remisiones consolidadas")
+
+    # Cruzar contra lo que dice la factura ("OBSERVACIONES: N remisiones")
+    n_esperadas = factura_data.get("n_remisiones_esperadas")
+    n_detectadas = len(all_remisiones)
+    if n_esperadas and n_esperadas != n_detectadas:
+        obs_parts.append(
+            f"⚠ Factura indica {n_esperadas} remisiones, se detectaron {n_detectadas}"
+        )
+
+    observaciones = " | ".join(obs_parts) if obs_parts else None
 
     ok = update_control_row(
         cfg["control_dir"] / cfg["control_filename"],
-        numdoctra, factura_data, remisiones_data, conc, diff,
+        numdoctra, factura_data, all_remisiones, conc, diff,
         factura_path, remisiones_paths, log,
+        observaciones=observaciones,
     )
     if ok:
         summary["facturas_new"] += 1
@@ -1334,7 +1460,8 @@ def process_one_email(
             "conciliated",
             numdoctra=numdoctra, valor_factura=factura_data["valor"],
             valor_remision=sum(valores_rem) if valores_rem else 0,
-            n_remisiones=len(remisiones_data), conciliacion=conc, diferencia=diff,
+            n_remisiones=n_detectadas, n_archivos=len(remisiones_per_file),
+            n_esperadas=n_esperadas, conciliacion=conc, diferencia=diff,
         )
 
 
