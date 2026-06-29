@@ -1584,6 +1584,243 @@ def reprocesar_diferencias(control_path: Path, facturas_dir: Path, log: RunLog) 
     return deleted, len(candidatos)
 
 
+def generar_informe(control_path: Path, log: RunLog) -> None:
+    """Genera 4 CSVs y un Markdown con todo lo necesario para el informe a Todomar.
+
+    Lee el Excel Conciliacion y agrupa por categoria:
+    1. Diferencias  (col K contiene 'diferente'; usa signo de col L para a-favor-de)
+    2. Sin remision (col K contiene 'No hay remisión')
+    3. Sin correo   (col P contiene 'No se encontró')
+    4. Pendiente revision manual (col K contiene 'Pendiente')
+
+    Genera en la carpeta Control/:
+      - informe_diferencias.csv
+      - informe_sin_remision.csv
+      - informe_sin_factura.csv
+      - informe_pendiente_revision.csv
+      - INFORME_RESUMEN.md (Markdown listo para email)
+    """
+    import csv
+
+    wb = load_workbook(str(control_path), data_only=True)
+    ws = wb["Conciliación"]
+
+    diferencias_pos = []  # factura > remision -> a favor Nautiturismo
+    diferencias_neg = []  # factura < remision -> a favor Todomar
+    sin_remision = []
+    sin_factura = []
+    pendiente = []
+
+    for r in range(2, ws.max_row + 1):
+        numdoctra = ws.cell(row=r, column=COL["NUMDOCTRA"]).value
+        if numdoctra is None:
+            continue
+        fecha = ws.cell(row=r, column=COL["Fecha factura"]).value
+        bote = ws.cell(row=r, column=COL["Nombre de Bote"]).value
+        v_factura = ws.cell(row=r, column=COL["Valor factura"]).value
+        v_remision = ws.cell(row=r, column=COL["Valor remisión"]).value
+        n_remisiones = ws.cell(row=r, column=COL["# Remisiones"]).value
+        conc = ws.cell(row=r, column=COL["Conciliación"]).value or ""
+        v_diff = ws.cell(row=r, column=COL["Valor (diferencia)"]).value
+        obs = ws.cell(row=r, column=COL["Observaciones"]).value or ""
+
+        num_str = str(int(numdoctra) if isinstance(numdoctra, float) else numdoctra).strip()
+        fecha_str = str(fecha)[:10] if fecha else ""
+
+        if "diferente" in conc.lower():
+            row = {
+                "NUMDOCTRA": num_str, "Fecha": fecha_str, "Bote": bote or "",
+                "V_factura": v_factura, "V_remision": v_remision,
+                "N_remisiones": n_remisiones, "Diferencia": v_diff,
+                "Observaciones": obs,
+            }
+            if isinstance(v_diff, (int, float)) and v_diff > 0:
+                diferencias_pos.append(row)
+            else:
+                diferencias_neg.append(row)
+        elif "no hay remisi" in conc.lower():
+            sin_remision.append({
+                "NUMDOCTRA": num_str, "Fecha": fecha_str,
+                "V_factura": v_factura, "Observaciones": obs,
+            })
+        elif "pendiente" in conc.lower():
+            pendiente.append({
+                "NUMDOCTRA": num_str, "Fecha": fecha_str, "Bote": bote or "",
+                "V_factura": v_factura, "V_remision": v_remision,
+                "N_remisiones": n_remisiones, "Observaciones": obs,
+            })
+        elif "no se encontró" in obs.lower() or "no se encontro" in obs.lower():
+            sin_factura.append({
+                "NUMDOCTRA": num_str, "Fecha": fecha_str, "V_factura": v_factura,
+            })
+
+    out_dir = control_path.parent
+
+    def _write_csv(fname: str, rows: list[dict], headers: list[str]) -> Path:
+        path = out_dir / fname
+        with path.open("w", newline="", encoding="utf-8-sig") as f:
+            w = csv.DictWriter(f, fieldnames=headers)
+            w.writeheader()
+            for row in rows:
+                w.writerow(row)
+        return path
+
+    # CSVs
+    p_dif_pos = _write_csv("informe_diferencias_a_favor_Nautiturismo.csv", diferencias_pos,
+                           ["NUMDOCTRA", "Fecha", "Bote", "V_factura", "V_remision",
+                            "N_remisiones", "Diferencia", "Observaciones"])
+    p_dif_neg = _write_csv("informe_diferencias_a_favor_Todomar.csv", diferencias_neg,
+                           ["NUMDOCTRA", "Fecha", "Bote", "V_factura", "V_remision",
+                            "N_remisiones", "Diferencia", "Observaciones"])
+    p_sin_rem = _write_csv("informe_sin_remision.csv", sin_remision,
+                           ["NUMDOCTRA", "Fecha", "V_factura", "Observaciones"])
+    p_sin_fac = _write_csv("informe_sin_factura.csv", sin_factura,
+                           ["NUMDOCTRA", "Fecha", "V_factura"])
+    p_pendiente = _write_csv("informe_pendiente_revision.csv", pendiente,
+                             ["NUMDOCTRA", "Fecha", "Bote", "V_factura", "V_remision",
+                              "N_remisiones", "Observaciones"])
+
+    # Totales
+    def _sum(rows: list[dict], key: str) -> float:
+        return sum(r.get(key, 0) for r in rows
+                   if isinstance(r.get(key), (int, float)))
+
+    total_pos_diff = _sum(diferencias_pos, "Diferencia")
+    total_neg_diff = abs(_sum(diferencias_neg, "Diferencia"))
+    total_sin_rem = _sum(sin_remision, "V_factura")
+    total_sin_fac = _sum(sin_factura, "V_factura")
+    total_pendiente = _sum(pendiente, "V_factura")
+    total_expuesto = total_sin_rem + total_sin_fac + total_pendiente
+
+    # Markdown ready-to-email
+    md_path = out_dir / "INFORME_RESUMEN.md"
+    md_lines = []
+    md_lines.append("# Informe de Conciliación – Facturas Combustible")
+    md_lines.append("")
+    md_lines.append("**De:** Nautiturismo SAS (NIT 901.459.048)")
+    md_lines.append("**Para:** Todomar CHL S.A.S. (NIT 806.003.144)")
+    md_lines.append(f"**Fecha del informe:** {datetime.now().strftime('%d/%m/%Y')}")
+    md_lines.append("")
+    md_lines.append("## Resumen ejecutivo")
+    md_lines.append("")
+    md_lines.append(f"| Categoría | Cantidad | Total ($) |")
+    md_lines.append(f"|---|---:|---:|")
+    md_lines.append(f"| 🔴 Diferencias a favor de Nautiturismo | {len(diferencias_pos)} | ${total_pos_diff:,.0f} |")
+    md_lines.append(f"| 🔴 Diferencias a favor de Todomar | {len(diferencias_neg)} | ${total_neg_diff:,.0f} |")
+    md_lines.append(f"| 🟡 Facturas sin remisión adjunta | {len(sin_remision)} | ${total_sin_rem:,.0f} |")
+    md_lines.append(f"| 🟠 Facturas pendiente revisión manual | {len(pendiente)} | ${total_pendiente:,.0f} |")
+    md_lines.append(f"| 📭 Facturas sin correo recibido | {len(sin_factura)} | ${total_sin_fac:,.0f} |")
+    md_lines.append(f"| **⚠ TOTAL EXPUESTO (sin evidencia válida)** | **{len(sin_remision)+len(sin_factura)+len(pendiente)}** | **${total_expuesto:,.0f}** |")
+    md_lines.append("")
+    md_lines.append(f"**Saldo neto a favor de Nautiturismo (a reclamar):** ${total_pos_diff - total_neg_diff:,.0f}")
+    md_lines.append("")
+
+    # Sección 1: sin remisión
+    if sin_remision:
+        md_lines.append("## 1. Facturas sin remisión adjunta")
+        md_lines.append("")
+        md_lines.append("Las siguientes facturas llegaron vía Facture sin la remisión correspondiente. **Solicitamos comedidamente el envío de las remisiones para soportar el despacho.**")
+        md_lines.append("")
+        md_lines.append("| NUMDOCTRA | Fecha | Valor facturado |")
+        md_lines.append("|---|---|---:|")
+        for r in sin_remision:
+            v = r["V_factura"] if isinstance(r["V_factura"], (int, float)) else 0
+            md_lines.append(f"| FC{r['NUMDOCTRA']} | {r['Fecha']} | ${v:,.0f} |")
+        md_lines.append(f"| **TOTAL** | | **${total_sin_rem:,.0f}** |")
+        md_lines.append("")
+
+    # Sección 2: sin factura
+    if sin_factura:
+        md_lines.append("## 2. Facturas sin correo recibido (sin evidencia documental)")
+        md_lines.append("")
+        md_lines.append("Las siguientes facturas aparecen en el estado de cuenta de Todomar pero **no se recibieron vía Facture en nuestra bandeja**. Solicitamos el reenvío de cada una con su respectiva remisión.")
+        md_lines.append("")
+        md_lines.append(f"Total facturas afectadas: **{len(sin_factura)}** por valor de **${total_sin_fac:,.0f}**.")
+        md_lines.append("")
+        md_lines.append("*(Ver listado completo en `informe_sin_factura.csv`)*")
+        md_lines.append("")
+
+    # Sección 3: diferencias a favor de Nautiturismo
+    if diferencias_pos:
+        md_lines.append("## 3. Diferencias a favor de Nautiturismo (Todomar cobró de más)")
+        md_lines.append("")
+        md_lines.append(f"En las siguientes **{len(diferencias_pos)} facturas** el valor facturado supera al valor del despacho registrado en la remisión, generando un saldo a favor de Nautiturismo por un total de **${total_pos_diff:,.0f}**.")
+        md_lines.append("")
+        md_lines.append("Solicitamos la emisión de la nota crédito correspondiente.")
+        md_lines.append("")
+        md_lines.append("| NUMDOCTRA | Bote | Fecha | V. factura | V. remisión | Diferencia | # Rem |")
+        md_lines.append("|---|---|---|---:|---:|---:|---:|")
+        for r in diferencias_pos[:30]:  # primeras 30 en el MD; el CSV tiene todas
+            vf = r["V_factura"] if isinstance(r["V_factura"], (int, float)) else 0
+            vr = r["V_remision"] if isinstance(r["V_remision"], (int, float)) else 0
+            df = r["Diferencia"] if isinstance(r["Diferencia"], (int, float)) else 0
+            md_lines.append(f"| FC{r['NUMDOCTRA']} | {r['Bote']} | {r['Fecha']} | ${vf:,.0f} | ${vr:,.0f} | +${df:,.0f} | {r['N_remisiones']} |")
+        if len(diferencias_pos) > 30:
+            md_lines.append(f"| ... y {len(diferencias_pos)-30} más | | | | | | |")
+        md_lines.append(f"| **TOTAL** | | | | | **${total_pos_diff:,.0f}** | |")
+        md_lines.append("")
+        md_lines.append("*(Detalle completo en `informe_diferencias_a_favor_Nautiturismo.csv`)*")
+        md_lines.append("")
+
+    # Sección 4: diferencias a favor de Todomar (transparencia)
+    if diferencias_neg:
+        md_lines.append("## 4. Diferencias a favor de Todomar (por transparencia)")
+        md_lines.append("")
+        md_lines.append(f"Por transparencia, también listamos {len(diferencias_neg)} facturas donde el despacho registrado en la remisión supera al valor facturado (Todomar despachó más combustible del que facturó), por un total de **${total_neg_diff:,.0f}**.")
+        md_lines.append("")
+        md_lines.append("*(Detalle en `informe_diferencias_a_favor_Todomar.csv`)*")
+        md_lines.append("")
+
+    # Sección 5: pendiente revisión manual
+    if pendiente:
+        md_lines.append("## 5. Pendiente revisión manual")
+        md_lines.append("")
+        md_lines.append(f"Las siguientes **{len(pendiente)} facturas** tienen remisión adjunta pero el valor no se pudo extraer automáticamente (imagen ilegible). Nautiturismo está revisando estas manualmente.")
+        md_lines.append("")
+        md_lines.append("*(Listado en `informe_pendiente_revision.csv`)*")
+        md_lines.append("")
+
+    md_lines.append("---")
+    md_lines.append("")
+    md_lines.append("Quedamos atentos a su pronta respuesta para cerrar el proceso de conciliación.")
+    md_lines.append("")
+    md_lines.append("Cordialmente,")
+    md_lines.append("")
+    md_lines.append("Francisco Cortázar  ")
+    md_lines.append("Nautiturismo SAS  ")
+    md_lines.append("NIT 901.459.048")
+
+    md_path.write_text("\n".join(md_lines), encoding="utf-8")
+
+    # Console summary
+    print("\n" + "=" * 70)
+    print("  INFORME GENERADO")
+    print("=" * 70)
+    print(f"  🔴 Diferencias a favor Nautiturismo: {len(diferencias_pos):>4}  ${total_pos_diff:>14,.0f}")
+    print(f"  🔴 Diferencias a favor Todomar:      {len(diferencias_neg):>4}  ${total_neg_diff:>14,.0f}")
+    print(f"  🟡 Sin remisión adjunta:             {len(sin_remision):>4}  ${total_sin_rem:>14,.0f}")
+    print(f"  🟠 Pendiente revisión manual:        {len(pendiente):>4}  ${total_pendiente:>14,.0f}")
+    print(f"  📭 Sin correo recibido:              {len(sin_factura):>4}  ${total_sin_fac:>14,.0f}")
+    print("  " + "-" * 60)
+    print(f"  ⚠ TOTAL EXPUESTO (sin evidencia):   {len(sin_remision)+len(sin_factura)+len(pendiente):>4}  ${total_expuesto:>14,.0f}")
+    print(f"  💰 NETO A RECLAMAR a Todomar:        {'':>4}  ${total_pos_diff - total_neg_diff:>14,.0f}")
+    print("=" * 70)
+    print(f"\n  Archivos generados en: {out_dir}")
+    print(f"    • {p_dif_pos.name}")
+    print(f"    • {p_dif_neg.name}")
+    print(f"    • {p_sin_rem.name}")
+    print(f"    • {p_sin_fac.name}")
+    print(f"    • {p_pendiente.name}")
+    print(f"    • {md_path.name}  ← copiar/pegar al email")
+    print("=" * 70)
+
+    log.info("informe_generado",
+             diferencias_pos=len(diferencias_pos), diferencias_neg=len(diferencias_neg),
+             sin_remision=len(sin_remision), sin_factura=len(sin_factura),
+             pendiente=len(pendiente), total_expuesto=total_expuesto,
+             neto_reclamar=total_pos_diff - total_neg_diff)
+
+
 def mark_missing_facturas(control_path: Path, log: RunLog) -> int:
     """Marca en col Observaciones las facturas del control que NO tienen correo
     recibido (col K Conciliacion vacia). Util para identificar visualmente las
@@ -2297,6 +2534,11 @@ def main() -> None:
                         help="Borra y regenera la hoja Resumen del Excel con los "
                              "labels y formulas actuales (no toca Conciliación ni "
                              "Detalle Remisiones). Util cuando se cambian labels en codigo.")
+    parser.add_argument("--informe", action="store_true",
+                        help="Genera el informe consolidado para enviar a Todomar. "
+                             "Crea 5 CSVs (diferencias a favor de cada uno, sin "
+                             "remision, sin factura, pendiente revision) + un MD "
+                             "listo para copiar/pegar al email.")
     args = parser.parse_args()
 
     cfg = load_config()
@@ -2366,6 +2608,13 @@ def main() -> None:
         n = detectar_duplicados_remisiones(control_path, log)
         print(f"\n  ✓ {n} filas marcadas como duplicado en hoja 'Detalle Remisiones'")
         print(f"  Abre el Excel y mira la columna Observaciones para ver los detalles.")
+        return
+
+    if args.informe:
+        if not control_path.exists():
+            log.error("control_missing_for_informe", path=str(control_path))
+            sys.exit(1)
+        generar_informe(control_path, log)
         return
 
     if args.rebuild_resumen:
