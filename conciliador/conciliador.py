@@ -15,6 +15,7 @@ import json
 import os
 import re
 import shutil
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import sys
 import zipfile
 from datetime import datetime, timezone
@@ -1997,6 +1998,252 @@ def process_one_email(
         )
 
 
+def process_one_email_no_io(
+    cfg: dict,
+    msg_id: str,
+    msg: email.message.Message,
+    expected_numdoctras: set[str],
+    log: RunLog,
+) -> dict:
+    """Thread-safe: hace TODO el procesamiento de una factura SIN tocar Excel
+    ni aplicar Gmail labels. Pensado para correr en paralelo via ThreadPoolExecutor.
+
+    Retorna dict con 'status' indicando el resultado, y si 'status'=='to_write'
+    incluye todos los datos para que write_batch_to_excel los persista.
+    """
+    subject = decode_subject(msg.get("Subject", ""))
+    numdoctra = extract_numdoctra(subject)
+    base = {"msg_id": msg_id, "subject": subject, "numdoctra": numdoctra}
+
+    if not numdoctra:
+        return {**base, "status": "skipped_no_numdoctra"}
+
+    if numdoctra not in expected_numdoctras:
+        return {**base, "status": "skipped_not_expected"}
+
+    folder = cfg["facturas_dir"] / f"FC{numdoctra}"
+    if (folder / f"FAC-FC{numdoctra}.pdf").exists():
+        return {**base, "status": "already_processed"}
+
+    attach = extract_zip_attachment(msg)
+    if not attach:
+        return {**base, "status": "error_no_attach"}
+
+    zip_name, zip_bytes = attach
+    try:
+        extracted = unzip_to(folder, zip_bytes)
+    except zipfile.BadZipFile:
+        return {**base, "status": "error_bad_zip", "zip_name": zip_name}
+
+    pdfs = [p for p in extracted if p.suffix.lower() == ".pdf"]
+    if not pdfs:
+        return {**base, "status": "error_no_pdfs", "zip_name": zip_name}
+
+    factura_path, remisiones_paths = classify_pdfs(pdfs)
+    factura_path, remisiones_paths = rename_classified(folder, factura_path, remisiones_paths, numdoctra)
+
+    if not factura_path:
+        return {**base, "status": "error_no_factura_pdf"}
+
+    factura_data = extract_factura_data(factura_path)
+
+    if factura_data.get("nit_emisor") and cfg["nautiturismo_nit"] not in factura_data["nit_emisor"]:
+        target = cfg["no_aplica_dir"] / f"FC{numdoctra}"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if target.exists():
+            shutil.rmtree(target)
+        shutil.move(str(folder), str(target))
+        return {**base, "status": "skipped_emisor_distinto",
+                "nit_found": factura_data["nit_emisor"]}
+
+    # Vision IO (lo mas lento — esta es la parte que paraleliza bien)
+    remisiones_per_file = [
+        extract_remision_data(p, cfg.get("anthropic_api_key"), log)
+        for p in remisiones_paths
+    ]
+
+    all_remisiones = []
+    file_name_per_remision = []
+    for fd in remisiones_per_file:
+        for r in fd.get("remisiones", []):
+            all_remisiones.append(r)
+            file_name_per_remision.append(fd.get("file_name", ""))
+
+    if factura_data.get("valor") is None:
+        return {**base, "status": "error_factura_value",
+                "sample": factura_data.get("raw_text_sample")}
+
+    conc, diff = conciliate(factura_data["valor"], all_remisiones, cfg["tolerance_pesos"])
+
+    # Observaciones (sin duplicados aun — esos se detectan en write_batch_to_excel)
+    obs_parts = []
+    for fd in remisiones_per_file:
+        n_in_file = len(fd.get("remisiones", []))
+        if n_in_file > 1:
+            obs_parts.append(f"{fd['file_name']}: {n_in_file} remisiones consolidadas")
+
+    n_esperadas = factura_data.get("n_remisiones_esperadas")
+    n_detectadas = len(all_remisiones)
+    if n_esperadas and n_esperadas != n_detectadas:
+        obs_parts.append(f"⚠ Factura indica {n_esperadas} remisiones, se detectaron {n_detectadas}")
+
+    for r in all_remisiones:
+        v = r.get("valor")
+        if v is not None and v > VALOR_REMISION_SUSPICIOUS_THRESHOLD:
+            obs_parts.append(
+                f"⚠ Valor inusualmente alto (${v:,.0f}) - posible confusion con C.C./NIT - revisar manualmente"
+            )
+
+    return {
+        **base,
+        "status": "to_write",
+        "factura_data": factura_data,
+        "factura_path": factura_path,
+        "remisiones_paths": remisiones_paths,
+        "remisiones_per_file": remisiones_per_file,
+        "all_remisiones": all_remisiones,
+        "file_name_per_remision": file_name_per_remision,
+        "conciliacion": conc,
+        "valor_diff": diff,
+        "obs_parts_before_dup": obs_parts,
+        "n_esperadas": n_esperadas,
+    }
+
+
+def write_batch_to_excel(
+    control_path: Path,
+    batch: list[dict],
+    remision_no_index: dict,
+    cfg: dict,
+    service,
+    summary: dict,
+    log: RunLog,
+) -> None:
+    """Escribe un batch de resultados al Excel en UNA sola apertura/guardado.
+    Detecta duplicados de remision_no (sequencial). Aplica Gmail labels tras
+    save exitoso."""
+    if not batch:
+        return
+
+    wb = load_workbook(str(control_path))
+    cons_ws = wb["Conciliación"]
+    _ensure_observaciones_header(cons_ws)
+    _ensure_detalle_sheet(wb)
+    detalle_ws = wb["Detalle Remisiones"]
+
+    successful_msg_ids: list[str] = []
+
+    for item in batch:
+        numdoctra = item["numdoctra"]
+        target_str = str(numdoctra).strip()
+
+        # 1. Borrar filas viejas de Detalle para este NUMDOCTRA
+        rows_to_delete = []
+        for r in range(2, detalle_ws.max_row + 1):
+            v = detalle_ws.cell(row=r, column=1).value
+            if v is None:
+                continue
+            if str(int(v) if isinstance(v, float) else v).strip() == target_str:
+                rows_to_delete.append(r)
+        for r in reversed(rows_to_delete):
+            detalle_ws.delete_rows(r)
+
+        # 2. Agregar nuevas filas de Detalle + detectar duplicados
+        next_row = detalle_ws.max_row + 1
+        if next_row == 2 and detalle_ws.cell(row=2, column=1).value is None:
+            next_row = 2
+
+        duplicate_msgs: list[str] = []
+        for r, file_name in zip(item["all_remisiones"], item["file_name_per_remision"]):
+            rno = r.get("remision_no")
+            obs = ""
+            if rno:
+                rno_key = str(rno).strip()
+                if rno_key in remision_no_index and remision_no_index[rno_key] != target_str:
+                    msg = f"⚠ Remisión No. {rno_key} ya usada en factura FC{remision_no_index[rno_key]}"
+                    obs = msg
+                    duplicate_msgs.append(msg)
+                else:
+                    remision_no_index[rno_key] = target_str
+
+            detalle_ws.cell(row=next_row, column=DETALLE_COL["NUMDOCTRA Factura"], value=numdoctra)
+            detalle_ws.cell(row=next_row, column=DETALLE_COL["Remisión No."], value=rno)
+            detalle_ws.cell(row=next_row, column=DETALLE_COL["Bote"], value=r.get("bote"))
+            detalle_ws.cell(row=next_row, column=DETALLE_COL["Fecha tanqueo"], value=r.get("fecha_hora"))
+            c_val = detalle_ws.cell(row=next_row, column=DETALLE_COL["Valor remisión"], value=r.get("valor"))
+            if r.get("valor") is not None:
+                c_val.number_format = MONEY_FMT
+            detalle_ws.cell(row=next_row, column=DETALLE_COL["Archivo origen"], value=file_name)
+            detalle_ws.cell(row=next_row, column=DETALLE_COL["Observaciones"], value=obs or None)
+            next_row += 1
+
+        # 3. Observaciones finales (con duplicados)
+        obs_parts = list(item["obs_parts_before_dup"])
+        obs_parts.extend(duplicate_msgs)
+        observaciones = " | ".join(obs_parts) if obs_parts else None
+
+        # 4. Actualizar fila de Conciliacion
+        row = find_row_by_numdoctra(cons_ws, numdoctra)
+        if row is None:
+            log.warn("numdoctra_not_in_control", numdoctra=numdoctra)
+            continue
+
+        bote = ", ".join(filter(None, [r.get("bote") for r in item["all_remisiones"]])) or None
+        fecha_h = next((r.get("fecha_hora") for r in item["all_remisiones"] if r.get("fecha_hora")), None)
+        valores_extraidos = [r.get("valor") for r in item["all_remisiones"] if r.get("valor") is not None]
+        suma_rem = sum(valores_extraidos) if valores_extraidos else None
+
+        cons_ws.cell(row=row, column=COL["Nombre de Bote"], value=bote)
+        cons_ws.cell(row=row, column=COL["Fecha y hora de tanqueo"], value=fecha_h)
+        c_vr = cons_ws.cell(row=row, column=COL["Valor remisión"], value=suma_rem)
+        if suma_rem is not None:
+            c_vr.number_format = MONEY_FMT
+        cons_ws.cell(row=row, column=COL["# Remisiones"], value=len(item["all_remisiones"]))
+        cons_ws.cell(row=row, column=COL["Conciliación"], value=format_status_with_icon(item["conciliacion"]))
+        c_diff = cons_ws.cell(row=row, column=COL["Valor (diferencia)"], value=item["valor_diff"])
+        if item["valor_diff"] is not None:
+            c_diff.number_format = MONEY_FMT
+
+        c_m = cons_ws.cell(row=row, column=COL["Link factura"])
+        set_hyperlink_cell(c_m, item["factura_path"],
+                          item["factura_path"].name if item["factura_path"] else "")
+
+        c_n = cons_ws.cell(row=row, column=COL["Link remisión(es)"])
+        rem_links = item["remisiones_paths"]
+        if not rem_links:
+            c_n.value = None
+        elif len(rem_links) == 1:
+            set_hyperlink_cell(c_n, rem_links[0], rem_links[0].name)
+        else:
+            folder_path = rem_links[0].parent
+            set_hyperlink_cell(c_n, folder_path, f"Carpeta ({len(rem_links)} remisiones)")
+
+        cons_ws.cell(row=row, column=COL["Última actualización"],
+                    value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        cons_ws.cell(row=row, column=COL["Observaciones"], value=observaciones)
+
+        summary["facturas_new"] += 1
+        successful_msg_ids.append(item["msg_id"])
+
+        log.info("conciliated", numdoctra=numdoctra,
+                 valor_factura=item["factura_data"]["valor"],
+                 valor_remision=sum(valores_extraidos) if valores_extraidos else 0,
+                 n_remisiones=len(item["all_remisiones"]),
+                 n_archivos=len(item["remisiones_per_file"]),
+                 n_esperadas=item["n_esperadas"],
+                 conciliacion=item["conciliacion"],
+                 diferencia=item["valor_diff"],
+                 duplicados=len(duplicate_msgs))
+
+    wb.save(str(control_path))
+
+    # Aplicar labels Gmail despues del save exitoso
+    for msg_id in successful_msg_ids:
+        add_label(service, msg_id, cfg["label_processed"])
+
+    log.info("batch_written", count=len(batch), successful=len(successful_msg_ids))
+
+
 def load_expected_numdoctras(source: Path) -> set[str]:
     """Devuelve set de NUMDOCTRA esperados, leyendo desde xlsx o PDF Zeus."""
     rows = load_expected_rows(source)
@@ -2151,13 +2398,68 @@ def main() -> None:
     remision_no_index = load_remision_no_index(control_path)
     log.info("remision_no_index_loaded", count=len(remision_no_index))
 
-    for mid, _dt, m in meta:
-        try:
-            process_one_email(cfg, mid, m, expected, log, summary, service,
-                              remision_no_index=remision_no_index)
-        except Exception as e:
-            log.error("process_failed", msg_id=mid, err=str(e))
-            summary["errors"] += 1
+    # Configuracion paralela: ajustable via env
+    workers = int(os.environ.get("CONCILIADOR_WORKERS", "5"))
+    batch_size = int(os.environ.get("CONCILIADOR_BATCH_SIZE", "20"))
+    log.info("parallel_config", workers=workers, batch_size=batch_size)
+
+    batch: list[dict] = []
+    total = len(meta)
+    completed_count = 0
+
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = {
+            executor.submit(process_one_email_no_io, cfg, mid, m, expected, log): mid
+            for mid, _dt, m in meta
+        }
+
+        for f in as_completed(futures):
+            completed_count += 1
+            try:
+                result = f.result()
+            except Exception as e:
+                mid = futures[f]
+                log.error("process_failed", msg_id=mid, err=str(e))
+                summary["errors"] += 1
+                continue
+
+            status = result.get("status")
+            numdoctra = result.get("numdoctra")
+
+            if status == "to_write":
+                batch.append(result)
+                summary["zips_downloaded"] += 1
+                if len(batch) >= batch_size:
+                    write_batch_to_excel(control_path, batch, remision_no_index,
+                                         cfg, service, summary, log)
+                    batch = []
+            elif status == "already_processed":
+                log.info("already_processed_skip", numdoctra=numdoctra)
+                summary["facturas_skipped"] += 1
+                add_label(service, result["msg_id"], cfg["label_processed"])
+            elif status == "skipped_not_expected":
+                log.warn("numdoctra_not_expected", numdoctra=numdoctra)
+                summary["facturas_skipped"] += 1
+            elif status == "skipped_emisor_distinto":
+                log.warn("emisor_distinto", numdoctra=numdoctra,
+                         nit_found=result.get("nit_found"))
+                summary["facturas_skipped"] += 1
+            elif status == "skipped_no_numdoctra":
+                log.warn("no_numdoctra_in_subject", subject=result.get("subject"))
+                summary["errors"] += 1
+            elif status and status.startswith("error_"):
+                log.warn(status, numdoctra=numdoctra)
+                summary["errors"] += 1
+
+            # Progreso heartbeat cada 25 facturas
+            if completed_count % 25 == 0:
+                log.info("progress", completed=completed_count, total=total,
+                         pct=round(completed_count * 100 / total, 1))
+
+    # Flush ultimo batch incompleto
+    if batch:
+        write_batch_to_excel(control_path, batch, remision_no_index,
+                             cfg, service, summary, log)
 
     append_log_row(control_path, summary)
     # Marcar las filas del control sin correo recibido con "No se encontró factura"
