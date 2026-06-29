@@ -1598,7 +1598,137 @@ def mark_missing_facturas(control_path: Path, log: RunLog) -> int:
 
     wb.save(str(control_path))
     log.info("missing_marked", count=marked)
+
+    # Actualizar el desglose mensual de faltantes en la hoja Resumen
+    update_faltantes_breakdown_in_resumen(control_path, log)
     return marked
+
+
+def update_faltantes_breakdown_in_resumen(control_path: Path, log: RunLog) -> None:
+    """Actualiza la hoja Resumen con un desglose por mes de las facturas
+    faltantes (sin correo recibido), mostrando cantidad y total facturado.
+
+    Se escribe a partir de la fila 33 (despues de las secciones existentes).
+    Si se ejecuta varias veces, sobrescribe el bloque (no acumula).
+    """
+    from collections import Counter
+
+    wb = load_workbook(str(control_path))
+    if "Resumen" not in wb.sheetnames or "Conciliación" not in wb.sheetnames:
+        wb.close()
+        return
+
+    cons = wb["Conciliación"]
+
+    counts_by_month: Counter = Counter()
+    sum_by_month: Counter = Counter()
+    for r in range(2, cons.max_row + 1):
+        obs = cons.cell(row=r, column=COL["Observaciones"]).value
+        if not obs or "No se encontró" not in str(obs):
+            continue
+        fecha = cons.cell(row=r, column=COL["Fecha factura"]).value
+        valor = cons.cell(row=r, column=COL["Valor factura"]).value
+        key = str(fecha)[:7] if fecha else "sin_fecha"
+        counts_by_month[key] += 1
+        if isinstance(valor, (int, float)):
+            sum_by_month[key] += valor
+
+    res = wb["Resumen"]
+
+    # Borrar rows desde 33 en adelante (donde escribimos el bloque)
+    if res.max_row >= 33:
+        try:
+            # Limpiar valores en lugar de delete_rows (mas seguro con merged cells previos)
+            for r in range(33, res.max_row + 1):
+                for c in range(1, 5):
+                    cell = res.cell(row=r, column=c)
+                    cell.value = None
+                    cell.fill = PatternFill(fill_type=None)
+                    cell.font = Font()
+                    cell.border = Border()
+                    cell.alignment = Alignment()
+                    cell.number_format = "General"
+        except Exception:
+            pass
+
+    if not counts_by_month:
+        wb.save(str(control_path))
+        return
+
+    # Estilos consistentes con _build_resumen_sheet
+    section_font = Font(bold=True, size=13, color="FFFFFF")
+    section_fill = PatternFill("solid", fgColor="305496")
+    header_font = Font(bold=True, size=11)
+    fill_yellow = PatternFill("solid", fgColor="FFF2CC")
+    fill_red = PatternFill("solid", fgColor="FCE4E4")
+    centered = Alignment(horizontal="center", vertical="center")
+    centered_left = Alignment(horizontal="left", vertical="center", indent=1)
+
+    # Fila 33: header de seccion
+    try:
+        res.unmerge_cells("A33:D33")
+    except Exception:
+        pass
+    res.merge_cells("A33:D33")
+    res["A33"] = "📅 DESGLOSE FALTANTES POR MES (sin correo recibido)"
+    res["A33"].font = section_font
+    res["A33"].fill = section_fill
+    res["A33"].alignment = centered
+    res.row_dimensions[33].height = 22
+
+    # Fila 35: cabeceras de la mini-tabla
+    cabeceras = [("Año / Mes", 1), ("Cantidad", 2), ("Total Facturado", 3), ("Visual", 4)]
+    for label, col in cabeceras:
+        c = res.cell(row=35, column=col, value=label)
+        c.font = header_font
+        c.fill = PatternFill("solid", fgColor="D9E1F2")
+        c.alignment = centered
+        c.border = THIN_BORDER
+
+    # Datos: una fila por mes
+    max_count = max(counts_by_month.values()) if counts_by_month else 1
+    row = 36
+    for key in sorted(counts_by_month.keys()):
+        cnt = counts_by_month[key]
+        suma = sum_by_month.get(key, 0)
+        # Barra visual proporcional (max 40 chars)
+        bar_len = max(1, int(cnt / max_count * 40)) if max_count > 0 else 1
+        bar = "▇" * bar_len
+
+        res.cell(row=row, column=1, value=key).alignment = centered_left
+        res.cell(row=row, column=2, value=cnt).alignment = centered
+        c_val = res.cell(row=row, column=3, value=suma)
+        c_val.number_format = MONEY_FMT
+        c_val.alignment = Alignment(horizontal="right", vertical="center", indent=1)
+        res.cell(row=row, column=4, value=bar).alignment = centered_left
+        # Bordes finos
+        for c in range(1, 5):
+            res.cell(row=row, column=c).border = THIN_BORDER
+            res.cell(row=row, column=c).fill = fill_yellow if (row % 2 == 0) else PatternFill(fill_type=None)
+        row += 1
+
+    # Fila TOTAL
+    total_cnt = sum(counts_by_month.values())
+    total_val = sum(sum_by_month.values())
+    bold_font = Font(bold=True, size=12, color="9C0006")
+    res.cell(row=row, column=1, value="TOTAL").font = bold_font
+    res.cell(row=row, column=1).alignment = centered_left
+    res.cell(row=row, column=2, value=total_cnt).font = bold_font
+    res.cell(row=row, column=2).alignment = centered
+    c_total = res.cell(row=row, column=3, value=total_val)
+    c_total.font = bold_font
+    c_total.number_format = MONEY_FMT
+    c_total.alignment = Alignment(horizontal="right", vertical="center", indent=1)
+    for c in range(1, 5):
+        res.cell(row=row, column=c).fill = fill_red
+        res.cell(row=row, column=c).border = THIN_BORDER
+
+    # Ancho columna D para barras
+    res.column_dimensions["D"].width = 50
+
+    wb.save(str(control_path))
+    log.info("faltantes_breakdown_updated",
+             meses=len(counts_by_month), total_cant=total_cnt, total_val=total_val)
 
 
 def append_log_row(control_path: Path, summary: dict) -> None:
