@@ -1584,6 +1584,257 @@ def reprocesar_diferencias(control_path: Path, facturas_dir: Path, log: RunLog) 
     return deleted, len(candidatos)
 
 
+def generar_informe_duplicados(control_path: Path, facturas_dir: Path, log: RunLog) -> None:
+    """Informe FORENSE de remisiones duplicadas (mismo numero en 2+ facturas).
+
+    Para cada caso de duplicacion:
+    - Lista las facturas donde aparece la misma remision_no
+    - Compara valor, bote, fecha — clasifica fuerza del caso
+    - Calcula monto duplicado a recuperar
+    - Construye paths a los PDFs originales como evidencia documental
+
+    Genera en la carpeta Control/:
+      - informe_duplicados.csv (todas las apariciones, plano)
+      - INFORME_DUPLICADOS.md (caso por caso, listo para sustentar reclamacion)
+    """
+    import csv
+    from collections import defaultdict
+
+    wb = load_workbook(str(control_path), data_only=True)
+    if "Detalle Remisiones" not in wb.sheetnames:
+        log.warn("detalle_sheet_missing")
+        print("\n  ⚠ La hoja 'Detalle Remisiones' no existe en el Excel.")
+        print("  Es porque las facturas fueron procesadas antes de implementar la funcionalidad.")
+        print("  Reprocesa las facturas relevantes para tener el numero de remision extraido.")
+        return
+
+    ws = wb["Detalle Remisiones"]
+
+    # Agrupar por remision_no
+    by_rno: dict = defaultdict(list)
+    for r in range(2, ws.max_row + 1):
+        numdoctra = ws.cell(row=r, column=DETALLE_COL["NUMDOCTRA Factura"]).value
+        rno = ws.cell(row=r, column=DETALLE_COL["Remisión No."]).value
+        if numdoctra is None or rno is None:
+            continue
+        bote = ws.cell(row=r, column=DETALLE_COL["Bote"]).value
+        fecha = ws.cell(row=r, column=DETALLE_COL["Fecha tanqueo"]).value
+        valor = ws.cell(row=r, column=DETALLE_COL["Valor remisión"]).value
+        archivo = ws.cell(row=r, column=DETALLE_COL["Archivo origen"]).value
+        rno_key = str(rno).strip()
+        num_str = str(int(numdoctra) if isinstance(numdoctra, float) else numdoctra).strip()
+        by_rno[rno_key].append({
+            "numdoctra": num_str, "bote": bote, "fecha": fecha,
+            "valor": valor, "archivo": archivo or "",
+        })
+
+    # Filtrar a duplicados reales (>=2 NUMDOCTRA distintos)
+    duplicates: dict = {}
+    for rno, occurrences in by_rno.items():
+        unique_numdoctras = set(o["numdoctra"] for o in occurrences)
+        if len(unique_numdoctras) >= 2:
+            duplicates[rno] = occurrences
+
+    out_dir = control_path.parent
+
+    if not duplicates:
+        print("\n" + "=" * 70)
+        print("  ✅ NO se encontraron remisiones duplicadas.")
+        print("=" * 70)
+        log.info("informe_duplicados_sin_hallazgos")
+        return
+
+    # Clasificar cada caso por fuerza de evidencia
+    cases = []
+    for rno, occurrences in duplicates.items():
+        valores = [o["valor"] for o in occurrences if isinstance(o["valor"], (int, float))]
+        botes = [o["bote"] for o in occurrences if o["bote"]]
+
+        valores_iguales = len(set(valores)) <= 1 and len(valores) >= 2
+        botes_iguales = len(set(botes)) <= 1 and len(botes) >= 2
+
+        if valores_iguales and botes_iguales:
+            evaluacion = "COBRO DUPLICADO CONFIRMADO"
+            fuerza = "alta"
+        elif valores_iguales:
+            evaluacion = "SOSPECHA FUERTE (mismo valor, diferente bote)"
+            fuerza = "alta"
+        elif botes_iguales:
+            evaluacion = "SOSPECHA MEDIA (mismo bote, diferente valor)"
+            fuerza = "media"
+        else:
+            evaluacion = "REQUIERE INVESTIGACIÓN (valores y botes distintos)"
+            fuerza = "baja"
+
+        # Monto duplicado: si valores iguales, sumar (N-1) veces el valor
+        monto_duplicado = 0.0
+        if valores_iguales and valores:
+            monto_duplicado = valores[0] * (len(occurrences) - 1)
+
+        cases.append({
+            "rno": rno,
+            "occurrences": occurrences,
+            "evaluacion": evaluacion,
+            "fuerza": fuerza,
+            "monto_duplicado": monto_duplicado,
+            "valores_iguales": valores_iguales,
+            "botes_iguales": botes_iguales,
+        })
+
+    # Ordenar por fuerza (alta primero) y luego por monto duplicado desc
+    fuerza_order = {"alta": 0, "media": 1, "baja": 2}
+    cases.sort(key=lambda c: (fuerza_order[c["fuerza"]], -c["monto_duplicado"]))
+
+    # Totales
+    total_apariciones = sum(len(c["occurrences"]) for c in cases)
+    total_monto_duplicado = sum(c["monto_duplicado"] for c in cases)
+    casos_confirmados = sum(1 for c in cases if c["fuerza"] == "alta")
+    casos_sospechosos = sum(1 for c in cases if c["fuerza"] == "media")
+    casos_investigar = sum(1 for c in cases if c["fuerza"] == "baja")
+
+    # CSV plano (todas las apariciones)
+    csv_path = out_dir / "informe_duplicados.csv"
+    with csv_path.open("w", newline="", encoding="utf-8-sig") as f:
+        w = csv.writer(f)
+        w.writerow(["Remision_No", "Caso_idx", "NUMDOCTRA", "Fecha", "Bote",
+                    "Valor", "Archivo_origen", "Path_factura", "Path_remision",
+                    "Evaluacion", "Monto_duplicado_caso"])
+        for case in cases:
+            for occ in case["occurrences"]:
+                path_factura = facturas_dir / f"FC{occ['numdoctra']}" / f"FAC-FC{occ['numdoctra']}.pdf"
+                path_remision = facturas_dir / f"FC{occ['numdoctra']}" / occ["archivo"]
+                w.writerow([
+                    case["rno"], case["rno"], occ["numdoctra"], occ["fecha"],
+                    occ["bote"] or "", occ["valor"] or "", occ["archivo"],
+                    str(path_factura), str(path_remision),
+                    case["evaluacion"], case["monto_duplicado"],
+                ])
+
+    # MD forense
+    md_path = out_dir / "INFORME_DUPLICADOS.md"
+    L = []
+    L.append("# Informe Forense — Remisiones Duplicadas")
+    L.append("")
+    L.append("**De:** Nautiturismo SAS (NIT 901.459.048)")
+    L.append("**Para:** Todomar CHL S.A.S. (NIT 806.003.144)")
+    L.append(f"**Fecha:** {datetime.now().strftime('%d/%m/%Y')}")
+    L.append("")
+    L.append("## Resumen ejecutivo")
+    L.append("")
+    L.append("Como parte del proceso de conciliación de facturas de combustible, identificamos")
+    L.append(f"**{len(cases)} números de remisión que aparecen en más de una factura emitida por Todomar**,")
+    L.append("lo cual sugiere posibles cobros duplicados del mismo despacho físico.")
+    L.append("")
+    L.append("| Métrica | Valor |")
+    L.append("|---|---:|")
+    L.append(f"| Números de remisión duplicados | **{len(cases)}** |")
+    L.append(f"| Apariciones totales en facturas | {total_apariciones} |")
+    L.append(f"| Casos confirmados (mismo valor + bote) | {casos_confirmados} |")
+    L.append(f"| Casos con sospecha media | {casos_sospechosos} |")
+    L.append(f"| Casos por investigar | {casos_investigar} |")
+    L.append(f"| **Monto total facturado en duplicado (a recuperar)** | **${total_monto_duplicado:,.0f}** |")
+    L.append("")
+    L.append("Para cada caso, se presenta a continuación:")
+    L.append("- Las facturas donde aparece la misma remisión")
+    L.append("- Valor, bote y fecha de cada aparición (para verificación)")
+    L.append("- Evaluación de la evidencia")
+    L.append("- Rutas a los PDFs originales como respaldo documental")
+    L.append("")
+    L.append("---")
+    L.append("")
+
+    # Cada caso
+    for idx, case in enumerate(cases, start=1):
+        rno = case["rno"]
+        occs = case["occurrences"]
+        emoji = {"alta": "🔴", "media": "🟠", "baja": "🟡"}[case["fuerza"]]
+
+        L.append(f"## Caso {idx}: Remisión No. **{rno}** — duplicada en {len(occs)} facturas {emoji}")
+        L.append("")
+        L.append(f"**Evaluación**: {case['evaluacion']}")
+        if case["monto_duplicado"] > 0:
+            L.append(f"**Monto duplicado (a recuperar)**: ${case['monto_duplicado']:,.0f}")
+        L.append("")
+        L.append("### Apariciones")
+        L.append("")
+        L.append("| # | NUMDOCTRA | Fecha tanqueo | Bote | Valor | Archivo origen |")
+        L.append("|---|---|---|---|---:|---|")
+        for i, occ in enumerate(occs, start=1):
+            valor_str = f"${occ['valor']:,.0f}" if isinstance(occ["valor"], (int, float)) else "—"
+            fecha_str = str(occ["fecha"]) if occ["fecha"] else "—"
+            L.append(f"| {i} | FC{occ['numdoctra']} | {fecha_str} | {occ['bote'] or '—'} | {valor_str} | `{occ['archivo']}` |")
+        L.append("")
+
+        L.append("### Evidencia documental")
+        L.append("")
+        L.append("Para verificar el caso, consultar los archivos originales:")
+        L.append("")
+        for occ in occs:
+            num = occ["numdoctra"]
+            archivo = occ["archivo"]
+            L.append(f"- **FC{num}**:")
+            L.append(f"  - Factura: `G:\\Mi unidad\\...\\Facturas\\FC{num}\\FAC-FC{num}.pdf`")
+            L.append(f"  - Remisión: `G:\\Mi unidad\\...\\Facturas\\FC{num}\\{archivo}`")
+        L.append("")
+        L.append("---")
+        L.append("")
+
+    L.append("## Solicitud formal")
+    L.append("")
+    L.append("Con base en la evidencia documental anterior, solicitamos comedidamente:")
+    L.append("")
+    L.append(f"1. La revisión de los **{len(cases)} casos** de remisiones duplicadas detectadas")
+    L.append("2. La emisión de **notas crédito** por los montos confirmados como cobros duplicados")
+    if total_monto_duplicado > 0:
+        L.append(f"   (monto inicial estimado: **${total_monto_duplicado:,.0f}**, sujeto a verificación conjunta)")
+    L.append("3. Una **explicación documentada** de los casos clasificados como 'requiere investigación'")
+    L.append("4. Implementación de **controles internos** para prevenir reutilización de números de remisión")
+    L.append("")
+    L.append("Adjuntamos:")
+    L.append("- `INFORME_DUPLICADOS.md` (este documento)")
+    L.append("- `informe_duplicados.csv` (datos completos para análisis)")
+    L.append("- Los PDFs de facturas y remisiones originales (rutas indicadas en cada caso)")
+    L.append("")
+    L.append("Quedamos atentos a su pronta respuesta.")
+    L.append("")
+    L.append("Cordialmente,")
+    L.append("")
+    L.append("Francisco Cortázar  ")
+    L.append("Nautiturismo SAS  ")
+    L.append("NIT 901.459.048")
+
+    md_path.write_text("\n".join(L), encoding="utf-8")
+
+    # Consola
+    print("\n" + "=" * 70)
+    print("  INFORME FORENSE — REMISIONES DUPLICADAS")
+    print("=" * 70)
+    print(f"  Números de remisión duplicados:    {len(cases)}")
+    print(f"  Apariciones totales:                {total_apariciones}")
+    print(f"  🔴 Casos confirmados (alto):        {casos_confirmados}")
+    print(f"  🟠 Casos sospecha media:            {casos_sospechosos}")
+    print(f"  🟡 Casos por investigar:            {casos_investigar}")
+    print("  " + "-" * 60)
+    print(f"  💰 MONTO DUPLICADO a recuperar:    ${total_monto_duplicado:>12,.0f}")
+    print("=" * 70)
+    print(f"\n  Archivos generados en: {out_dir}")
+    print(f"    • {csv_path.name}")
+    print(f"    • {md_path.name}  ← informe formal forense")
+    print("=" * 70)
+
+    if cases:
+        print(f"\n  TOP 5 casos por monto duplicado:")
+        for c in sorted(cases, key=lambda x: -x["monto_duplicado"])[:5]:
+            print(f"    Remisión #{c['rno']:>8}  →  {len(c['occurrences'])} facturas  "
+                  f"${c['monto_duplicado']:>12,.0f}  [{c['fuerza']}]")
+
+    log.info("informe_duplicados_done",
+             casos=len(cases), apariciones=total_apariciones,
+             monto_duplicado=total_monto_duplicado,
+             confirmados=casos_confirmados, sospechosos=casos_sospechosos,
+             por_investigar=casos_investigar)
+
+
 def generar_informe(control_path: Path, log: RunLog) -> None:
     """Genera 4 CSVs y un Markdown con todo lo necesario para el informe a Todomar.
 
@@ -2539,6 +2790,12 @@ def main() -> None:
                              "Crea 5 CSVs (diferencias a favor de cada uno, sin "
                              "remision, sin factura, pendiente revision) + un MD "
                              "listo para copiar/pegar al email.")
+    parser.add_argument("--informe-duplicados", action="store_true",
+                        help="Informe FORENSE solo de remisiones duplicadas (mismo "
+                             "numero usado en 2+ facturas). Genera CSV + MD con "
+                             "evidencia documental caso por caso, paths a los PDFs, "
+                             "y clasificacion de la fuerza de cada caso. Ideal para "
+                             "soportar reclamacion formal por cobros duplicados.")
     args = parser.parse_args()
 
     cfg = load_config()
@@ -2615,6 +2872,13 @@ def main() -> None:
             log.error("control_missing_for_informe", path=str(control_path))
             sys.exit(1)
         generar_informe(control_path, log)
+        return
+
+    if args.informe_duplicados:
+        if not control_path.exists():
+            log.error("control_missing_for_informe_dup", path=str(control_path))
+            sys.exit(1)
+        generar_informe_duplicados(control_path, cfg["facturas_dir"], log)
         return
 
     if args.rebuild_resumen:
