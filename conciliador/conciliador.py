@@ -1585,6 +1585,158 @@ def update_control_row(
     return True
 
 
+def reextract_diferencias(control_path: Path, facturas_dir: Path,
+                           tolerance: float, api_key: str | None,
+                           log: RunLog) -> tuple[int, int, int]:
+    """Re-extrae remisiones IN-PLACE para facturas con 'diferente'.
+
+    No borra NADA. Solo LEE los REM-FC*.pdf existentes, corre Vision con el
+    fix multi-pagina, y actualiza la Conciliación (sumando todas las remisiones
+    de todas las paginas y archivos) + Detalle Remisiones.
+
+    Util cuando el filesystem esta lockeado (Google Drive Desktop) y no se
+    pueden borrar carpetas, pero SI se pueden leer los PDFs.
+
+    Retorna (procesadas, ok_ahora, sigue_diferente).
+    """
+    wb = load_workbook(str(control_path), data_only=True)
+    ws = wb["Conciliación"]
+
+    targets: list[tuple[int, str, float]] = []
+    for r in range(2, ws.max_row + 1):
+        conc = ws.cell(row=r, column=COL["Conciliación"]).value
+        if not conc or "diferente" not in str(conc).lower():
+            continue
+        numdoctra = ws.cell(row=r, column=COL["NUMDOCTRA"]).value
+        valor_fac = ws.cell(row=r, column=COL["Valor factura"]).value
+        if numdoctra is None or valor_fac is None:
+            continue
+        num_str = str(int(numdoctra) if isinstance(numdoctra, float) else numdoctra).strip()
+        try:
+            v_fac = float(valor_fac)
+        except (TypeError, ValueError):
+            continue
+        targets.append((r, num_str, v_fac))
+    wb.close()
+
+    if not targets:
+        print("\n  No hay facturas con 'Remisión con valor diferente' en el Excel.")
+        return (0, 0, 0)
+
+    print(f"\n  ► {len(targets)} facturas a reextraer (sin tocar filesystem).")
+    print(f"    Vision API: {'configurada' if api_key else 'NO CONFIGURADA (solo regex)'}")
+    print("")
+
+    remision_no_index = load_remision_no_index(control_path)
+
+    procesadas = 0
+    ok_ahora = 0
+    sigue_dif = 0
+    sin_files = 0
+    cambios: list[str] = []
+
+    for idx, (row, num, valor_fac) in enumerate(targets, start=1):
+        folder = facturas_dir / f"FC{num}"
+        if not folder.exists():
+            print(f"  [{idx}/{len(targets)}] FC{num}: ⚠ carpeta no existe, skip")
+            sin_files += 1
+            continue
+
+        rem_pdfs = sorted(folder.glob("REM-FC*.pdf"))
+        if not rem_pdfs:
+            print(f"  [{idx}/{len(targets)}] FC{num}: ⚠ no hay REM-FC*.pdf, skip")
+            sin_files += 1
+            continue
+
+        try:
+            remisiones_per_file = [
+                extract_remision_data(p, api_key, log) for p in rem_pdfs
+            ]
+        except Exception as e:
+            print(f"  [{idx}/{len(targets)}] FC{num}: ✗ error extrayendo: {e}")
+            log.warn("reextract_error", numdoctra=num, error=str(e))
+            continue
+
+        all_remisiones = []
+        file_name_per_remision = []
+        for fd in remisiones_per_file:
+            for rr in fd.get("remisiones", []):
+                all_remisiones.append(rr)
+                file_name_per_remision.append(fd.get("file_name", ""))
+
+        conc, diff = conciliate(valor_fac, all_remisiones, tolerance)
+
+        obs_parts = []
+        for fd in remisiones_per_file:
+            n_in_file = len(fd.get("remisiones", []))
+            if n_in_file > 1:
+                obs_parts.append(f"{fd['file_name']}: {n_in_file} remisiones consolidadas")
+        for rr in all_remisiones:
+            v = rr.get("valor")
+            if v is not None and v > VALOR_REMISION_SUSPICIOUS_THRESHOLD:
+                obs_parts.append(
+                    f"⚠ Valor inusualmente alto (${v:,.0f}) - posible confusion con C.C./NIT - revisar"
+                )
+
+        clear_detalle_rows_for_factura(control_path, num)
+        duplicate_msgs = append_detalle_remisiones(
+            control_path, num, all_remisiones,
+            file_name_per_remision, remision_no_index,
+        )
+        obs_parts.extend(duplicate_msgs)
+        observaciones = " | ".join(obs_parts) if obs_parts else None
+
+        fac_pdf = folder / f"FAC-FC{num}.pdf"
+        update_control_row(
+            control_path, num,
+            {"valor": valor_fac},
+            all_remisiones, conc, diff,
+            fac_pdf if fac_pdf.exists() else None,
+            rem_pdfs, log,
+            observaciones=observaciones,
+        )
+
+        procesadas += 1
+        suma = sum(r.get("valor") or 0 for r in all_remisiones)
+        n_rem = len(all_remisiones)
+        n_files = len(rem_pdfs)
+        multi = sum(1 for fd in remisiones_per_file if len(fd.get("remisiones", [])) > 1)
+
+        if conc == "OK":
+            ok_ahora += 1
+            cambios.append(f"FC{num}: → OK (rescatada por multi-pagina/multi-rem)")
+            print(f"  [{idx}/{len(targets)}] FC{num}: ✓ OK ahora — "
+                  f"{n_rem} rem en {n_files} files (multi={multi}), suma=${suma:,.0f}")
+        else:
+            sigue_dif += 1
+            print(f"  [{idx}/{len(targets)}] FC{num}: → diferente — "
+                  f"factura=${valor_fac:,.0f} suma=${suma:,.0f} diff=${diff:,.0f} ({n_rem} rem)")
+
+        log.info("reextract_diferencias_row",
+                 numdoctra=num, conciliacion=conc, diferencia=diff,
+                 n_rem=n_rem, n_files=n_files, multi_files=multi)
+
+    print(f"\n  ════════════════════════════════════════════════════════════")
+    print(f"  Procesadas: {procesadas}/{len(targets)}")
+    print(f"  ✓ Pasaron a OK: {ok_ahora}")
+    print(f"  ✗ Siguen diferentes: {sigue_dif}")
+    if sin_files:
+        print(f"  ⚠ Sin REM files: {sin_files}")
+    if cambios:
+        print(f"\n  Facturas rescatadas:")
+        for c in cambios[:20]:
+            print(f"    • {c}")
+        if len(cambios) > 20:
+            print(f"    ... y {len(cambios) - 20} mas")
+    print(f"  ════════════════════════════════════════════════════════════")
+    print(f"\n  Siguiente: python conciliador.py --informe-reclamacion")
+
+    log.info("reextract_diferencias_done",
+             procesadas=procesadas, ok_ahora=ok_ahora,
+             sigue_diferente=sigue_dif, sin_files=sin_files)
+    return procesadas, ok_ahora, sigue_dif
+
+
 def _safe_delete_folder(folder: Path, log: RunLog, num: str) -> str:
     """Borra una carpeta con tolerancia a locks de Google Drive Desktop.
 
@@ -4657,6 +4809,13 @@ def main() -> None:
                         help="Borra las carpetas FC<num> de facturas marcadas como "
                              "'Remision con valor diferente'. Despues corres "
                              "'python conciliador.py' normalmente para reprocesarlas.")
+    parser.add_argument("--reextract-diferencias", action="store_true",
+                        help="Re-extrae las remisiones de facturas con 'diferente' "
+                             "IN-PLACE (sin borrar ni redescargar). Lee los REM-FC*.pdf "
+                             "existentes, corre Vision con el fix multi-pagina, y "
+                             "actualiza el Excel. Util cuando Google Drive Desktop "
+                             "lockea las carpetas y --reprocesar-diferencias no puede "
+                             "borrarlas. Es mucho mas rapido (no descarga de Gmail).")
     parser.add_argument("--detectar-duplicados", action="store_true",
                         help="Escanea la hoja Detalle Remisiones del Excel y marca "
                              "como duplicado todas las remisiones cuyo numero aparece "
@@ -4753,6 +4912,17 @@ def main() -> None:
         print(f"\n  ✓ {marcados} facturas con 'Remisión con valor diferente' encontradas")
         print(f"  ✓ {deleted} carpetas FC<num> borradas (listas para reprocesar)")
         print(f"\n  Ahora corre: python conciliador.py  (o con --since/--until)")
+        return
+
+    if args.reextract_diferencias:
+        if not control_path.exists():
+            log.error("control_missing_for_reextract", path=str(control_path))
+            sys.exit(1)
+        reextract_diferencias(
+            control_path, cfg["facturas_dir"],
+            cfg["tolerance_pesos"], cfg.get("anthropic_api_key"),
+            log,
+        )
         return
 
     if args.detectar_duplicados:
