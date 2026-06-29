@@ -1198,7 +1198,43 @@ def _build_resumen_sheet(wb: Workbook, last_data_row: int) -> None:
     kpi_card(20, "Facturas pendientes (sin correo)",
              f'=COUNTBLANK({rng_k})', None, fill_yellow)
 
-    ws.column_dimensions["A"].width = 48
+    # Fila 22: seccion VALOR FACTURADO POR ESTADO (con $ — clave para auditoria)
+    ws.merge_cells("A22:C22")
+    ws["A22"] = "VALOR FACTURADO POR ESTADO"
+    ws["A22"].font = section_font
+    ws["A22"].fill = section_fill
+    ws["A22"].alignment = centered
+    ws.row_dimensions[22].height = 22
+
+    # Rango de col P (Observaciones) para detectar "No se encontró factura"
+    rng_p = f"'Conciliación'!P2:P{last_data_row}"
+    # Sumar valores por estado (matching el icono prefijado en col K)
+    kpi_card(23, "🟢 OK (cuadradas) — Total facturado",
+             f'=SUMIF({rng_k},"*OK*",{rng_f})', MONEY_FMT, fill_ok, money_font)
+    kpi_card(24, "🟡 Sin remisión — Total facturado",
+             f'=SUMIF({rng_k},"*No hay remisión*",{rng_f})', MONEY_FMT, fill_yellow, money_font)
+    kpi_card(25, "🔴 Con diferencia — Total facturado",
+             f'=SUMIF({rng_k},"*Remisión con valor diferente*",{rng_f})', MONEY_FMT, fill_red, money_font)
+    kpi_card(26, "🟠 Pendiente revisión manual — Total facturado",
+             f'=SUMIF({rng_k},"*Pendiente revisión manual*",{rng_f})', MONEY_FMT, fill_orange, money_font)
+    kpi_card(27, "📭 Sin correo recibido — Total facturado (sin evidencia de tanqueo)",
+             f'=SUMIF({rng_p},"*No se encontró*",{rng_f})', MONEY_FMT, fill_red, money_font)
+
+    # Fila 29: total acumulado de filas sin remision suficiente (sin remision + sin correo + pendiente)
+    ws.merge_cells("A29:C29")
+    ws["A29"] = "⚠ TOTAL EXPUESTO (sin evidencia válida de despacho)"
+    ws["A29"].font = section_font
+    ws["A29"].fill = section_fill
+    ws["A29"].alignment = centered
+    ws.row_dimensions[29].height = 22
+
+    kpi_card(30, "Total facturado SIN remisión o evidencia válida",
+             (f'=SUMIF({rng_k},"*No hay remisión*",{rng_f})'
+              f'+SUMIF({rng_k},"*Pendiente revisión manual*",{rng_f})'
+              f'+SUMIF({rng_p},"*No se encontró*",{rng_f})'),
+             MONEY_FMT, fill_red, money_font)
+
+    ws.column_dimensions["A"].width = 56  # mas ancho por las etiquetas mas largas
     ws.column_dimensions["B"].width = 22
     ws.column_dimensions["C"].width = 4
     ws.sheet_view.showGridLines = False
