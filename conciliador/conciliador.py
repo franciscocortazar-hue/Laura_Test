@@ -1177,9 +1177,11 @@ def _build_resumen_sheet(wb: Workbook, last_data_row: int) -> None:
     ws.row_dimensions[13].height = 22
 
     # Fila 14-16
-    kpi_card(14, "A favor de Nautiturismo (factura > remisión)",
+    # Convencion de signo: factura > remision (positivo) = te cobraron de mas
+    # = Todomar tiene saldo a su favor para reclamar.
+    kpi_card(14, "A favor de Todomar (factura > remisión, te cobraron de más)",
              f'=SUMIF({rng_l},">0")', MONEY_FMT, fill_red, money_font)
-    kpi_card(15, "A favor de Todomar (factura < remisión)",
+    kpi_card(15, "A favor de Nautiturismo (factura < remisión, te despacharon de más)",
              f'=SUMIF({rng_l},"<0")', MONEY_FMT, fill_orange, money_font)
     kpi_card(16, "Neto de diferencias",
              f"=SUM({rng_l})", MONEY_FMT, fill_blue, money_font)
@@ -1213,22 +1215,27 @@ def _build_resumen_sheet(wb: Workbook, last_data_row: int) -> None:
              f'=SUMIF({rng_k},"*OK*",{rng_f})', MONEY_FMT, fill_ok, money_font)
     kpi_card(24, "🟡 Sin remisión — Total facturado",
              f'=SUMIF({rng_k},"*No hay remisión*",{rng_f})', MONEY_FMT, fill_yellow, money_font)
-    kpi_card(25, "🔴 Con diferencia — Total facturado",
-             f'=SUMIF({rng_k},"*Remisión con valor diferente*",{rng_f})', MONEY_FMT, fill_red, money_font)
-    kpi_card(26, "🟠 Pendiente revisión manual — Total facturado",
+    # 'Con diferencia' separado en 2 lineas segun a favor de quien queda el saldo
+    kpi_card(25, "🔴 Con diferencia A FAVOR DE TODOMAR — Total facturado",
+             f'=SUMIFS({rng_f},{rng_k},"*Remisión con valor diferente*",{rng_l},">0")',
+             MONEY_FMT, fill_red, money_font)
+    kpi_card(26, "🔴 Con diferencia A FAVOR DE NAUTITURISMO — Total facturado",
+             f'=SUMIFS({rng_f},{rng_k},"*Remisión con valor diferente*",{rng_l},"<0")',
+             MONEY_FMT, fill_orange, money_font)
+    kpi_card(27, "🟠 Pendiente revisión manual — Total facturado",
              f'=SUMIF({rng_k},"*Pendiente revisión manual*",{rng_f})', MONEY_FMT, fill_orange, money_font)
-    kpi_card(27, "📭 Sin correo recibido — Total facturado (sin evidencia de tanqueo)",
+    kpi_card(28, "📭 Sin correo recibido — Total facturado (sin evidencia de tanqueo)",
              f'=SUMIF({rng_p},"*No se encontró*",{rng_f})', MONEY_FMT, fill_red, money_font)
 
-    # Fila 29: total acumulado de filas sin remision suficiente (sin remision + sin correo + pendiente)
-    ws.merge_cells("A29:C29")
-    ws["A29"] = "⚠ TOTAL EXPUESTO (sin evidencia válida de despacho)"
-    ws["A29"].font = section_font
-    ws["A29"].fill = section_fill
-    ws["A29"].alignment = centered
-    ws.row_dimensions[29].height = 22
+    # Fila 30: total acumulado de filas sin evidencia valida
+    ws.merge_cells("A30:C30")
+    ws["A30"] = "⚠ TOTAL EXPUESTO (sin evidencia válida de despacho)"
+    ws["A30"].font = section_font
+    ws["A30"].fill = section_fill
+    ws["A30"].alignment = centered
+    ws.row_dimensions[30].height = 22
 
-    kpi_card(30, "Total facturado SIN remisión o evidencia válida",
+    kpi_card(31, "Total facturado SIN remisión o evidencia válida",
              (f'=SUMIF({rng_k},"*No hay remisión*",{rng_f})'
               f'+SUMIF({rng_k},"*Pendiente revisión manual*",{rng_f})'
               f'+SUMIF({rng_p},"*No se encontró*",{rng_f})'),
