@@ -2068,37 +2068,47 @@ def generar_informe_reclamacion(control_path: Path, facturas_dir: Path,
             "observaciones": cons_ws.cell(row=r, column=COL["Observaciones"]).value or "",
         }
 
-    # === 2) Detectar casos CRITICOS (mismo algoritmo que --informe-criticos) ===
+    # === 2) Detectar casos CRITICOS + capturar hora_tanqueo + computar flags ===
     criticos = []
     nums_en_criticos = set()
+    # Indice {numdoctra: [{remision_no, valor_remision_det, bote_det, fecha_hora_tanqueo, archivo}]}
+    # para enriquecer las "diferencias simples" con horas y deteccion de multi-bote
+    detalle_por_factura: dict = defaultdict(list)
+
     if "Detalle Remisiones" in wb.sheetnames:
         det_ws = wb["Detalle Remisiones"]
         by_rno: dict = defaultdict(list)
         for r in range(2, det_ws.max_row + 1):
             numdoctra = det_ws.cell(row=r, column=DETALLE_COL["NUMDOCTRA Factura"]).value
             rno = det_ws.cell(row=r, column=DETALLE_COL["Remisión No."]).value
-            if numdoctra is None or rno is None:
+            if numdoctra is None:
                 continue
             num_str = str(int(numdoctra) if isinstance(numdoctra, float) else numdoctra).strip()
-            by_rno[str(rno).strip()].append({
+            det_row = {
                 "numdoctra": num_str,
+                "remision_no": str(rno).strip() if rno is not None else None,
+                "bote_det": det_ws.cell(row=r, column=DETALLE_COL["Bote"]).value,
+                "fecha_hora_tanqueo": det_ws.cell(row=r, column=DETALLE_COL["Fecha tanqueo"]).value,
                 "valor_remision_det": det_ws.cell(row=r, column=DETALLE_COL["Valor remisión"]).value,
                 "archivo": det_ws.cell(row=r, column=DETALLE_COL["Archivo origen"]).value or "",
-            })
+            }
+            detalle_por_factura[num_str].append(det_row)
+            if rno is not None:
+                by_rno[str(rno).strip()].append(det_row)
 
         gap_dias_max = int(os.environ.get("CONCILIADOR_GAP_SISTEMA_DIAS", "365"))
         for rno, occs in by_rno.items():
             if len(set(o["numdoctra"] for o in occs)) < 2:
                 continue
-            # Gap filter
             fechas = []
             for o in occs:
                 cd = cons_index.get(o["numdoctra"], {})
                 f = _parse_fecha_safe(cd.get("fecha_factura"))
                 if f:
                     fechas.append(f)
-            if len(fechas) >= 2 and (max(fechas) - min(fechas)).days > gap_dias_max:
-                continue
+            gap_dias = (max(fechas) - min(fechas)).days if len(fechas) >= 2 else None
+            if gap_dias is not None and gap_dias > gap_dias_max:
+                continue  # cambio de sistema, no es caso real
 
             legitimas, infladas = [], []
             for o in occs:
@@ -2107,19 +2117,66 @@ def generar_informe_reclamacion(control_path: Path, facturas_dir: Path,
                 vrd = o.get("valor_remision_det")
                 if not isinstance(vf, (int, float)) or not isinstance(vrd, (int, float)):
                     continue
+                merged = {**o, **cd}
                 if abs(vf - vrd) <= tolerance:
-                    legitimas.append({**o, **cd})
+                    legitimas.append(merged)
                 elif vf > vrd + tolerance:
-                    infladas.append({**o, **cd})
+                    infladas.append(merged)
 
             if legitimas and infladas:
                 vrr = min(l["valor_remision_det"] for l in legitimas)
+                # === Computar flags por caso critico ===
+                flags = []
+                # Flag: sobrecobro negativo (algoritmo equivoco)
+                for inf in infladas:
+                    if inf["valor_factura"] - vrr <= 0:
+                        flags.append("⚠ Sobrecobro negativo (revisar clasificacion)")
+                        break
+                # Flag: bote consolidado en alguna aparicion
+                botes_concat = [str(x.get("bote") or "") for x in legitimas + infladas]
+                if any("," in b for b in botes_concat):
+                    flags.append("⚠ Bote consolidado (factura agrupa varios tanqueos)")
+                # Flag: botes distintos entre legitimas e infladas
+                botes_leg_norm = set(str(l.get("bote") or "").strip().upper()
+                                     for l in legitimas if l.get("bote"))
+                botes_inf_norm = set(str(i.get("bote") or "").strip().upper()
+                                     for i in infladas if i.get("bote"))
+                if botes_leg_norm and botes_inf_norm and not (botes_leg_norm & botes_inf_norm):
+                    flags.append("⚠ Botes distintos entre legitima e inflada")
+                # Flag: legitima con valor muy bajo (probable nota credito/ajuste)
+                min_leg = min(l["valor_factura"] for l in legitimas
+                             if isinstance(l.get("valor_factura"), (int, float)))
+                max_inf = max(i["valor_factura"] for i in infladas
+                             if isinstance(i.get("valor_factura"), (int, float)))
+                if min_leg < 0.2 * max_inf:
+                    flags.append("⚠ Legitima muy baja vs inflada (posible nota credito)")
+                # Flag: gap temporal cerca del limite (200-365 dias)
+                if gap_dias is not None and 200 < gap_dias <= gap_dias_max:
+                    flags.append(f"⚠ Gap temporal cerca del limite ({gap_dias} dias)")
+                # Flag: comparacion de hora_tanqueo
+                horas_legitima = [_parse_fecha_safe(l.get("fecha_hora_tanqueo"))
+                                 for l in legitimas]
+                horas_inflada = [_parse_fecha_safe(i.get("fecha_hora_tanqueo"))
+                                for i in infladas]
+                horas_legitima = [h for h in horas_legitima if h]
+                horas_inflada = [h for h in horas_inflada if h]
+                if horas_legitima and horas_inflada:
+                    hl = horas_legitima[0]
+                    hi = horas_inflada[0]
+                    delta_min = abs((hl - hi).total_seconds()) / 60
+                    if delta_min < 30:
+                        flags.append("✅ Hora tanqueo coincide — REFUERZA duplicado")
+                    elif delta_min > 60:
+                        flags.append("⚠ Hora tanqueo distinta — probable tanqueo diferente")
+
                 for inf in infladas:
                     nums_en_criticos.add(inf["numdoctra"])
                 criticos.append({
                     "rno": rno, "valor_remision_real": vrr,
                     "legitimas": legitimas, "infladas": infladas,
                     "monto_objetable": sum(i["valor_factura"] for i in infladas),
+                    "flags": flags,
+                    "gap_dias": gap_dias,
                 })
 
     # === 3) Facturas SIN REMISION ===
@@ -2130,23 +2187,81 @@ def generar_informe_reclamacion(control_path: Path, facturas_dir: Path,
 
     # === 4) Diferencias SIMPLES (factura > remision, sin estar en criticos) ===
     diferencias_simples = []
+    # Para detectar patron de diferencia recurrente (probable cargo fijo)
+    diff_counts: dict = defaultdict(int)
     for num, d in cons_index.items():
         if num in nums_en_criticos:
-            continue  # ya esta como critico, no duplicar
+            continue
         if "diferente" in d["conciliacion"].lower():
             diff = d.get("diferencia")
             if isinstance(diff, (int, float)) and diff > 0:
-                # factura > remision -> a favor de Nautiturismo
-                diferencias_simples.append(d)
+                diff_counts[round(diff)] += 1
 
-    # === Totales ===
-    total_criticos = sum(c["monto_objetable"] for c in criticos)
+    for num, d in cons_index.items():
+        if num in nums_en_criticos:
+            continue
+        if "diferente" in d["conciliacion"].lower():
+            diff = d.get("diferencia")
+            if isinstance(diff, (int, float)) and diff > 0:
+                # === Computar flags ===
+                flags = []
+                vf = d.get("valor_factura") or 0
+                vr = d.get("valor_remision") or 0
+                bote = str(d.get("bote") or "")
+                # Flag: bote consolidado
+                if "," in bote:
+                    flags.append("⚠ Bote consolidado (factura agrupa varios tanqueos)")
+                # Flag: ratio remision/factura muy bajo (Vision posible misread)
+                if vf > 0 and vr / vf < 0.3:
+                    pct = vr / vf * 100
+                    flags.append(f"⚠ Ratio remision/factura bajo ({pct:.0f}%) - posible Vision misread")
+                # Flag: diferencia recurrente (probable cargo fijo)
+                if diff_counts.get(round(diff), 0) >= 3:
+                    n_rec = diff_counts[round(diff)]
+                    flags.append(f"⚠ Diferencia identica recurrente ({n_rec} facturas) - posible cargo fijo")
+                # Flag: multi-tanqueo probable (1 remision pero factura >> remision)
+                detalles = detalle_por_factura.get(num, [])
+                n_remisiones_detectadas = len(detalles)
+                if n_remisiones_detectadas == 1 and vr > 0 and vf > 2 * vr:
+                    flags.append("⚠ Posible extraccion incompleta (1 remision pero factura > 2x)")
+
+                # Enriquecer con horas
+                horas_tanqueo = [_parse_fecha_safe(dr.get("fecha_hora_tanqueo"))
+                                 for dr in detalles]
+                horas_tanqueo_str = ", ".join(
+                    str(h)[:19] for h in horas_tanqueo if h
+                )
+
+                d_with_flags = {**d, "flags": flags,
+                                "horas_tanqueo": horas_tanqueo_str,
+                                "n_remisiones_detectadas": n_remisiones_detectadas}
+                diferencias_simples.append(d_with_flags)
+
+    # === Totales (separados por: solidos sin flags vs con flags a verificar) ===
+    criticos_solidos = [c for c in criticos if not c.get("flags") or
+                        all("✅" in f for f in c.get("flags", []))]
+    criticos_verificar = [c for c in criticos if c not in criticos_solidos]
+
+    diferencias_solidas = [d for d in diferencias_simples if not d.get("flags")]
+    diferencias_verificar = [d for d in diferencias_simples if d.get("flags")]
+
+    total_criticos_solidos = sum(c["monto_objetable"] for c in criticos_solidos)
+    total_criticos_verificar = sum(c["monto_objetable"] for c in criticos_verificar)
+    total_criticos = total_criticos_solidos + total_criticos_verificar
+
+    total_diferencias_solidas = sum(d["diferencia"] for d in diferencias_solidas
+                                    if isinstance(d["diferencia"], (int, float)))
+    total_diferencias_verificar = sum(d["diferencia"] for d in diferencias_verificar
+                                      if isinstance(d["diferencia"], (int, float)))
+    total_diferencias = total_diferencias_solidas + total_diferencias_verificar
+
     total_sin_rem = sum(d["valor_factura"] for d in sin_remision
                        if isinstance(d["valor_factura"], (int, float)))
-    total_diferencias = sum(d["diferencia"] for d in diferencias_simples
-                           if isinstance(d["diferencia"], (int, float)))
     n_facturas_infladas = sum(len(c["infladas"]) for c in criticos)
+    n_facturas_infladas_solidas = sum(len(c["infladas"]) for c in criticos_solidos)
 
+    total_solido = total_criticos_solidos + total_diferencias_solidas
+    total_verificar = total_criticos_verificar + total_diferencias_verificar
     total_reclamable_total = total_criticos + total_diferencias
     total_potencial_total = total_reclamable_total + total_sin_rem
 
@@ -2159,6 +2274,7 @@ def generar_informe_reclamacion(control_path: Path, facturas_dir: Path,
         total_criticos, total_sin_rem, total_diferencias,
         total_reclamable_total, total_potencial_total,
         n_facturas_infladas, facturas_dir,
+        total_solido=total_solido, total_verificar=total_verificar,
     )
 
     # === Generar Markdown formal ===
@@ -2394,6 +2510,7 @@ def _generar_excel_anexo_reclamacion(
     tot_crit: float, tot_sin_rem: float, tot_dif: float,
     tot_reclam: float, tot_potencial: float, n_infladas: int,
     facturas_dir: Path,
+    total_solido: float = 0, total_verificar: float = 0,
 ) -> None:
     """Genera Excel profesional anexo con 4 hojas."""
     wb = Workbook()
@@ -2445,24 +2562,47 @@ def _generar_excel_anexo_reclamacion(
         for col_letter in ["A", "B", "C"]:
             ws[f"{col_letter}{i}"].border = THIN_BORDER
 
+    # SUBTOTALES separados: solido vs verificar
+    solido_fill = PatternFill("solid", fgColor="E2F0D9")  # verde claro
+    verificar_fill = PatternFill("solid", fgColor="FFE699")  # amarillo
+    ws.cell(row=12, column=1, value="✅ TOTAL SÓLIDO (sin flags) - reclamar firme").font = Font(bold=True, size=11)
+    ws.cell(row=12, column=1).fill = solido_fill
+    c = ws.cell(row=12, column=3, value=total_solido)
+    c.font = Font(bold=True, color="385723")
+    c.number_format = MONEY_FMT
+    c.fill = solido_fill
+
+    ws.cell(row=13, column=1, value="⚠ TOTAL A VERIFICAR (con flags) - revisar manualmente").font = Font(bold=True, size=11)
+    ws.cell(row=13, column=1).fill = verificar_fill
+    c = ws.cell(row=13, column=3, value=total_verificar)
+    c.font = Font(bold=True, color="9C5700")
+    c.number_format = MONEY_FMT
+    c.fill = verificar_fill
+
     # TOTAL OBJETABLE
-    ws.cell(row=12, column=1, value="TOTAL OBJETABLE (reclamación directa)").font = total_font
-    ws.cell(row=12, column=1).fill = PatternFill("solid", fgColor="FCE4E4")
-    ws.cell(row=12, column=2, value=n_infladas + len(diferencias)).font = total_font
-    c = ws.cell(row=12, column=3, value=tot_reclam)
+    ws.cell(row=15, column=1, value="TOTAL OBJETABLE (reclamación directa: sólido + a verificar)").font = total_font
+    ws.cell(row=15, column=1).fill = PatternFill("solid", fgColor="FCE4E4")
+    ws.cell(row=15, column=2, value=n_infladas + len(diferencias)).font = total_font
+    c = ws.cell(row=15, column=3, value=tot_reclam)
     c.font = total_font
     c.number_format = MONEY_FMT
     c.fill = PatternFill("solid", fgColor="FCE4E4")
     for col_letter in ["A", "B", "C"]:
-        ws[f"{col_letter}12"].border = THIN_BORDER
+        ws[f"{col_letter}15"].border = THIN_BORDER
 
-    ws.cell(row=13, column=1, value="TOTAL POTENCIAL (incl. sin remisión)").font = Font(bold=True, size=11)
-    ws.cell(row=13, column=2, value=n_infladas + len(diferencias) + len(sin_remision)).font = Font(bold=True)
-    c = ws.cell(row=13, column=3, value=tot_potencial)
+    ws.cell(row=16, column=1, value="TOTAL POTENCIAL (incl. sin remisión)").font = Font(bold=True, size=11)
+    ws.cell(row=16, column=2, value=n_infladas + len(diferencias) + len(sin_remision)).font = Font(bold=True)
+    c = ws.cell(row=16, column=3, value=tot_potencial)
     c.font = Font(bold=True, size=11)
     c.number_format = MONEY_FMT
     for col_letter in ["A", "B", "C"]:
-        ws[f"{col_letter}13"].border = THIN_BORDER
+        ws[f"{col_letter}16"].border = THIN_BORDER
+
+    # Leyenda
+    ws.cell(row=18, column=1, value="Leyenda de filas en las hojas siguientes:").font = Font(italic=True, size=10)
+    ws.cell(row=19, column=1, value="  • Fondo verde claro: sin flags (caso sólido)").font = Font(italic=True, size=10, color="385723")
+    ws.cell(row=20, column=1, value="  • Fondo amarillo: con flag(s) — ver columna 'Flag / Sospecha'").font = Font(italic=True, size=10, color="9C5700")
+    ws.cell(row=21, column=1, value="  • Columnas con paths a PDFs son hipervínculos clicables").font = Font(italic=True, size=10, color="595959")
 
     ws.column_dimensions["A"].width = 55
     ws.column_dimensions["B"].width = 12
@@ -2475,66 +2615,79 @@ def _generar_excel_anexo_reclamacion(
 
     # =============== HOJA CASOS CRÍTICOS ===============
     ws2 = wb.create_sheet("Casos Críticos")
-    headers_crit = ["Remisión No.", "Factura LEGÍTIMA", "Fecha legítima", "Bote legítima",
+    headers_crit = ["Remisión No.", "Factura LEGÍTIMA", "Fecha legítima",
+                    "Hora tanqueo leg.", "Bote legítima",
                     "V. factura legítima", "V. remisión real",
-                    "Factura INFLADA", "Fecha inflada", "Bote inflada",
+                    "Factura INFLADA", "Fecha inflada", "Hora tanqueo infl.",
+                    "Bote inflada",
                     "V. factura inflada", "Sobrecobro", "Monto objetable",
-                    "PDF Factura inflada", "PDF Remisión inflada"]
+                    "Flag / Sospecha", "PDF Factura inflada", "PDF Remisión inflada"]
     for i, h in enumerate(headers_crit, start=1):
         c = ws2.cell(row=1, column=i, value=h)
         c.font = header_font
         c.fill = header_fill
         c.alignment = centered
         c.border = THIN_BORDER
-    ws2.row_dimensions[1].height = 32
+    ws2.row_dimensions[1].height = 36
     ws2.freeze_panes = "A2"
 
+    flag_fill = PatternFill("solid", fgColor="FFE699")  # amarillo para filas con flag
     row = 2
     for c in sorted(criticos, key=lambda x: -x["monto_objetable"]):
         leg = c["legitimas"][0]
+        flags_str = " | ".join(c.get("flags", []))
+        has_flag = bool(c.get("flags"))
         for inf in c["infladas"]:
             ws2.cell(row=row, column=1, value=c["rno"])
             ws2.cell(row=row, column=2, value=f"FC{leg['numdoctra']}")
             ws2.cell(row=row, column=3, value=str(leg.get("fecha_factura") or "")[:10])
-            ws2.cell(row=row, column=4, value=leg.get("bote") or "")
-            cf_leg = ws2.cell(row=row, column=5, value=leg.get("valor_factura"))
+            ws2.cell(row=row, column=4, value=str(leg.get("fecha_hora_tanqueo") or "")[:19])
+            ws2.cell(row=row, column=5, value=leg.get("bote") or "")
+            cf_leg = ws2.cell(row=row, column=6, value=leg.get("valor_factura"))
             cf_leg.number_format = MONEY_FMT
-            cr = ws2.cell(row=row, column=6, value=c["valor_remision_real"])
+            cr = ws2.cell(row=row, column=7, value=c["valor_remision_real"])
             cr.number_format = MONEY_FMT
-            ws2.cell(row=row, column=7, value=f"FC{inf['numdoctra']}")
-            ws2.cell(row=row, column=8, value=str(inf.get("fecha_factura") or "")[:10])
-            ws2.cell(row=row, column=9, value=inf.get("bote") or "")
-            cf_inf = ws2.cell(row=row, column=10, value=inf["valor_factura"])
+            ws2.cell(row=row, column=8, value=f"FC{inf['numdoctra']}")
+            ws2.cell(row=row, column=9, value=str(inf.get("fecha_factura") or "")[:10])
+            ws2.cell(row=row, column=10, value=str(inf.get("fecha_hora_tanqueo") or "")[:19])
+            ws2.cell(row=row, column=11, value=inf.get("bote") or "")
+            cf_inf = ws2.cell(row=row, column=12, value=inf["valor_factura"])
             cf_inf.number_format = MONEY_FMT
-            cs = ws2.cell(row=row, column=11, value=inf["valor_factura"] - c["valor_remision_real"])
+            cs = ws2.cell(row=row, column=13, value=inf["valor_factura"] - c["valor_remision_real"])
             cs.number_format = MONEY_FMT
-            co = ws2.cell(row=row, column=12, value=inf["valor_factura"])
+            co = ws2.cell(row=row, column=14, value=inf["valor_factura"])
             co.number_format = MONEY_FMT
             co.font = Font(bold=True, color="9C0006")
-            # Hyperlinks a los PDFs
+            # Flag
+            cflag = ws2.cell(row=row, column=15, value=flags_str)
+            cflag.alignment = Alignment(wrap_text=True, vertical="center")
+            # Hyperlinks
             path_fac = facturas_dir / f"FC{inf['numdoctra']}" / f"FAC-FC{inf['numdoctra']}.pdf"
             path_rem = facturas_dir / f"FC{inf['numdoctra']}" / inf.get("archivo", "")
-            set_hyperlink_cell(ws2.cell(row=row, column=13), path_fac, f"FAC-FC{inf['numdoctra']}.pdf")
-            set_hyperlink_cell(ws2.cell(row=row, column=14), path_rem, inf.get("archivo", ""))
-            for col_idx in range(1, 15):
+            set_hyperlink_cell(ws2.cell(row=row, column=16), path_fac, f"FAC-FC{inf['numdoctra']}.pdf")
+            set_hyperlink_cell(ws2.cell(row=row, column=17), path_rem, inf.get("archivo", ""))
+            for col_idx in range(1, 18):
                 ws2.cell(row=row, column=col_idx).border = THIN_BORDER
-                if row % 2 == 0:
+                if has_flag:
+                    ws2.cell(row=row, column=col_idx).fill = flag_fill
+                elif row % 2 == 0:
                     ws2.cell(row=row, column=col_idx).fill = ZEBRA_FILL
             row += 1
 
-    # Total row
-    ws2.cell(row=row, column=11, value="TOTAL OBJETABLE:").font = total_font
-    ct = ws2.cell(row=row, column=12, value=tot_crit)
+    # Total
+    ws2.cell(row=row, column=13, value="TOTAL OBJETABLE:").font = total_font
+    ct = ws2.cell(row=row, column=14, value=tot_crit)
     ct.number_format = MONEY_FMT
     ct.font = total_font
-    for col_letter in ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]:
-        ws2[f"{col_letter}{row}"].fill = PatternFill("solid", fgColor="FCE4E4")
+    for letter in ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N"]:
+        ws2[f"{letter}{row}"].fill = PatternFill("solid", fgColor="FCE4E4")
 
-    widths_crit = {"A": 14, "B": 14, "C": 13, "D": 16, "E": 18, "F": 16, "G": 14,
-                   "H": 13, "I": 16, "J": 18, "K": 16, "L": 18, "M": 22, "N": 30}
+    widths_crit = {"A": 12, "B": 12, "C": 12, "D": 18, "E": 16, "F": 16, "G": 16,
+                   "H": 12, "I": 12, "J": 18, "K": 16, "L": 16, "M": 14, "N": 16,
+                   "O": 50, "P": 22, "Q": 28}
     for letter, w in widths_crit.items():
         ws2.column_dimensions[letter].width = w
-    ws2.auto_filter.ref = f"A1:N{row-1}"
+    ws2.auto_filter.ref = f"A1:Q{row-1}"
 
     # =============== HOJA SIN REMISIÓN ===============
     ws3 = wb.create_sheet("Sin Remisión")
@@ -2578,51 +2731,63 @@ def _generar_excel_anexo_reclamacion(
 
     # =============== HOJA DIFERENCIAS ===============
     ws4 = wb.create_sheet("Diferencias")
-    headers_df = ["NUMDOCTRA", "Fecha factura", "Bote", "V. factura", "V. remisión",
-                  "Diferencia (a reclamar)", "PDF Factura", "PDF Remisión"]
+    headers_df = ["NUMDOCTRA", "Fecha factura", "Bote", "# Rem detectadas",
+                  "Horas tanqueo", "V. factura", "V. remisión",
+                  "Diferencia (a reclamar)", "Flag / Sospecha",
+                  "PDF Factura", "PDF Remisión"]
     for i, h in enumerate(headers_df, start=1):
         c = ws4.cell(row=1, column=i, value=h)
         c.font = header_font
         c.fill = header_fill
         c.alignment = centered
         c.border = THIN_BORDER
-    ws4.row_dimensions[1].height = 28
+    ws4.row_dimensions[1].height = 36
     ws4.freeze_panes = "A2"
 
+    flag_fill = PatternFill("solid", fgColor="FFE699")
     sorted_df = sorted(diferencias,
                        key=lambda d: -(d["diferencia"] if isinstance(d["diferencia"], (int, float)) else 0))
     row = 2
     for d in sorted_df:
+        has_flag = bool(d.get("flags"))
+        flags_str = " | ".join(d.get("flags", []))
         ws4.cell(row=row, column=1, value=f"FC{d['numdoctra']}")
         ws4.cell(row=row, column=2, value=str(d["fecha_factura"])[:10] if d["fecha_factura"] else "")
         ws4.cell(row=row, column=3, value=d.get("bote") or "")
-        cf = ws4.cell(row=row, column=4, value=d["valor_factura"])
+        ws4.cell(row=row, column=4, value=d.get("n_remisiones_detectadas") or 0)
+        ws4.cell(row=row, column=5, value=d.get("horas_tanqueo") or "")
+        cf = ws4.cell(row=row, column=6, value=d["valor_factura"])
         cf.number_format = MONEY_FMT
-        cr = ws4.cell(row=row, column=5, value=d["valor_remision"])
+        cr = ws4.cell(row=row, column=7, value=d["valor_remision"])
         cr.number_format = MONEY_FMT
-        cd = ws4.cell(row=row, column=6, value=d["diferencia"])
+        cd = ws4.cell(row=row, column=8, value=d["diferencia"])
         cd.number_format = MONEY_FMT
         cd.font = Font(bold=True, color="9C0006")
+        cflag = ws4.cell(row=row, column=9, value=flags_str)
+        cflag.alignment = Alignment(wrap_text=True, vertical="center")
         path_fac = facturas_dir / f"FC{d['numdoctra']}" / f"FAC-FC{d['numdoctra']}.pdf"
         path_rem = facturas_dir / f"FC{d['numdoctra']}" / f"REM-FC{d['numdoctra']}.pdf"
-        set_hyperlink_cell(ws4.cell(row=row, column=7), path_fac, f"FAC-FC{d['numdoctra']}.pdf")
-        set_hyperlink_cell(ws4.cell(row=row, column=8), path_rem, f"REM-FC{d['numdoctra']}.pdf")
-        for col_idx in range(1, 9):
+        set_hyperlink_cell(ws4.cell(row=row, column=10), path_fac, f"FAC-FC{d['numdoctra']}.pdf")
+        set_hyperlink_cell(ws4.cell(row=row, column=11), path_rem, f"REM-FC{d['numdoctra']}.pdf")
+        for col_idx in range(1, 12):
             ws4.cell(row=row, column=col_idx).border = THIN_BORDER
-            if row % 2 == 0:
+            if has_flag:
+                ws4.cell(row=row, column=col_idx).fill = flag_fill
+            elif row % 2 == 0:
                 ws4.cell(row=row, column=col_idx).fill = ZEBRA_FILL
         row += 1
     # Total
-    ws4.cell(row=row, column=5, value="TOTAL A RECLAMAR:").font = total_font
-    ct = ws4.cell(row=row, column=6, value=tot_dif)
+    ws4.cell(row=row, column=7, value="TOTAL A RECLAMAR:").font = total_font
+    ct = ws4.cell(row=row, column=8, value=tot_dif)
     ct.number_format = MONEY_FMT
     ct.font = total_font
-    for col_letter in ["A", "B", "C", "D", "E", "F", "G", "H"]:
-        ws4[f"{col_letter}{row}"].fill = PatternFill("solid", fgColor="FCE4E4")
-    widths_df = {"A": 14, "B": 14, "C": 16, "D": 16, "E": 16, "F": 22, "G": 22, "H": 24}
+    for letter in ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"]:
+        ws4[f"{letter}{row}"].fill = PatternFill("solid", fgColor="FCE4E4")
+    widths_df = {"A": 12, "B": 12, "C": 28, "D": 14, "E": 30, "F": 16, "G": 16,
+                 "H": 18, "I": 50, "J": 22, "K": 22}
     for letter, w in widths_df.items():
         ws4.column_dimensions[letter].width = w
-    ws4.auto_filter.ref = f"A1:H{row-1}"
+    ws4.auto_filter.ref = f"A1:K{row-1}"
 
     wb.save(str(xlsx_path))
 
