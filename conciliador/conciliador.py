@@ -556,6 +556,36 @@ Si remision_no no es visible, usa null para ese campo."""
 # Si el valor extraido supera este threshold, loggea alerta (probable cedula u otro identificador)
 VALOR_REMISION_SUSPICIOUS_THRESHOLD = 5_000_000  # $5M COP por remision es muy alto
 
+# Fill rojo para resaltar filas con remisiones duplicadas
+RED_DUPLICATE_FILL = PatternFill("solid", fgColor="FF9999")
+
+
+def _add_duplicate_red_rule(ws, range_str: str, obs_col_letter: str, row_start: int = 2) -> None:
+    """Agrega regla de formato condicional: pinta fila entera de rojo si la
+    col Observaciones contiene 'duplicada' o 'ya usada' (deteccion de remisiones
+    repetidas entre facturas).
+
+    Idempotente: si ya existe una regla con esa formula, no la duplica.
+    """
+    existing_formulas = []
+    try:
+        for cf_range, rules in ws.conditional_formatting._cf_rules.items():
+            for r in rules:
+                if hasattr(r, "formula") and r.formula:
+                    existing_formulas.extend(str(f) for f in r.formula)
+    except Exception:
+        pass
+
+    for keyword in ("duplicada", "ya usada"):
+        marker = f"SEARCH(\"{keyword}\""
+        if any(marker in f for f in existing_formulas):
+            continue
+        formula = f'=ISNUMBER(SEARCH("{keyword}",${obs_col_letter}{row_start}))'
+        ws.conditional_formatting.add(
+            range_str,
+            FormulaRule(formula=[formula], fill=RED_DUPLICATE_FILL, stopIfTrue=False),
+        )
+
 
 def render_pdf_first_page_to_png(pdf_path: Path, scale: float = 3.0) -> bytes:
     """Renderiza la primera pagina del PDF como PNG bytes."""
@@ -1046,6 +1076,9 @@ def bootstrap_control(control_path: Path, source: Path, log: RunLog) -> None:
     for letter, w in widths.items():
         ws.column_dimensions[letter].width = w
 
+    # Marcar en rojo filas con remisiones duplicadas (observaciones contiene 'duplicada' o 'ya usada')
+    _add_duplicate_red_rule(ws, f"A2:P{last_row}", "P", row_start=2)
+
     _build_resumen_sheet(wb, last_row)
     _build_log_sheet(wb)
     _build_detalle_remisiones_sheet(wb)
@@ -1206,6 +1239,8 @@ def _build_detalle_remisiones_sheet(wb: Workbook) -> None:
     for letter, w in widths.items():
         ws.column_dimensions[letter].width = w
     ws.freeze_panes = "A2"
+    # Marcar en rojo fila completa si Observaciones (col G) menciona duplicada
+    _add_duplicate_red_rule(ws, "A2:G10000", "G", row_start=2)
 
 
 def _ensure_detalle_sheet(wb: Workbook) -> None:
@@ -1383,7 +1418,8 @@ def find_row_by_numdoctra(ws, numdoctra: int | str) -> int | None:
 
 def _ensure_observaciones_header(ws) -> None:
     """Si el Excel fue creado antes de que existiera col Observaciones, agrega
-    el header para que las nuevas escrituras a esa col tengan etiqueta."""
+    el header para que las nuevas escrituras a esa col tengan etiqueta.
+    Tambien asegura el formato condicional rojo para filas con duplicados."""
     col_idx = COL["Observaciones"]
     cell = ws.cell(row=1, column=col_idx)
     if cell.value != "Observaciones":
@@ -1393,6 +1429,10 @@ def _ensure_observaciones_header(ws) -> None:
         cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         cell.border = THIN_BORDER
         ws.column_dimensions[get_column_letter(col_idx)].width = 50
+    # Formato condicional: marcar en rojo fila con duplicada
+    # (la helper detecta si ya existe y no duplica reglas)
+    max_row = max(ws.max_row, 2)
+    _add_duplicate_red_rule(ws, f"A2:P{max_row}", "P", row_start=2)
 
 
 def update_control_row(
