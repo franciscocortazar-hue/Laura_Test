@@ -303,14 +303,19 @@ Abrir `Control_Conciliacion_Combustibles.xlsx` y filtrar la hoja **Conciliación
 
 Mira también la hoja **Resumen** para totales.
 
-### 4.2 Plantilla de email a Nautiturismo
+### 4.2 Plantilla de email a Todomar (proveedor de combustible)
+
+**Roles**:
+- **Todomar CHL S.A.S.** (NIT 806.003.144) = proveedor (vende combustible, emite facturas)
+- **Nautiturismo SAS** (NIT 901.459.048) = cliente (dueño de los botes, paga las facturas)
+- El informe lo redacta el equipo de Nautiturismo (comprador) y va dirigido a Todomar (proveedor) para reclamar discrepancias.
 
 Adaptar según los datos del periodo:
 
 ```
 Asunto: Solicitud de revisión – Facturación combustible <PERIODO>
 
-Estimados [Nombre de contacto / Equipo de Cartera de Nautiturismo SAS]:
+Estimados [Nombre de contacto / Equipo de Cartera de Todomar CHL S.A.S.]:
 
 En el marco del proceso de conciliación de las facturas de combustible
 recibidas durante el periodo <PERIODO>, encontramos las siguientes
@@ -335,31 +340,33 @@ las remisiones, encontramos las siguientes inconsistencias:
 
 | NUMDOCTRA | Bote | Fecha     | V. factura | V. remisión | Diferencia | A favor de |
 |-----------|------|-----------|-----------:|------------:|-----------:|------------|
-| FCXXXXX   | BXX  | DD/MM/AA  | $X.XXX.XXX |  $X.XXX.XXX | +$XXX.XXX  | Nautiturismo / Todomar |
-| ...       | ...  | ...       | ...        | ...         | ...        | ...        |
-|-----------|------|-----------|-----------:|------------:|-----------:|------------|
-| Subtotal a favor de Todomar:                                   | $XXX.XXX |
-| Subtotal a favor de Nautiturismo:                              | $XXX.XXX |
-| Neto:                                                          | $XXX.XXX |
+| FCXXXXX   | BXX  | DD/MM/AA  | $X.XXX.XXX |  $X.XXX.XXX | +$XXX.XXX  | Nautiturismo |
+| FCYYYYY   | BYY  | DD/MM/AA  | $X.XXX.XXX |  $X.XXX.XXX | -$XXX.XXX  | Todomar      |
+| ...       | ...  | ...       | ...        | ...         | ...        | ...          |
+|-----------|------|-----------|-----------:|------------:|-----------:|--------------|
+| Subtotal a favor de Nautiturismo (Todomar cobró de más):       | $XXX.XXX |
+| Subtotal a favor de Todomar (despacharon de más sin facturar): | $XXX.XXX |
+| Neto a favor de Nautiturismo:                                  | $XXX.XXX |
 
-Solicitamos su revisión y, en caso de confirmar las inconsistencias,
-la emisión de la nota crédito correspondiente, así como el envío de
-las N remisiones faltantes mencionadas en el numeral 1.
+Solicitamos su revisión y, en caso de confirmar las inconsistencias
+a favor de Nautiturismo, la emisión de la nota crédito por valor de
+$XXX.XXX, así como el envío de las N remisiones faltantes
+mencionadas en el numeral 1.
 
 Quedamos atentos a su pronta respuesta para cerrar el periodo.
 
 Cordialmente,
 
 Francisco Cortázar
-Todomar CHL S.A.S.
-NIT 806.003.144
+Nautiturismo SAS
+NIT 901.459.048
 [teléfono]
 [correo]
 ```
 
 ### 4.3 Anexos sugeridos
 
-Si Nautiturismo necesita evidencia, puedes adjuntar:
+Si Todomar necesita evidencia, puedes adjuntar:
 
 - Los PDFs de las facturas/remisiones mencionadas (están en `G:\...\Facturas\FC<num>\`)
 - Una copia del `Control_Conciliacion_Combustibles.xlsx` (filtrada por las filas mencionadas)

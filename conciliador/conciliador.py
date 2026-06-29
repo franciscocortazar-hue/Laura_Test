@@ -1184,11 +1184,17 @@ def _build_resumen_sheet(wb: Workbook, last_data_row: int) -> None:
     ws.row_dimensions[13].height = 22
 
     # Fila 14-16
-    # Convencion de signo: factura > remision (positivo) = te cobraron de mas
-    # = Todomar tiene saldo a su favor para reclamar.
-    kpi_card(14, "A favor de Todomar (factura > remisión, te cobraron de más)",
+    # Roles:
+    #   Todomar = proveedor (vende combustible, EMITE las facturas)
+    #   Nautiturismo = cliente/comprador (paga, dueño de los botes)
+    # Convencion de signo:
+    #   factura > remision (positivo) = Todomar cobro de mas
+    #     -> saldo A FAVOR DE NAUTITURISMO (el comprador, le deben)
+    #   factura < remision (negativo) = Todomar despacho de mas sin facturar
+    #     -> saldo A FAVOR DE TODOMAR (el proveedor podria reclamar)
+    kpi_card(14, "A favor de Nautiturismo (factura > remisión — Todomar cobró de más)",
              f'=SUMIF({rng_l},">0")', MONEY_FMT, fill_red, money_font)
-    kpi_card(15, "A favor de Nautiturismo (factura < remisión, te despacharon de más)",
+    kpi_card(15, "A favor de Todomar (factura < remisión — despacharon de más sin facturar)",
              f'=SUMIF({rng_l},"<0")', MONEY_FMT, fill_orange, money_font)
     kpi_card(16, "Neto de diferencias",
              f"=SUM({rng_l})", MONEY_FMT, fill_blue, money_font)
@@ -1223,10 +1229,12 @@ def _build_resumen_sheet(wb: Workbook, last_data_row: int) -> None:
     kpi_card(24, "🟡 Sin remisión — Total facturado",
              f'=SUMIF({rng_k},"*No hay remisión*",{rng_f})', MONEY_FMT, fill_yellow, money_font)
     # 'Con diferencia' separado en 2 lineas segun a favor de quien queda el saldo
-    kpi_card(25, "🔴 Con diferencia A FAVOR DE TODOMAR — Total facturado",
+    # Positivo (factura > remision): Todomar cobro de mas, saldo a favor de NAUTITURISMO
+    # Negativo (factura < remision): despacharon de mas, saldo a favor de TODOMAR
+    kpi_card(25, "🔴 Con diferencia A FAVOR DE NAUTITURISMO — Total facturado (a reclamar a Todomar)",
              f'=SUMIFS({rng_f},{rng_k},"*Remisión con valor diferente*",{rng_l},">0")',
              MONEY_FMT, fill_red, money_font)
-    kpi_card(26, "🔴 Con diferencia A FAVOR DE NAUTITURISMO — Total facturado",
+    kpi_card(26, "🔴 Con diferencia A FAVOR DE TODOMAR — Total facturado",
              f'=SUMIFS({rng_f},{rng_k},"*Remisión con valor diferente*",{rng_l},"<0")',
              MONEY_FMT, fill_orange, money_font)
     kpi_card(27, "🟠 Pendiente revisión manual — Total facturado",
@@ -2285,6 +2293,10 @@ def main() -> None:
                         help="Escanea la hoja Detalle Remisiones del Excel y marca "
                              "como duplicado todas las remisiones cuyo numero aparece "
                              "en mas de una factura.")
+    parser.add_argument("--rebuild-resumen", action="store_true",
+                        help="Borra y regenera la hoja Resumen del Excel con los "
+                             "labels y formulas actuales (no toca Conciliación ni "
+                             "Detalle Remisiones). Util cuando se cambian labels en codigo.")
     args = parser.parse_args()
 
     cfg = load_config()
@@ -2354,6 +2366,28 @@ def main() -> None:
         n = detectar_duplicados_remisiones(control_path, log)
         print(f"\n  ✓ {n} filas marcadas como duplicado en hoja 'Detalle Remisiones'")
         print(f"  Abre el Excel y mira la columna Observaciones para ver los detalles.")
+        return
+
+    if args.rebuild_resumen:
+        if not control_path.exists():
+            log.error("control_missing_for_rebuild_resumen", path=str(control_path))
+            sys.exit(1)
+        wb = load_workbook(str(control_path))
+        # Determinar last_data_row de Conciliación
+        cons = wb["Conciliación"]
+        last_data_row = cons.max_row
+        # Borrar Resumen vieja y crear nueva
+        if "Resumen" in wb.sheetnames:
+            del wb["Resumen"]
+        _build_resumen_sheet(wb, last_data_row)
+        # Mover la nueva Resumen al inicio
+        idx_resumen = wb.sheetnames.index("Resumen")
+        wb.move_sheet("Resumen", offset=-idx_resumen + 1)
+        wb.save(str(control_path))
+        log.info("resumen_rebuilt", last_data_row=last_data_row)
+        print(f"\n  ✓ Hoja Resumen regenerada con labels actuales")
+        # Tambien actualizar el desglose mensual
+        update_faltantes_breakdown_in_resumen(control_path, log)
         return
 
     bootstrap_control(control_path, cfg["source_excel"], log)
